@@ -7,6 +7,15 @@ export type UserRole =
   | "store_owner"
   | "platform_admin";
 
+export interface IUserSession {
+  sessionId: string;
+  refreshToken: string;
+  userAgent: string;
+  ipAddress: string;
+  createdAt: Date;
+  lastUsedAt: Date;
+}
+
 export interface IUser extends Document {
   userId: string;
   name: string;
@@ -18,10 +27,50 @@ export interface IUser extends Document {
   emailVerified: boolean;
   phoneVerified: boolean;
   isActive: boolean;
-  refreshToken?: string;
+  // refreshToken?: string;
+  sessions: IUserSession[];
   createdAt: Date;
   updatedAt: Date;
 }
+
+
+const sessionSchema = new Schema<IUserSession>(
+  {
+    sessionId: {
+      type: String,
+      required: true,
+    },
+
+    refreshToken: {
+      type: String,
+      required: true,
+      select: false,
+    },
+
+    userAgent: {
+      type: String,
+      default: "",
+    },
+
+    ipAddress: {
+      type: String,
+      default: "",
+    },
+
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+
+    lastUsedAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  {
+    _id: false,
+  }
+);
 
 const userSchema = new Schema<IUser>(
   {
@@ -89,10 +138,9 @@ const userSchema = new Schema<IUser>(
       default: true,
     },
 
-    refreshToken: {
-      type: String,
-      default: null,
-      select: false,
+    sessions: {
+      type: [sessionSchema],
+      default: [],
     },
   },
   {

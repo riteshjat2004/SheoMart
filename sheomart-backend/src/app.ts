@@ -10,6 +10,7 @@ import { env } from "./config/env";
 import { ApiResponse } from "./utils/apiResponse";
 import { errorHandler } from "./handlers/errorHandler";
 import authRoutes from "./routes/auth.routes";
+import userRoutes from "./routes/user.routes";
 
 const app = express();
 
@@ -39,11 +40,13 @@ app.use(
 
 app.use("/api/v1/auth", authRoutes);
 
+
 // Health Route
 app.get("/", (_req, res) => {
   res.json(new ApiResponse(true, "Welcome to SheoMart API 🚀"));
 });
 
+app.use("/api/v1/users", userRoutes);
 // Global Error Handler (Always Last)
 app.use(errorHandler);
 

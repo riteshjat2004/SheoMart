@@ -20,3 +20,16 @@ export const registerSchema = z.object({
 });
 
 export type RegisterInput = z.infer<typeof registerSchema>;
+
+export const loginSchema = z.object({
+  identifier: z
+    .string()
+    .trim()
+    .min(1, "Email or mobile number is required"),
+
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters"),
+});
+
+export type LoginInput = z.infer<typeof loginSchema>;
