@@ -13,21 +13,15 @@ export const env = {
 
   JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || "",
 
-  JWT_ACCESS_EXPIRES_IN:
-    process.env.JWT_ACCESS_EXPIRES_IN || "15m",
+  JWT_ACCESS_EXPIRES_IN: process.env.JWT_ACCESS_EXPIRES_IN || "15m",
 
-  JWT_REFRESH_EXPIRES_IN:
-    process.env.JWT_REFRESH_EXPIRES_IN || "7d",
+  JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || "7d",
 
-  CORS_ORIGIN:
-    process.env.CORS_ORIGIN || "http://localhost:8081",
+  CORS_ORIGIN: process.env.CORS_ORIGIN || "http://localhost:8081",
 
-  CLOUDINARY_CLOUD_NAME:
-    process.env.CLOUDINARY_CLOUD_NAME || "",
+  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || "",
 
-  CLOUDINARY_API_KEY:
-    process.env.CLOUDINARY_API_KEY || "",
+  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || "",
 
-  CLOUDINARY_API_SECRET:
-    process.env.CLOUDINARY_API_SECRET || "",
+  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || "",
 };
