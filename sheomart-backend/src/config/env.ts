@@ -1,27 +1,31 @@
 import dotenv from "dotenv";
+import { z } from "zod";
 
 dotenv.config();
 
-export const env = {
-  PORT: Number(process.env.PORT) || 5000,
+const envSchema = z.object({
+  PORT: z.coerce.number().default(5000),
 
-  NODE_ENV: process.env.NODE_ENV || "development",
+  NODE_ENV: z.enum(["development", "production"]).default("development"),
 
-  MONGODB_URI: process.env.MONGODB_URI || "",
+  MONGODB_URI: z.string().min(1, "MONGODB_URI is required"),
 
-  JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET || "",
+  JWT_ACCESS_SECRET: z.string().min(32, "JWT_ACCESS_SECRET is required"),
 
-  JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || "",
+  JWT_REFRESH_SECRET: z.string().min(32, "JWT_REFRESH_SECRET is required"),
 
-  JWT_ACCESS_EXPIRES_IN: process.env.JWT_ACCESS_EXPIRES_IN || "15m",
+  JWT_ACCESS_EXPIRES_IN: z.string().default("15m"),
 
-  JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || "7d",
+  JWT_REFRESH_EXPIRES_IN: z.string().default("7d"),
 
-  CORS_ORIGIN: process.env.CORS_ORIGIN || "http://localhost:8081",
+  CORS_ORIGIN: z.string().default("http://localhost:8081"),
 
-  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || "",
+  CLOUDINARY_CLOUD_NAME: z.string().optional(),
 
-  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || "",
+  CLOUDINARY_API_KEY: z.string().optional(),
 
-  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || "",
-};
+  CLOUDINARY_API_SECRET: z.string().optional(),
+});
+
+
+export const env = envSchema.parse(process.env);

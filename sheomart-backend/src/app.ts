@@ -9,6 +9,7 @@ import hpp from "hpp";
 import { env } from "./config/env";
 import { ApiResponse } from "./utils/apiResponse";
 import { errorHandler } from "./handlers/errorHandler";
+import authRoutes from "./routes/auth.routes";
 
 const app = express();
 
@@ -35,6 +36,8 @@ app.use(
     standardHeaders: true,
   })
 );
+
+app.use("/api/v1/auth", authRoutes);
 
 // Health Route
 app.get("/", (_req, res) => {
