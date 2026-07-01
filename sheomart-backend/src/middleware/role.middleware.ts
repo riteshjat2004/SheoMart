@@ -1,7 +1,7 @@
 import { NextFunction, Response } from "express";
 import { AppError } from "../errors/AppError";
 import { AuthRequest } from "./auth.middleware";
-import { UserRole } from "../models/user.model";
+import { UserRole } from "../constants/roles";
 
 export const authorize =
   (...roles: UserRole[]) =>

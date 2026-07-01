@@ -1,17 +1,19 @@
 import { Router } from "express";
 
-import { getProfile } from "../controllers/user.controller";
+import {
+  getProfile,
+  updateProfile,
+  changePassword,
+  deleteAccount,
+} from "../controllers/user.controller";
 import { asyncHandler } from "../utils/asyncHandler";
 import { authenticate } from "../middleware/auth.middleware";
-import { authorize } from "../middleware/role.middleware";
 
 const router = Router();
 
-router.get(
-  "/profile",
-  authenticate,
-  authorize("customer", "store_owner", "platform_admin"),
-  asyncHandler(getProfile)
-);
+router.get("/profile", authenticate, asyncHandler(getProfile));
+router.patch("/profile", authenticate, asyncHandler(updateProfile));
+router.patch("/change-password", authenticate, asyncHandler(changePassword));
+router.delete("/account", authenticate, asyncHandler(deleteAccount));
 
 export default router;

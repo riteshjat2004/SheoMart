@@ -1,11 +1,7 @@
 import { Schema, model, Document } from "mongoose";
 import { v4 as uuidv4 } from "uuid";
 import validator from "validator";
-
-export type UserRole =
-  | "customer"
-  | "store_owner"
-  | "platform_admin";
+import { USER_ROLES, UserRole } from "../constants/roles";
 
 export interface IUserSession {
   sessionId: string;
@@ -27,6 +23,11 @@ export interface IUser extends Document {
   emailVerified: boolean;
   phoneVerified: boolean;
   isActive: boolean;
+  avatar: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
   // refreshToken?: string;
   sessions: IUserSession[];
   createdAt: Date;
@@ -114,8 +115,8 @@ const userSchema = new Schema<IUser>(
 
     role: {
       type: String,
-      enum: ["customer", "store_owner", "platform_admin"],
-      default: "customer",
+      enum: Object.values(USER_ROLES),
+      default: USER_ROLES.CUSTOMER,
     },
 
     isCreditApproved: {
@@ -136,6 +137,31 @@ const userSchema = new Schema<IUser>(
     isActive: {
       type: Boolean,
       default: true,
+    },
+
+    avatar: {
+      type: String,
+      default: "",
+    },
+
+    address: {
+      type: String,
+      default: "",
+    },
+
+    city: {
+      type: String,
+      default: "",
+    },
+
+    state: {
+      type: String,
+      default: "",
+    },
+
+    pincode: {
+      type: String,
+      default: "",
     },
 
     sessions: {
