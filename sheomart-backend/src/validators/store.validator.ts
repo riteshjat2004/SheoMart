@@ -1,5 +1,31 @@
 import { z } from "zod";
 
+export const allowedStoreUpdateFields = [
+  "description",
+  "logo",
+  "banner",
+  "phone",
+  "address",
+  "city",
+  "state",
+  "pincode",
+] as const;
+
+export const protectedStoreUpdateFields = [
+  "ownerId",
+  "storeId",
+  "slug",
+  "status",
+  "isVerified",
+  "approvedAt",
+  "approvedBy",
+  "rating",
+  "totalReviews",
+  "createdAt",
+  "updatedAt",
+  "_id",
+] as const;
+
 export const createStoreSchema = z.object({
   storeName: z
     .string()

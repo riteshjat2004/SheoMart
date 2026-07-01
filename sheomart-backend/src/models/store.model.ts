@@ -18,6 +18,8 @@ export interface IStore extends Document {
   pincode: string;
   isVerified: boolean;
   status: StoreStatus;
+  approvedAt: Date | null;
+  approvedBy: string | null;
   rating: number;
   totalReviews: number;
   createdAt: Date;
@@ -118,6 +120,16 @@ const storeSchema = new Schema<IStore>(
       type: String,
       enum: Object.values(STORE_STATUS),
       default: STORE_STATUS.PENDING,
+    },
+
+    approvedAt: {
+      type: Date,
+      default: null,
+    },
+
+    approvedBy: {
+      type: String,
+      default: null,
     },
 
     rating: {

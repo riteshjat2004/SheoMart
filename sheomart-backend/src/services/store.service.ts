@@ -1,7 +1,9 @@
 import { AppError } from "../errors/AppError";
 import { STORE_STATUS, StoreStatus } from "../constants/store";
+import { USER_ROLES } from "../constants/roles";
 import { Store } from "../models/store.model";
 import { User } from "../models/user.model";
+import { allowedStoreUpdateFields } from "../validators/store.validator";
 
 interface StoreCreateInput {
   storeName?: string;
@@ -110,19 +112,8 @@ export class StoreService {
       throw new AppError("Store not found", 404);
     }
 
-    const allowedFields = [
-      "description",
-      "logo",
-      "banner",
-      "phone",
-      "address",
-      "city",
-      "state",
-      "pincode",
-    ];
-
     for (const key of Object.keys(data)) {
-      if (!allowedFields.includes(key)) {
+      if (!allowedStoreUpdateFields.includes(key as (typeof allowedStoreUpdateFields)[number])) {
         continue;
       }
 
@@ -148,7 +139,7 @@ export class StoreService {
     return Store.find({ status: STORE_STATUS.APPROVED }).sort({ createdAt: -1 });
   }
 
-  static async updateStoreStatus(storeId: string, status: string) {
+  static async updateStoreStatus(storeId: string, status: string, adminUserId?: string) {
     const allowedStatuses = Object.values(STORE_STATUS);
 
     if (!allowedStatuses.includes(status as StoreStatus)) {
@@ -161,7 +152,25 @@ export class StoreService {
       throw new AppError("Store not found", 404);
     }
 
-    store.status = status as StoreStatus;
+    if (status === STORE_STATUS.APPROVED) {
+      store.status = STORE_STATUS.APPROVED;
+      store.approvedAt = new Date();
+      store.approvedBy = adminUserId ?? null;
+
+      const owner = await User.findOne({ userId: store.ownerId });
+
+      if (!owner) {
+        throw new AppError("Store owner not found", 404);
+      }
+
+      owner.role = USER_ROLES.STORE_OWNER;
+      await owner.save();
+    } else {
+      store.status = status as StoreStatus;
+      store.approvedAt = null;
+      store.approvedBy = null;
+    }
+
     await store.save();
 
     return store;
