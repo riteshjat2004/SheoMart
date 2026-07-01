@@ -1,13 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { Moon, Sparkles, Sun } from "lucide-react";
+import { LogOut, Moon, Sparkles, Sun, UserCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/layout/container";
 import { useTheme } from "@/providers/theme-provider";
+import { useAuthStore } from "@/store/auth-store";
+import { useRouter } from "next/navigation";
 
 export function Navbar() {
   const { theme, toggleTheme } = useTheme();
+  const router = useRouter();
+  const { isAuthenticated, user, logout } = useAuthStore();
+
+  const handleLogout = () => {
+    logout();
+    router.push("/login");
+  };
 
   return (
     <header className="sticky top-0 z-40 border-b border-stone-200/70 bg-white/80 backdrop-blur-xl dark:border-stone-800 dark:bg-stone-950/80">
@@ -32,8 +41,29 @@ export function Navbar() {
           <Button variant="ghost" size="icon" aria-label="Toggle theme" onClick={toggleTheme}>
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
-          <Button variant="ghost" size="sm">Sign in</Button>
-          <Button size="sm">Get started</Button>
+          {isAuthenticated ? (
+            <>
+              <Button asChild variant="ghost" size="sm">
+                <Link href={user?.role === "customer" ? "/customer" : user?.role === "store_owner" ? "/store" : "/admin"} aria-label="Open dashboard">
+                  <UserCircle2 className="mr-2 h-4 w-4" />
+                  Profile
+                </Link>
+              </Button>
+              <Button variant="ghost" size="sm" onClick={handleLogout} aria-label="Log out">
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/login">Login</Link>
+              </Button>
+              <Button asChild size="sm">
+                <Link href="/register">Register</Link>
+              </Button>
+            </>
+          )}
         </div>
       </Container>
     </header>

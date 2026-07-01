@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
+import { RouteGuard } from "@/components/auth/RouteGuard";
 import { GlobalProviders } from "@/providers/global-providers";
 import "./globals.css";
 
@@ -27,7 +28,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <GlobalProviders>
           <div className="flex min-h-screen flex-col">
             <Navbar />
-            <main className="flex-1">{children}</main>
+            <main className="flex-1">
+              <RouteGuard>{children}</RouteGuard>
+            </main>
             <Footer />
           </div>
         </GlobalProviders>

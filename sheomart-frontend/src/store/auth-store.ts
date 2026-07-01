@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { getProfile } from "@/services/auth";
 import type { AuthSessionPayload, AuthUser, UserRole } from "@/types/auth";
 
 interface AuthState {
@@ -49,14 +50,31 @@ export const useAuthStore = create<AuthState>()(
       clearUser: () => set({ user: null, role: null, isAuthenticated: false }),
       setAccessToken: (token) => set({ accessToken: token }),
       setLoading: (value) => set({ loading: value }),
-      initializeAuth: () => {
+      initializeAuth: async () => {
         const state = useAuthStore.getState();
-        if (state.accessToken && state.user) {
-          set({ isAuthenticated: true, loading: false });
+        if (!state.accessToken) {
+          set({ loading: false, isAuthenticated: false, user: null, role: null });
           return;
         }
 
-        set({ loading: false });
+        try {
+          const profile = await getProfile();
+          set({
+            user: profile.user,
+            role: profile.user.role,
+            isAuthenticated: true,
+            loading: false,
+          });
+        } catch {
+          set({
+            user: null,
+            role: null,
+            isAuthenticated: false,
+            accessToken: null,
+            refreshToken: null,
+            loading: false,
+          });
+        }
       },
     }),
     {
