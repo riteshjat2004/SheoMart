@@ -4,6 +4,7 @@ import { AuthRequest } from "../middleware/auth.middleware";
 import { ApiResponse } from "../utils/apiResponse";
 import { CategoryService } from "../services/category.service";
 import {
+  bulkCreateCategorySchema,
   createCategorySchema,
   updateCategorySchema,
 } from "../validators/category.validator";
@@ -47,6 +48,30 @@ export const createCategory = async (
 
   res.status(201).json(
     new ApiResponse(true, "Category created successfully", { category })
+  );
+};
+
+export const createBulkCategories = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const payload = req.body;
+
+  if (!Array.isArray(payload)) {
+    throw new AppError("Request body must be an array of categories", 400);
+  }
+
+  const result = bulkCreateCategorySchema.safeParse(payload);
+
+  if (!result.success) {
+    const message = result.error.issues[0]?.message || "Invalid category payload";
+    throw new AppError(message, 400);
+  }
+
+  const bulkResult = await CategoryService.createBulkCategories(result.data, req.user?.userId);
+
+  res.status(201).json(
+    new ApiResponse(true, "Categories imported successfully", bulkResult)
   );
 };
 

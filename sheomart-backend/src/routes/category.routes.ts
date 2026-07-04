@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   createCategory,
+  createBulkCategories,
   deleteCategory,
   getCategories,
   getCategoryById,
@@ -22,6 +23,12 @@ router.post(
   authenticate,
   authorize(USER_ROLES.PLATFORM_ADMIN),
   asyncHandler(createCategory)
+);
+router.post(
+  "/bulk",
+  authenticate,
+  authorize(USER_ROLES.PLATFORM_ADMIN),
+  asyncHandler(createBulkCategories)
 );
 router.patch(
   "/:categoryId",

@@ -10,6 +10,11 @@ export const createCategorySchema = z.object({
 }).strict();
 
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>;
+export const bulkCreateCategorySchema = z.array(createCategorySchema)
+  .min(1, "Category list must contain at least one item")
+  .max(100, "Cannot import more than 100 categories");
+
+export type BulkCreateCategoryInput = z.infer<typeof bulkCreateCategorySchema>;
 
 export const updateCategorySchema = z.object({
   name: z.string().trim().min(2, "Category name must be at least 2 characters").max(100).optional(),

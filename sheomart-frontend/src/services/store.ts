@@ -6,6 +6,10 @@ export interface GetStoresResponse {
   stores: StoreItem[];
 }
 
+export interface GetStoreResponse {
+  store: StoreItem;
+}
+
 export interface CreateStoreApplicationPayload {
   storeName: string;
   description?: string;
@@ -42,6 +46,13 @@ export async function fetchStores() {
   const stores = Array.isArray(response.data.data?.stores) ? response.data.data.stores : [];
 
   return stores.map((store) => normalizeStore(store as Record<string, unknown>));
+}
+
+export async function fetchStoreById(storeId: string) {
+  const response = await api.get<ApiResponse<GetStoreResponse>>(`/api/v1/stores/${storeId}`);
+  const store = response.data.data?.store;
+
+  return store ? normalizeStore(store as Record<string, unknown>) : null;
 }
 
 export async function fetchAdminStores() {

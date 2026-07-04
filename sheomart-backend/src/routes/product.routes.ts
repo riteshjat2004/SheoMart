@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   addImages,
+  createBulkProducts,
   createProduct,
   deleteProduct,
   getMyProducts,
@@ -27,6 +28,12 @@ router.get(
 );
 router.get("/:productId", asyncHandler(getProductById));
 
+router.post(
+  "/bulk",
+  authenticate,
+  authorize(USER_ROLES.STORE_OWNER),
+  asyncHandler(createBulkProducts)
+);
 router.post(
   "/",
   authenticate,

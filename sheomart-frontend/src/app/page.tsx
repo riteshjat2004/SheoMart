@@ -1,5 +1,8 @@
 "use client";
 
+import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/layout/container";
 import { Section } from "@/components/layout/section";
@@ -22,6 +25,8 @@ import { useStores } from "@/hooks/use-stores";
 import { ArrowRight, CheckCircle2, Clock3, Leaf, ShieldCheck, Smartphone } from "lucide-react";
 
 export default function Home() {
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
   const categoriesQuery = useCategories();
   const productsQuery = useProducts();
   const storesQuery = useStores();
@@ -29,6 +34,15 @@ export default function Home() {
   const categories = Array.isArray(categoriesQuery.data) ? categoriesQuery.data : [];
   const products = Array.isArray(productsQuery.data) ? productsQuery.data : [];
   const stores = Array.isArray(storesQuery.data) ? storesQuery.data : [];
+  const featuredCategories = categories.slice(0, 4);
+  const featuredProducts = products.slice(0, 8);
+  const nearbyStores = stores.slice(0, 3);
+
+  const handleSearchSubmit = () => {
+    const trimmedQuery = searchQuery.trim();
+    if (!trimmedQuery) return;
+    router.push(`/explore?query=${encodeURIComponent(trimmedQuery)}`);
+  };
 
   return (
     <PageWrapper>
@@ -43,13 +57,20 @@ export default function Home() {
                 <h2 className="mt-2 text-xl font-semibold text-stone-900 dark:text-stone-50">Search fresh groceries, pantry staples, and everyday essentials.</h2>
               </div>
               <div className="w-full lg:max-w-xl">
-                <SearchBar />
+                <SearchBar value={searchQuery} onChange={setSearchQuery} onSubmit={handleSearchSubmit} />
               </div>
             </div>
           </div>
 
           <section className="space-y-5">
-            <SectionHeading eyebrow="Featured categories" title="Curated for your everyday routine" description="Browse fresh picks, pantry staples, beverages, and more designed for calm living." />
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <SectionHeading eyebrow="Featured categories" title="Curated for your everyday routine" description="Browse fresh picks, pantry staples, beverages, and more designed for calm living." />
+              {categories.length > featuredCategories.length ? (
+                <Button asChild variant="outline" className="h-fit">
+                  <Link href="/categories">View all categories</Link>
+                </Button>
+              ) : null}
+            </div>
             {categoriesQuery.isLoading ? (
               <CategorySkeleton />
             ) : categoriesQuery.isError ? (
@@ -61,7 +82,7 @@ export default function Home() {
               </div>
             ) : categories.length ? (
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                {categories.map((category) => (
+                {featuredCategories.map((category) => (
                   <CategoryCard key={category.categoryId ?? category.name} category={category} />
                 ))}
               </div>
@@ -86,9 +107,9 @@ export default function Home() {
                   <Button onClick={() => productsQuery.refetch()}>Retry</Button>
                 </div>
               </div>
-            ) : products.length ? (
+            ) : featuredProducts.length ? (
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                {products.map((product) => (
+                {featuredProducts.map((product) => (
                   <ProductCard key={product.productId ?? product.name} product={product} />
                 ))}
               </div>
@@ -98,7 +119,7 @@ export default function Home() {
           </section>
 
           <section className="space-y-5">
-            <SectionHeading eyebrow="Popular stores" title="Trusted neighborhood stores" description="Verified sellers with dependable delivery and quality standards." />
+            <SectionHeading eyebrow="Nearby stores" title="Trusted neighborhood stores" description="Verified sellers ready to deliver from local inventory." />
             {storesQuery.isLoading ? (
               <StoreSkeleton />
             ) : storesQuery.isError ? (
@@ -108,9 +129,9 @@ export default function Home() {
                   <Button onClick={() => storesQuery.refetch()}>Retry</Button>
                 </div>
               </div>
-            ) : stores.length ? (
+            ) : nearbyStores.length ? (
               <div className="grid gap-4 md:grid-cols-3">
-                {stores.map((store) => (
+                {nearbyStores.map((store) => (
                   <StoreCard key={store.storeId ?? store.storeName ?? store.name ?? "store"} store={store} />
                 ))}
               </div>

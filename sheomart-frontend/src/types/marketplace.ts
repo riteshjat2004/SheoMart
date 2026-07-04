@@ -13,6 +13,7 @@ export interface CategoryItem {
 export interface ProductItem {
   _id?: string;
   productId?: string;
+  storeId?: string;
   categoryId?: string;
   name: string;
   description?: string;

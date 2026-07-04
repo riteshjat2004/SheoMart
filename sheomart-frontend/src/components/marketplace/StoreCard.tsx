@@ -1,8 +1,13 @@
+import Link from "next/link";
 import { MapPin, Star } from "lucide-react";
 import type { StoreItem } from "@/types/marketplace";
 
 interface StoreCardProps {
   store: StoreItem;
+}
+
+function getStoreHref(store: StoreItem) {
+  return `/stores/${encodeURIComponent(store.storeId ?? store._id ?? store.storeName ?? store.name ?? "store")}`;
 }
 
 export function StoreCard({ store }: StoreCardProps) {
@@ -12,7 +17,10 @@ export function StoreCard({ store }: StoreCardProps) {
   const cityLabel = store.city ?? store.address ?? "City not available";
 
   return (
-    <article className="rounded-[1.5rem] border border-stone-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:border-stone-800 dark:bg-stone-900">
+    <Link
+      href={getStoreHref(store)}
+      className="group block overflow-hidden rounded-[1.5rem] border border-stone-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:border-stone-800 dark:bg-stone-900"
+    >
       <div className="flex items-center gap-3">
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-lg font-semibold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
           {initials}
@@ -36,6 +44,6 @@ export function StoreCard({ store }: StoreCardProps) {
           </div>
         ) : null}
       </div>
-    </article>
+    </Link>
   );
 }

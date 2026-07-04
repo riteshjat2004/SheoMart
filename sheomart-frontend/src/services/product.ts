@@ -20,3 +20,8 @@ export async function fetchProductsByCategory(categoryId: string) {
   const products = await fetchProducts();
   return products.filter((product) => product.categoryId === categoryId || product.category === categoryId);
 }
+
+export async function fetchProductsByStore(storeId: string) {
+  const products = await fetchProducts();
+  return products.filter((product) => product.storeId === storeId);
+}

@@ -127,6 +127,110 @@ export class ProductService {
     return product;
   }
 
+  static async createBulkProducts(data: CreateProductInput[], userId: string) {
+    const store = await Store.findOne({ ownerId: userId, status: STORE_STATUS.APPROVED });
+
+    if (!store) {
+      throw new AppError("Only approved store owners can create products", 403);
+    }
+
+    const categoryIds = Array.from(new Set(data.map((product) => product.categoryId)));
+    const categories = await Category.find({ categoryId: { $in: categoryIds }, isActive: true }).select("categoryId");
+    const validCategoryIds = new Set(categories.map((category) => category.categoryId));
+
+    const invalidCategoryIds = categoryIds.filter((categoryId) => !validCategoryIds.has(categoryId));
+
+    if (invalidCategoryIds.length > 0) {
+      throw new AppError("Category not found", 404);
+    }
+
+    const productNames = Array.from(new Set(data.map((product) => product.name)));
+    const existingProducts = await Product.find({ storeId: store.storeId, name: { $in: productNames } }).select("name");
+    const existingNames = new Set(existingProducts.map((product) => product.name));
+
+    const uniqueNames = new Set<string>();
+    const productsToInsert = [] as Array<{
+      storeId: string;
+      categoryId: string;
+      name: string;
+      slug: string;
+      description: string;
+      brand: string;
+      sku: string;
+      price: number;
+      discountPrice: number;
+      quantity: number;
+      images: string[];
+      isPublished: boolean;
+      createdBy: string;
+      updatedBy: string;
+    }>;
+
+    const seenSkus = new Set<string>();
+
+    for (const product of data) {
+      if (existingNames.has(product.name) || uniqueNames.has(product.name)) {
+        continue;
+      }
+
+      const normalizedSku = product.sku.toUpperCase();
+
+      if (seenSkus.has(normalizedSku)) {
+        throw new AppError("SKU already exists", 409);
+      }
+
+      seenSkus.add(normalizedSku);
+      uniqueNames.add(product.name);
+
+      productsToInsert.push({
+        storeId: store.storeId,
+        categoryId: product.categoryId,
+        name: product.name,
+        slug: "",
+        description: product.description || "",
+        brand: product.brand || "",
+        sku: normalizedSku,
+        price: product.price,
+        discountPrice: product.discountPrice ?? 0,
+        quantity: product.quantity ?? 0,
+        images: product.images || [],
+        isPublished: product.isPublished ?? false,
+        createdBy: userId,
+        updatedBy: userId,
+      });
+    }
+
+    if (productsToInsert.length === 0) {
+      return {
+        inserted: 0,
+        skipped: data.length,
+        insertedProducts: [],
+      };
+    }
+
+    const existingSkus = await Product.find({ sku: { $in: Array.from(seenSkus) } }).select("sku");
+
+    if (existingSkus.length > 0) {
+      throw new AppError("SKU already exists", 409);
+    }
+
+    for (const product of productsToInsert) {
+      product.slug = await this.buildUniqueSlug(product.name);
+    }
+
+    const insertedProducts = await Product.insertMany(productsToInsert);
+
+    await Promise.all(
+      insertedProducts.map((product) => InventoryService.createInventoryForProduct(product.productId, userId))
+    );
+
+    return {
+      inserted: insertedProducts.length,
+      skipped: data.length - insertedProducts.length,
+      insertedProducts,
+    };
+  }
+
   static async updateProduct(productId: string, data: UpdateProductInput, userId: string) {
     const product = await Product.findOne({ productId, isActive: true });
 

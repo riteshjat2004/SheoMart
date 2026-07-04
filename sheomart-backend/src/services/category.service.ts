@@ -62,6 +62,57 @@ export class CategoryService {
     return category;
   }
 
+  static async createBulkCategories(data: CreateCategoryInput[], userId?: string) {
+    const names = data.map((category) => category.name);
+    const existingCategories = await Category.find({ name: { $in: names } }).select("name");
+    const existingNames = new Set(existingCategories.map((category) => category.name));
+
+    const uniqueNames = new Set<string>();
+    const categoriesToInsert = data
+      .filter((category) => {
+        if (existingNames.has(category.name) || uniqueNames.has(category.name)) {
+          return false;
+        }
+
+        uniqueNames.add(category.name);
+        return true;
+      })
+      .map((category) => ({
+        name: category.name,
+        slug: "",
+        description: category.description || "",
+        image: category.image || "",
+        parentCategory: category.parentCategory || null,
+        sortOrder: category.sortOrder ?? 0,
+        isActive: typeof category.isActive === "boolean" ? category.isActive : true,
+        createdBy: userId || null,
+        updatedBy: userId || null,
+      }));
+
+    const insertedCategories = [];
+
+    for (const category of categoriesToInsert) {
+      category.slug = await this.buildUniqueSlug(category.name);
+      insertedCategories.push(category);
+    }
+
+    if (insertedCategories.length === 0) {
+      return {
+        inserted: 0,
+        skipped: data.length,
+        insertedCategories: [],
+      };
+    }
+
+    const inserted = await Category.insertMany(insertedCategories);
+
+    return {
+      inserted: inserted.length,
+      skipped: data.length - inserted.length,
+      insertedCategories: inserted,
+    };
+  }
+
   static async updateCategory(categoryId: string, data: UpdateCategoryInput, userId?: string) {
     const category = await Category.findOne({ categoryId, isActive: true });
 

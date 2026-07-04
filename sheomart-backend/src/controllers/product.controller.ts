@@ -5,6 +5,7 @@ import { ApiResponse } from "../utils/apiResponse";
 import { ProductService } from "../services/product.service";
 import {
   addImagesSchema,
+  bulkCreateProductSchema,
   createProductSchema,
   removeImageSchema,
   updateProductSchema,
@@ -61,6 +62,30 @@ export const createProduct = async (
 
   res.status(201).json(
     new ApiResponse(true, "Product created successfully", { product })
+  );
+};
+
+export const createBulkProducts = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const payload = req.body;
+
+  if (!Array.isArray(payload)) {
+    throw new AppError("Request body must be an array of products", 400);
+  }
+
+  const result = bulkCreateProductSchema.safeParse(payload);
+
+  if (!result.success) {
+    const message = result.error.issues[0]?.message || "Invalid product payload";
+    throw new AppError(message, 400);
+  }
+
+  const bulkResult = await ProductService.createBulkProducts(result.data, req.user?.userId as string);
+
+  res.status(201).json(
+    new ApiResponse(true, "Products imported successfully", bulkResult)
   );
 };
 

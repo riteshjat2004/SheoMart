@@ -14,6 +14,11 @@ export const createProductSchema = z.object({
 }).strict();
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;
+export const bulkCreateProductSchema = z.array(createProductSchema)
+  .min(1, "Product list must contain at least one item")
+  .max(100, "Cannot import more than 100 products");
+
+export type BulkCreateProductInput = z.infer<typeof bulkCreateProductSchema>;
 
 export const updateProductSchema = z.object({
   name: z.string().trim().min(2, "Product name must be at least 2 characters").max(120).optional(),

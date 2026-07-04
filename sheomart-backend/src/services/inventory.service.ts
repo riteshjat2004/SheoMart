@@ -125,7 +125,16 @@ export class InventoryService {
       inventory.lowStockThreshold = data.lowStockThreshold;
     }
 
-    inventory.status = this.updateStatus(inventory);
+    if (data.status !== undefined) {
+      if (data.status === INVENTORY_STATUS.DISCONTINUED) {
+        inventory.status = INVENTORY_STATUS.DISCONTINUED;
+      } else {
+        inventory.status = data.status;
+      }
+    } else {
+      inventory.status = this.updateStatus(inventory);
+    }
+
     inventory.updatedBy = userId;
     await inventory.save();
 
