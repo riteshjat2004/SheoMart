@@ -3,6 +3,7 @@ import {
   addImages,
   createProduct,
   deleteProduct,
+  getMyProducts,
   getProductById,
   getProducts,
   removeImage,
@@ -18,6 +19,12 @@ import { USER_ROLES } from "../constants/roles";
 const router = Router();
 
 router.get("/", asyncHandler(getProducts));
+router.get(
+  "/me",
+  authenticate,
+  authorize(USER_ROLES.STORE_OWNER),
+  asyncHandler(getMyProducts)
+);
 router.get("/:productId", asyncHandler(getProductById));
 
 router.post(

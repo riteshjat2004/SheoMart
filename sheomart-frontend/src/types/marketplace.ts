@@ -2,24 +2,30 @@ export interface CategoryItem {
   _id?: string;
   categoryId?: string;
   name: string;
+  slug?: string;
   description?: string;
   icon?: string;
   image?: string;
   isActive?: boolean;
+  parentCategory?: string | null;
 }
 
 export interface ProductItem {
   _id?: string;
   productId?: string;
+  categoryId?: string;
   name: string;
   description?: string;
   price: number;
   discount?: number;
+  discountPrice?: number;
   thumbnail?: string;
   images?: string[];
   rating?: number;
   unit?: string;
+  sku?: string;
   isActive?: boolean;
+  isPublished?: boolean;
   category?: string;
 }
 

@@ -82,6 +82,17 @@ export const getAllStores = async (
   );
 };
 
+export const getAdminStores = async (
+  _req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const stores = await StoreService.getAdminStores();
+
+  res.status(200).json(
+    new ApiResponse(true, "Stores fetched successfully", { stores })
+  );
+};
+
 export const updateStoreStatus = async (
   req: AuthRequest,
   res: Response

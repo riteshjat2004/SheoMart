@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   createStore,
+  getAdminStores,
   getAllStores,
   getMyStore,
   getStoreById,
@@ -31,6 +32,12 @@ router.patch(
   authenticate,
   authorize(USER_ROLES.CUSTOMER, USER_ROLES.STORE_OWNER),
   asyncHandler(updateMyStore)
+);
+router.get(
+  "/admin",
+  authenticate,
+  authorize(USER_ROLES.PLATFORM_ADMIN),
+  asyncHandler(getAdminStores)
 );
 router.get("/", asyncHandler(getAllStores));
 router.get("/:storeId", asyncHandler(getStoreById));

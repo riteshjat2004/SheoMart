@@ -1,8 +1,8 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import Link from "next/link";
 import { loginSchema, type LoginFormValues } from "@/lib/auth-schemas";
@@ -17,6 +17,7 @@ import { applyServerErrors, getApiErrorMessage } from "@/lib/auth-errors";
 
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login: setSession } = useAuthStore();
   const [serverMessage, setServerMessage] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -34,12 +35,20 @@ export function LoginForm() {
     },
   });
 
+  const redirectTo = useMemo(() => {
+    const rawRedirect = searchParams.get("redirect") ?? "/";
+    if (typeof rawRedirect === "string" && rawRedirect.startsWith("/") && !rawRedirect.startsWith("//")) {
+      return rawRedirect;
+    }
+    return "/";
+  }, [searchParams]);
+
   const mutation = useMutation({
     mutationFn: loginRequest,
     onSuccess: (session) => {
       setSession(session);
       setServerMessage("Welcome back! Your session is ready.");
-      router.push("/");
+      router.push(redirectTo);
     },
     onError: (error: unknown) => {
       applyServerErrors(setError, error, "identifier");

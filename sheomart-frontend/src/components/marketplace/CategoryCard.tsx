@@ -6,9 +6,13 @@ interface CategoryCardProps {
   category: CategoryItem;
 }
 
+function getCategoryHref(category: CategoryItem) {
+  return `/category/${category.categoryId ?? category._id ?? encodeURIComponent(category.name)}`;
+}
+
 export function CategoryCard({ category }: CategoryCardProps) {
   return (
-    <Link href="/explore" className="group overflow-hidden rounded-[1.5rem] border border-stone-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:border-stone-800 dark:bg-stone-900">
+    <Link href={getCategoryHref(category)} className="group overflow-hidden rounded-[1.5rem] border border-stone-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:border-stone-800 dark:bg-stone-900">
       <div className="relative h-36 overflow-hidden">
         <img src={category.image} alt={category.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
         <div className="absolute inset-0 bg-gradient-to-t from-stone-950/60 to-transparent" />

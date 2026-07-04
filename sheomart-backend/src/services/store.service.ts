@@ -139,6 +139,10 @@ export class StoreService {
     return Store.find({ status: STORE_STATUS.APPROVED }).sort({ createdAt: -1 });
   }
 
+  static async getAdminStores() {
+    return Store.find({}).sort({ createdAt: -1 });
+  }
+
   static async updateStoreStatus(storeId: string, status: string, adminUserId?: string) {
     const allowedStatuses = Object.values(STORE_STATUS);
 

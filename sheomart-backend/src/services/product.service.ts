@@ -60,6 +60,16 @@ export class ProductService {
     return Product.find({ isActive: true, isPublished: true }).sort({ createdAt: -1 });
   }
 
+  static async getProductsForStoreOwner(userId: string) {
+    const store = await Store.findOne({ ownerId: userId, status: STORE_STATUS.APPROVED });
+
+    if (!store) {
+      throw new AppError("Only approved store owners can view products", 403);
+    }
+
+    return Product.find({ storeId: store.storeId }).sort({ createdAt: -1 });
+  }
+
   static async getProductById(productId: string) {
     const product = await Product.findOne({ productId, isActive: true, isPublished: true });
 

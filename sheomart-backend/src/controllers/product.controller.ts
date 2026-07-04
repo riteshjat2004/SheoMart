@@ -22,6 +22,17 @@ export const getProducts = async (
   );
 };
 
+export const getMyProducts = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const products = await ProductService.getProductsForStoreOwner(req.user?.userId as string);
+
+  res.status(200).json(
+    new ApiResponse(true, "Store products fetched successfully", { products })
+  );
+};
+
 export const getProductById = async (
   req: AuthRequest,
   res: Response

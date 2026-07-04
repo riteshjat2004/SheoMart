@@ -42,7 +42,7 @@ export function RouteGuard({ children, allowedRoles }: RouteGuardProps) {
       return;
     }
 
-    if (allowedRoles && role && !hasRequiredRole(role, allowedRoles)) {
+    if (allowedRoles && (!isAuthenticated || !role || !hasRequiredRole(role, allowedRoles))) {
       logout();
       router.replace("/login");
       return;
@@ -61,7 +61,7 @@ export function RouteGuard({ children, allowedRoles }: RouteGuardProps) {
     return <Unauthorized />;
   }
 
-  if (allowedRoles && role && !hasRequiredRole(role, allowedRoles)) {
+  if (allowedRoles && (!isAuthenticated || !role || !hasRequiredRole(role, allowedRoles))) {
     return <Unauthorized />;
   }
 
