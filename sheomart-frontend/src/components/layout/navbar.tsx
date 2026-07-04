@@ -44,7 +44,7 @@ export function Navbar() {
           {isAuthenticated ? (
             <>
               <Button asChild variant="ghost" size="sm">
-                <Link href={user?.role === "customer" ? "/customer" : user?.role === "store_owner" ? "/store" : "/admin"} aria-label="Open dashboard">
+                <Link href={user?.role === "customer" ? "/profile" : user?.role === "store_owner" ? "/store" : "/admin"} aria-label="Open dashboard">
                   <UserCircle2 className="mr-2 h-4 w-4" />
                   Profile
                 </Link>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Search } from "lucide-react";
 import { Breadcrumb } from "@/components/dashboard/layout/Breadcrumb";
@@ -24,6 +24,9 @@ export default function AdminCategoriesPage() {
   const [editingCategory, setEditingCategory] = useState<CategoryItem | null>(null);
   const [pendingDelete, setPendingDelete] = useState<CategoryItem | null>(null);
   const [pendingStatus, setPendingStatus] = useState<CategoryItem | null>(null);
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const createFormRef = useRef<HTMLFormElement | null>(null);
+  const editFormRef = useRef<HTMLFormElement | null>(null);
 
   const { data: categories = [], isLoading, isError, error } = useQuery<CategoryItem[], Error>({
     queryKey: ["categories"],
@@ -48,9 +51,22 @@ export default function AdminCategoriesPage() {
       const response = await api.post<ApiResponse<{ category: CategoryItem }>>("/api/v1/categories", payload);
       return response.data.data?.category;
     },
-    onSuccess: () => {
+    onSuccess: (createdCategory) => {
+      queryClient.setQueryData<CategoryItem[]>(["categories"], (current = []) => {
+        if (!createdCategory) {
+          return current;
+        }
+
+        return current.some((item) => item.categoryId === createdCategory.categoryId || item._id === createdCategory._id)
+          ? current
+          : [createdCategory, ...current];
+      });
       queryClient.invalidateQueries({ queryKey: ["categories"] });
+      setFeedback({ type: "success", message: "Category created successfully." });
       setIsCreateOpen(false);
+    },
+    onError: (error: unknown) => {
+      setFeedback({ type: "error", message: error instanceof Error ? error.message : "Unable to create category." });
     },
   });
 
@@ -59,9 +75,16 @@ export default function AdminCategoriesPage() {
       const response = await api.patch<ApiResponse<{ category: CategoryItem }>>(`/api/v1/categories/${categoryId}`, payload);
       return response.data.data?.category;
     },
-    onSuccess: () => {
+    onSuccess: (updatedCategory) => {
+      queryClient.setQueryData<CategoryItem[]>(["categories"], (current = []) =>
+        current.map((item) => (item.categoryId === updatedCategory?.categoryId || item._id === updatedCategory?._id ? { ...item, ...updatedCategory } : item))
+      );
       queryClient.invalidateQueries({ queryKey: ["categories"] });
+      setFeedback({ type: "success", message: "Category updated successfully." });
       setEditingCategory(null);
+    },
+    onError: (error: unknown) => {
+      setFeedback({ type: "error", message: error instanceof Error ? error.message : "Unable to update category." });
     },
   });
 
@@ -70,9 +93,16 @@ export default function AdminCategoriesPage() {
       const response = await api.delete<ApiResponse<{ category: CategoryItem }>>(`/api/v1/categories/${categoryId}`);
       return response.data.data?.category;
     },
-    onSuccess: () => {
+    onSuccess: (deletedCategory) => {
+      queryClient.setQueryData<CategoryItem[]>(["categories"], (current = []) =>
+        current.filter((item) => item.categoryId !== deletedCategory?.categoryId && item._id !== deletedCategory?._id)
+      );
       queryClient.invalidateQueries({ queryKey: ["categories"] });
+      setFeedback({ type: "success", message: "Category deleted successfully." });
       setPendingDelete(null);
+    },
+    onError: (error: unknown) => {
+      setFeedback({ type: "error", message: error instanceof Error ? error.message : "Unable to delete category." });
     },
   });
 
@@ -81,9 +111,16 @@ export default function AdminCategoriesPage() {
       const response = await api.patch<ApiResponse<{ category: CategoryItem }>>(`/api/v1/categories/${categoryId}/status`, { isActive });
       return response.data.data?.category;
     },
-    onSuccess: () => {
+    onSuccess: (updatedCategory) => {
+      queryClient.setQueryData<CategoryItem[]>(["categories"], (current = []) =>
+        current.map((item) => (item.categoryId === updatedCategory?.categoryId || item._id === updatedCategory?._id ? { ...item, ...updatedCategory } : item))
+      );
       queryClient.invalidateQueries({ queryKey: ["categories"] });
+      setFeedback({ type: "success", message: "Category status updated successfully." });
       setPendingStatus(null);
+    },
+    onError: (error: unknown) => {
+      setFeedback({ type: "error", message: error instanceof Error ? error.message : "Unable to update category status." });
     },
   });
 
@@ -125,6 +162,12 @@ export default function AdminCategoriesPage() {
           </Button>
         }
       />
+
+      {feedback ? (
+        <div className={`rounded-2xl border p-4 text-sm ${feedback.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-300" : "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/40 dark:text-rose-300"}`}>
+          {feedback.message}
+        </div>
+      ) : null}
 
       <DashboardCard title="Categories" description="Use the controls below to manage the store taxonomy.">
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -192,13 +235,10 @@ export default function AdminCategoriesPage() {
         isSubmitting={createMutation.isPending}
         onClose={() => setIsCreateOpen(false)}
         onSubmit={() => {
-          const form = document.querySelector("form");
-          if (form) {
-            form.requestSubmit();
-          }
+          createFormRef.current?.requestSubmit();
         }}
       >
-        <CategoryForm onSubmit={handleCreate} isSubmitting={createMutation.isPending} />
+        <CategoryForm ref={createFormRef} onSubmit={handleCreate} isSubmitting={createMutation.isPending} />
       </CategoryModal>
 
       <CategoryModal
@@ -209,14 +249,11 @@ export default function AdminCategoriesPage() {
         isSubmitting={updateMutation.isPending}
         onClose={() => setEditingCategory(null)}
         onSubmit={() => {
-          const form = document.querySelector("form");
-          if (form) {
-            form.requestSubmit();
-          }
+          editFormRef.current?.requestSubmit();
         }}
       >
         {editingCategory ? (
-          <CategoryForm initialValues={editingCategory} onSubmit={handleEdit} isSubmitting={updateMutation.isPending} />
+          <CategoryForm ref={editFormRef} initialValues={editingCategory} onSubmit={handleEdit} isSubmitting={updateMutation.isPending} />
         ) : null}
       </CategoryModal>
 

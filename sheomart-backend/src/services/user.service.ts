@@ -25,6 +25,8 @@ export class UserService {
       emailVerified: user.emailVerified,
       phoneVerified: user.phoneVerified,
       isActive: user.isActive,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
     };
   }
 

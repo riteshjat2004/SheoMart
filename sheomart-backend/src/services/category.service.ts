@@ -54,6 +54,7 @@ export class CategoryService {
       image: data.image || "",
       parentCategory: data.parentCategory || null,
       sortOrder: data.sortOrder ?? 0,
+      isActive: typeof data.isActive === "boolean" ? data.isActive : true,
       createdBy: userId || null,
       updatedBy: userId || null,
     });

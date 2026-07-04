@@ -28,7 +28,7 @@ export function RouteGuard({ children, allowedRoles }: RouteGuardProps) {
 
     if (isGuestRoutePath && isAuthenticated) {
       if (role === "customer") {
-        router.replace("/customer");
+        router.replace("/profile");
       } else if (role === "store_owner") {
         router.replace("/store");
       } else if (role === "platform_admin") {

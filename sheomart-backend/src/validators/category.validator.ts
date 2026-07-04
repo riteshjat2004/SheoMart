@@ -6,6 +6,7 @@ export const createCategorySchema = z.object({
   image: z.string().trim().max(500).optional().default(""),
   parentCategory: z.string().trim().max(100).optional().nullable().default(null),
   sortOrder: z.number().int().optional().default(0),
+  isActive: z.boolean().optional().default(true),
 }).strict();
 
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>;

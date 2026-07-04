@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { forwardRef } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,7 @@ interface CategoryFormProps {
   onSubmit: (values: CategoryFormValues) => void;
 }
 
-export function CategoryForm({ initialValues, isSubmitting = false, onSubmit }: CategoryFormProps) {
+export const CategoryForm = forwardRef<HTMLFormElement, CategoryFormProps>(function CategoryForm({ initialValues, isSubmitting = false, onSubmit }, ref) {
   const {
     register,
     handleSubmit,
@@ -38,7 +39,7 @@ export function CategoryForm({ initialValues, isSubmitting = false, onSubmit }: 
   });
 
   return (
-    <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
+    <form ref={ref} className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
       <div className="grid gap-4 md:grid-cols-2">
         <label className="space-y-2 text-sm font-medium text-stone-700 dark:text-stone-300">
           <span>Category name</span>
@@ -54,7 +55,7 @@ export function CategoryForm({ initialValues, isSubmitting = false, onSubmit }: 
           <span>Sort order</span>
           <input
             type="number"
-            {...register("sortOrder")}
+            {...register("sortOrder", { valueAsNumber: true })}
             className="w-full rounded-2xl border border-stone-200 bg-white px-3 py-2 text-sm outline-none ring-0 transition focus:border-emerald-500 dark:border-stone-800 dark:bg-stone-950"
           />
           {errors.sortOrder ? <p className="text-sm text-rose-600">{errors.sortOrder.message}</p> : null}
@@ -92,4 +93,6 @@ export function CategoryForm({ initialValues, isSubmitting = false, onSubmit }: 
       </div>
     </form>
   );
-}
+});
+
+CategoryForm.displayName = "CategoryForm";
