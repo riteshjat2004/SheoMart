@@ -27,3 +27,23 @@ body {
   background: rgba(16, 185, 129, 0.25);
   color: inherit;
 }
+
+/* Ensure minimum touch target for form controls and buttons (44px) */
+input[type="text"],
+input[type="password"],
+input[type="number"],
+textarea,
+select,
+button {
+  min-height: 44px;
+}
+
+/* Improve focus visibility for keyboard users */
+:where(:focus-visible) {
+  outline: none;
+}
+
+/* Provide a consistent focus ring color when using keyboard navigation */
+:where(:focus-visible) {
+  box-shadow: 0 0 0 4px rgba(16,185,129,0.12);
+}

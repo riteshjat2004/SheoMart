@@ -31,7 +31,7 @@ export function FormField({
       <input
         id={fieldId}
         className={cn(
-          "w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100",
+          "w-full rounded-2xl border border-stone-200 bg-white px-4 text-sm text-stone-900 shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 h-11 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100",
           error && "border-red-500 focus:border-red-500 focus:ring-red-500/20",
           className
         )}

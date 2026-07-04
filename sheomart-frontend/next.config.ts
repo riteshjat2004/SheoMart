@@ -5,14 +5,19 @@ const apiOrigin = apiUrl ? new URL(apiUrl).origin : undefined;
 
 const connectSources = ["'self'", apiOrigin].filter(Boolean).join(" ");
 
+  // JavaScript
+  const isDev = process.env.NODE_ENV === "development";
+  const scriptSrc = isDev
+    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+    : "script-src 'self' 'unsafe-inline'";
+
 const contentSecurityPolicy = [
   // Default
   "default-src 'self'",
 
-  // JavaScript
-  "script-src 'self'",
+  // JavaScript (env-aware)
+  scriptSrc,
   "script-src-attr 'none'",
-
   // Styles
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "style-src-attr 'unsafe-inline'",
@@ -98,9 +103,7 @@ const nextConfig: NextConfig = {
             key: "Permissions-Policy",
             value: [
               "accelerometer=()",
-              "ambient-light-sensor=()",
               "autoplay=()",
-              "battery=()",
               "camera=()",
               "clipboard-read=()",
               "clipboard-write=()",
