@@ -94,6 +94,7 @@ const productSchema = new Schema<IProduct>(
       min: 0,
     },
 
+    // Product quantity is mirrored from inventory.availableQuantity for marketplace APIs.
     quantity: {
       type: Number,
       default: 0,

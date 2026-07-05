@@ -32,14 +32,20 @@ export function ProductCard({ product }: ProductCardProps) {
             {product.rating?.toFixed(1)}
           </div>
         </div>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-lg font-semibold text-stone-900 dark:text-stone-50">₹{displayPrice}</p>
             {displayPrice !== product.price ? <p className="text-sm text-stone-400 line-through">₹{product.price}</p> : null}
           </div>
-          <Button size="sm" variant="outline" className="rounded-full">
-            Add
-          </Button>
+          {product.productId ? (
+            <Button asChild size="sm" variant="outline" className="rounded-full">
+              <a href={`/products/${encodeURIComponent(product.productId)}`}>View</a>
+            </Button>
+          ) : (
+            <Button size="sm" variant="outline" className="rounded-full" disabled>
+              View
+            </Button>
+          )}
         </div>
       </div>
     </article>

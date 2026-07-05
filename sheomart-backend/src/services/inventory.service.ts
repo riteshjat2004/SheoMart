@@ -50,24 +50,42 @@ export class InventoryService {
     return inventory.status;
   }
 
-  static async createInventoryForProduct(productId: string, userId: string) {
+  private static async syncProductStock(productId: string, availableQuantity: number, userId: string) {
+    // Inventory is the source of truth for availability; mirror it to the product document
+    // so customer endpoints and cart/checkout flows stay consistent.
+    const normalizedQuantity = Math.max(0, availableQuantity);
+
+    await Product.updateOne(
+      { productId },
+      { $set: { quantity: normalizedQuantity, updatedBy: userId } }
+    );
+  }
+
+  static async createInventoryForProduct(productId: string, userId: string, initialQuantity = 0) {
     const existing = await Inventory.findOne({ productId });
 
     if (existing) {
+      await this.syncProductStock(productId, existing.availableQuantity, userId);
       return existing;
     }
 
+    const normalizedQuantity = Math.max(0, initialQuantity);
     const inventory = await Inventory.create({
       productId,
-      availableQuantity: 0,
+      availableQuantity: normalizedQuantity,
       reservedQuantity: 0,
       soldQuantity: 0,
       lowStockThreshold: 5,
-      status: INVENTORY_STATUS.IN_STOCK,
+      status: this.updateStatus({
+        availableQuantity: normalizedQuantity,
+        lowStockThreshold: 5,
+        status: INVENTORY_STATUS.IN_STOCK,
+      }),
       createdBy: userId,
       updatedBy: userId,
     });
 
+    await this.syncProductStock(productId, inventory.availableQuantity, userId);
     return inventory;
   }
 
@@ -137,6 +155,7 @@ export class InventoryService {
 
     inventory.updatedBy = userId;
     await inventory.save();
+    await this.syncProductStock(productId, inventory.availableQuantity, userId);
 
     return inventory;
   }
@@ -157,6 +176,7 @@ export class InventoryService {
 
     inventory.updatedBy = userId;
     await inventory.save();
+    await this.syncProductStock(productId, inventory.availableQuantity, userId);
 
     return inventory;
   }

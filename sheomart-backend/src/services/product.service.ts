@@ -1,5 +1,6 @@
 import { AppError } from "../errors/AppError";
 import { Category } from "../models/category.model";
+import { Inventory } from "../models/inventory.model";
 import { Product } from "../models/product.model";
 import { Store } from "../models/store.model";
 import { STORE_STATUS } from "../constants/store";
@@ -43,6 +44,32 @@ export class ProductService {
       .replace(/(^-|-$)/g, "") || "product";
   }
 
+  private static async enrichProductsWithInventory<T extends { productId?: string; quantity?: number }>(products: T[]) {
+    const productIds = products
+      .map((product) => product.productId)
+      .filter((productId): productId is string => Boolean(productId));
+
+    if (productIds.length === 0) {
+      return products;
+    }
+
+    const inventories = await Inventory.find({ productId: { $in: productIds } }).lean();
+    const inventoryMap = new Map(inventories.map((inventory) => [inventory.productId, inventory.availableQuantity ?? 0]));
+
+    for (const product of products) {
+      if (!product.productId) {
+        continue;
+      }
+
+      const availableQuantity = inventoryMap.get(product.productId);
+      if (typeof availableQuantity === "number") {
+        product.quantity = availableQuantity;
+      }
+    }
+
+    return products;
+  }
+
   private static async buildUniqueSlug(name: string) {
     const baseSlug = this.generateSlug(name);
     let slug = baseSlug;
@@ -57,7 +84,8 @@ export class ProductService {
   }
 
   static async getAllProducts() {
-    return Product.find({ isActive: true, isPublished: true }).sort({ createdAt: -1 });
+    const products = await Product.find({ isActive: true, isPublished: true }).sort({ createdAt: -1 });
+    return this.enrichProductsWithInventory(products);
   }
 
   static async getProductsForStoreOwner(userId: string) {
@@ -67,7 +95,8 @@ export class ProductService {
       throw new AppError("Only approved store owners can view products", 403);
     }
 
-    return Product.find({ storeId: store.storeId }).sort({ createdAt: -1 });
+    const products = await Product.find({ storeId: store.storeId }).sort({ createdAt: -1 });
+    return this.enrichProductsWithInventory(products);
   }
 
   static async getProductById(productId: string) {
@@ -77,6 +106,7 @@ export class ProductService {
       throw new AppError("Product not found", 404);
     }
 
+    await this.enrichProductsWithInventory([product]);
     return product;
   }
 
@@ -122,7 +152,7 @@ export class ProductService {
       updatedBy: userId,
     });
 
-    await InventoryService.createInventoryForProduct(product.productId, userId);
+    await InventoryService.createInventoryForProduct(product.productId, userId, data.quantity ?? 0);
 
     return product;
   }
@@ -221,7 +251,7 @@ export class ProductService {
     const insertedProducts = await Product.insertMany(productsToInsert);
 
     await Promise.all(
-      insertedProducts.map((product) => InventoryService.createInventoryForProduct(product.productId, userId))
+      insertedProducts.map((product) => InventoryService.createInventoryForProduct(product.productId, userId, product.quantity ?? 0))
     );
 
     return {
@@ -290,6 +320,14 @@ export class ProductService {
     }
 
     if (typeof data.quantity === "number") {
+      const inventory = await Inventory.findOne({ productId: product.productId });
+
+      if (inventory) {
+        inventory.availableQuantity = data.quantity;
+        inventory.updatedBy = userId;
+        await inventory.save();
+      }
+
       product.quantity = data.quantity;
     }
 

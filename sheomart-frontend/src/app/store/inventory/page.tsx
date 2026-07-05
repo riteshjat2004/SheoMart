@@ -74,7 +74,12 @@ export default function StoreInventoryPage() {
   const updateMutation = useMutation({
     mutationFn: async ({ productId, payload }: { productId: string; payload: InventoryFormValues }) => updateInventory(productId, payload),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["inventory-map"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["inventory-map"] }),
+        queryClient.invalidateQueries({ queryKey: ["products"] }),
+        queryClient.invalidateQueries({ queryKey: ["product"] }),
+        queryClient.invalidateQueries({ queryKey: ["store-products"] }),
+      ]);
       setEditingProduct(null);
       setPage(1);
     },
@@ -83,7 +88,12 @@ export default function StoreInventoryPage() {
   const discontinueMutation = useMutation({
     mutationFn: async ({ productId }: { productId: string }) => updateInventoryStatus(productId, "discontinued"),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["inventory-map"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["inventory-map"] }),
+        queryClient.invalidateQueries({ queryKey: ["products"] }),
+        queryClient.invalidateQueries({ queryKey: ["product"] }),
+        queryClient.invalidateQueries({ queryKey: ["store-products"] }),
+      ]);
       setPendingDiscontinue(null);
     },
   });

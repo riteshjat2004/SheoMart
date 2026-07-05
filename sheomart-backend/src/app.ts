@@ -14,6 +14,8 @@ import userRoutes from "./routes/user.routes";
 import storeRoutes from "./routes/store.routes";
 import categoryRoutes from "./routes/category.routes";
 import productRoutes from "./routes/product.routes";
+import cartRoutes from "./routes/cart.routes";
+import wishlistRoutes from "./routes/wishlist.routes";
 import inventoryRoutes from "./routes/inventory.routes";
 import reviewRoutes from "./routes/review.routes";
 
@@ -54,6 +56,8 @@ app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/stores", storeRoutes);
 app.use("/api/v1/categories", categoryRoutes);
 app.use("/api/v1/products", productRoutes);
+app.use("/api/v1/cart", cartRoutes);
+app.use("/api/v1/wishlist", wishlistRoutes);
 app.use("/api/v1/inventory", inventoryRoutes);
 app.use("/api/v1", reviewRoutes);
 // Global Error Handler (Always Last)

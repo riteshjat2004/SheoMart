@@ -25,9 +25,27 @@ export interface ProductItem {
   rating?: number;
   unit?: string;
   sku?: string;
+  brand?: string;
+  quantity?: number;
+  createdAt?: string;
+  updatedAt?: string;
   isActive?: boolean;
   isPublished?: boolean;
   category?: string;
+}
+
+export interface CartItem {
+  cartItemId: string;
+  quantity: number;
+  product: ProductItem;
+  isAvailable?: boolean;
+  availabilityMessage?: string;
+  maxAvailableQuantity?: number;
+}
+
+export interface WishlistItem {
+  wishlistItemId: string;
+  product: ProductItem;
 }
 
 export interface StoreItem {

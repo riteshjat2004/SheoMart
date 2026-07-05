@@ -68,8 +68,13 @@ export default function StoreProductsPage() {
       const response = await api.post<ApiResponse<{ product: ProductItem }>>("/api/v1/products", payload);
       return response.data.data?.product;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["store-products"] });
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["store-products"] }),
+        queryClient.invalidateQueries({ queryKey: ["products"] }),
+        queryClient.invalidateQueries({ queryKey: ["product"] }),
+        queryClient.invalidateQueries({ queryKey: ["inventory-map"] }),
+      ]);
       setIsCreateOpen(false);
       setPage(1);
     },
@@ -80,8 +85,13 @@ export default function StoreProductsPage() {
       const response = await api.patch<ApiResponse<{ product: ProductItem }>>(`/api/v1/products/${productId}`, payload);
       return response.data.data?.product;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["store-products"] });
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["store-products"] }),
+        queryClient.invalidateQueries({ queryKey: ["products"] }),
+        queryClient.invalidateQueries({ queryKey: ["product"] }),
+        queryClient.invalidateQueries({ queryKey: ["inventory-map"] }),
+      ]);
       setEditingProduct(null);
       setPage(1);
     },
@@ -92,8 +102,13 @@ export default function StoreProductsPage() {
       const response = await api.delete<ApiResponse<{ product: ProductItem }>>(`/api/v1/products/${productId}`);
       return response.data.data?.product;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["store-products"] });
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["store-products"] }),
+        queryClient.invalidateQueries({ queryKey: ["products"] }),
+        queryClient.invalidateQueries({ queryKey: ["product"] }),
+        queryClient.invalidateQueries({ queryKey: ["inventory-map"] }),
+      ]);
       setPendingDelete(null);
     },
   });
@@ -103,8 +118,13 @@ export default function StoreProductsPage() {
       const response = await api.patch<ApiResponse<{ product: ProductItem }>>(`/api/v1/products/${productId}/status`, { isActive });
       return response.data.data?.product;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["store-products"] });
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["store-products"] }),
+        queryClient.invalidateQueries({ queryKey: ["products"] }),
+        queryClient.invalidateQueries({ queryKey: ["product"] }),
+        queryClient.invalidateQueries({ queryKey: ["inventory-map"] }),
+      ]);
       setPendingStatus(null);
     },
   });
