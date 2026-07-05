@@ -102,7 +102,7 @@ export class OrderService {
       existingDraft.deliveryDate = data.deliveryDate;
       existingDraft.deliverySlot = data.deliverySlot;
       existingDraft.paymentMethod = data.paymentMethod;
-      existingDraft.paymentStatus = PAYMENT_STATUS.PENDING_PAYMENT;
+      existingDraft.paymentStatus = PAYMENT_STATUS.PENDING;
 
       existingDraft.orderItems = orderItems;
 
@@ -134,7 +134,7 @@ export class OrderService {
       deliveryDate: data.deliveryDate,
       deliverySlot: data.deliverySlot,
       paymentMethod: data.paymentMethod,
-      paymentStatus: PAYMENT_STATUS.PENDING_PAYMENT,
+      paymentStatus: PAYMENT_STATUS.PENDING,
       subtotal,
       discount,
       deliveryCharge,

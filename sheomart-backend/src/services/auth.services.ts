@@ -154,10 +154,16 @@ export class AuthService {
         };
    }
     static async refresh(refreshToken: string) {
-        const payload = verifyRefreshToken(refreshToken) as {
-            userId: string;
-            sessionId: string;
-        };
+        let payload: { userId: string; sessionId: string };
+
+        try {
+            payload = verifyRefreshToken(refreshToken) as {
+                userId: string;
+                sessionId: string;
+            };
+        } catch {
+            throw new AppError("Invalid refresh token", 401);
+        }
 
         const user = await User.findOne({
             userId: payload.userId,
@@ -171,7 +177,7 @@ export class AuthService {
             (s) => s.sessionId === payload.sessionId
         );
 
-        if (!session) {
+        if (!session?.refreshToken) {
             throw new AppError("Session not found", 401);
         }
 
@@ -194,11 +200,9 @@ export class AuthService {
             user.userId,
             session.sessionId
         );
-        
-        console.log("Old Session:", session.refreshToken);
+
         session.refreshToken = await hashToken(newRefreshToken);
         session.lastUsedAt = new Date();
-        console.log("New Session:", session.refreshToken);
 
         user.markModified("sessions");
 

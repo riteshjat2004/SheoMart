@@ -34,7 +34,14 @@ export const refresh = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const refreshToken = req.body.refreshToken;
+  const refreshToken = req.body?.refreshToken ?? req.body?.refresh_token ?? req.cookies?.refreshToken;
+
+  if (!refreshToken) {
+    res.status(401).json(
+      new ApiResponse(false, "Refresh token is required")
+    );
+    return;
+  }
 
   const result = await AuthService.refresh(refreshToken);
 

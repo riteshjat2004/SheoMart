@@ -3,13 +3,17 @@ import type { NextConfig } from "next";
 const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 const apiOrigin = apiUrl ? new URL(apiUrl).origin : undefined;
 
-const connectSources = ["'self'", apiOrigin].filter(Boolean).join(" ");
+const connectSources = [
+  "'self'",
+  apiOrigin,
+  "https://api.razorpay.com",
+].filter(Boolean).join(" ");
 
   // JavaScript
   const isDev = process.env.NODE_ENV === "development";
   const scriptSrc = isDev
-    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
-    : "script-src 'self' 'unsafe-inline'";
+    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com"
+    : "script-src 'self' 'unsafe-inline' https://checkout.razorpay.com";
 
 const contentSecurityPolicy = [
   // Default
@@ -41,7 +45,7 @@ const contentSecurityPolicy = [
   "manifest-src 'self'",
 
   // Frames
-  "frame-src 'none'",
+  "frame-src https://checkout.razorpay.com https://api.razorpay.com",
   "frame-ancestors 'none'",
 
   // Forms
@@ -105,8 +109,8 @@ const nextConfig: NextConfig = {
               "accelerometer=()",
               "autoplay=()",
               "camera=()",
-              "clipboard-read=()",
-              "clipboard-write=()",
+              "clipboard-read=(self)",
+              "clipboard-write=(self)",
               "display-capture=()",
               "fullscreen=()",
               "geolocation=()",
@@ -114,7 +118,7 @@ const nextConfig: NextConfig = {
               "magnetometer=()",
               "microphone=()",
               "midi=()",
-              "payment=()",
+              "payment=(self)",
               "usb=()",
               "xr-spatial-tracking=()",
             ].join(", "),

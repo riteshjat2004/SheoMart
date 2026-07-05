@@ -3,16 +3,32 @@ import { v4 as uuidv4 } from "uuid";
 
 export const ORDER_STATUS = {
   DRAFT: "DRAFT",
+
   PENDING_PAYMENT: "PENDING_PAYMENT",
+
+  CONFIRMED: "CONFIRMED",
+
+  PROCESSING: "PROCESSING",
+
+  PACKED: "PACKED",
+
+  OUT_FOR_DELIVERY: "OUT_FOR_DELIVERY",
+
+  DELIVERED: "DELIVERED",
+
   CANCELLED: "CANCELLED",
+
   FAILED: "FAILED",
+
+  REFUNDED: "REFUNDED",
 } as const;
 
 export const PAYMENT_STATUS = {
-  PENDING_PAYMENT: "PENDING_PAYMENT",
+  PENDING: "PENDING",
   PAID: "PAID",
   FAILED: "FAILED",
   CANCELLED: "CANCELLED",
+  REFUNDED: "REFUNDED",
 } as const;
 
 export interface IOrderItem {
@@ -47,6 +63,12 @@ export interface IOrder extends Document {
   deliverySlot: string;
   paymentMethod: string;
   paymentStatus: string;
+
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+  razorpaySignature?: string;
+  paidAt?: Date;
+
   subtotal: number;
   discount: number;
   deliveryCharge: number;
@@ -157,6 +179,25 @@ const orderSchema = new Schema<IOrder>(
       type: String,
       required: true,
       default: "pending",
+    },
+    razorpayOrderId: {
+      type: String,
+      default: null,
+    },
+
+    razorpayPaymentId: {
+      type: String,
+      default: null,
+    },
+
+    razorpaySignature: {
+      type: String,
+      default: null,
+    },
+
+    paidAt: {
+      type: Date,
+      default: null,
     },
     subtotal: {
       type: Number,

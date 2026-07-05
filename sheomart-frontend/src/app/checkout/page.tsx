@@ -1,7 +1,11 @@
 "use client";
 
+import { createPaymentOrder, verifyPayment } from "@/services/payment";
+import { loadRazorpay } from "@/lib/loadRazorpay";
+
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/layout/container";
 import { PageWrapper } from "@/components/layout/page-wrapper";
@@ -15,6 +19,7 @@ import { createDraftOrder } from "@/services/orders";
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const cartQuery = useCart();
   const addressesQuery = useAddresses();
   const [draftOrder, setDraftOrder] = useState<Awaited<ReturnType<typeof createDraftOrder>> | null>(null);
@@ -25,6 +30,8 @@ export default function CheckoutPage() {
 
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [creatingOrder, setCreatingOrder] = useState(false);
+  const [paying, setPaying] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   const cartData = cartQuery.data ?? { cartItems: [], summary: { totalItems: 0, subtotal: 0, totalProducts: 0, estimatedSavings: 0, hasUnavailableItems: false } };
   const cartItems = cartData.cartItems ?? [];
@@ -41,9 +48,6 @@ export default function CheckoutPage() {
       setSelectedAddressId(defaultAddress.addressId!);
     }
   }, [defaultAddress, selectedAddressId]);
-
-
-
 
 
   const goBackToCart = () => router.push("/cart");
@@ -82,6 +86,83 @@ export default function CheckoutPage() {
           setCreatingOrder(false);
 
       }
+  };
+
+  const handlePayment = async () => {
+    if (!draftOrder?.orderId) {
+      setPaymentError("Create a draft order before paying.");
+      return;
+    }
+
+    try {
+      setPaying(true);
+      setPaymentError(null);
+
+      const loaded = await loadRazorpay();
+      if (!loaded) {
+        throw new Error("Unable to load Razorpay.");
+      }
+
+      const payment = await createPaymentOrder(draftOrder.orderId);
+
+      const options = {
+        key: payment.key,
+        amount: payment.amount,
+        currency: payment.currency,
+        order_id: payment.razorpayOrderId,
+        name: "SheoMart",
+        description: `Order ${payment.orderId}`,
+        handler: async (response: {
+          razorpay_order_id: string;
+          razorpay_payment_id: string;
+          razorpay_signature: string;
+        }) => {
+          try {
+            await verifyPayment({
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+            });
+
+            await queryClient.invalidateQueries({ queryKey: ["cart"] });
+            await queryClient.invalidateQueries({ queryKey: ["orders"] });
+            await queryClient.invalidateQueries({ queryKey: ["checkout"] });
+            router.push("/orders");
+          } catch (error) {
+            setPaymentError(error instanceof Error ? error.message : "Payment verification failed.");
+          }
+        },
+        prefill: {
+          name: "SheoMart Customer",
+          email: "customer@example.com",
+          contact: "9999999999",
+        },
+        theme: {
+          color: "#16a34a",
+        },
+        modal: {
+          ondismiss: () => {
+            setPaymentError("Payment was cancelled.");
+          },
+        },
+      };
+
+      const razorpayWindow = window as typeof window & {
+        Razorpay?: new (options: Record<string, unknown>) => { open: () => void };
+      };
+
+      const Razorpay = razorpayWindow.Razorpay;
+      if (!Razorpay) {
+        throw new Error("Razorpay SDK not available.");
+      }
+
+      const razorpayInstance = new Razorpay(options);
+      razorpayInstance.open();
+    } catch (error) {
+      setPaymentError(error instanceof Error ? error.message : "Unable to start payment.");
+    } finally {
+      setPaying(false);
+    }
   };
 
   return (
@@ -163,14 +244,14 @@ export default function CheckoutPage() {
               </div>
 
               <div className="space-y-6">
-                <div className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm">
-                    <h3 className="font-semibold">
+                <div className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm text-black">
+                    <h3 className="font-semibold text-black">
                         Payment Method
                     </h3>
 
                     <div className="mt-4 space-y-3">
 
-                        <label className="flex items-center gap-3">
+                        <label className="flex items-center gap-3 text-black">
                             <input
                                 type="radio"
                                 checked={paymentMethod === "cod"}
@@ -179,7 +260,7 @@ export default function CheckoutPage() {
                             Cash on Delivery
                         </label>
 
-                        <label className="flex items-center gap-3">
+                        <label className="flex items-center gap-3 text-black">
                             <input
                                 type="radio"
                                 checked={paymentMethod === "online"}
@@ -197,8 +278,18 @@ export default function CheckoutPage() {
                     <p className="font-semibold text-stone-900 dark:text-stone-50">Payment Integration Coming Soon</p>
                     <p className="mt-2">A future release will add secure online payment support.</p>
                   </div>
-                  <Button type="button" className="mt-4 w-full" disabled>
-                    Pay Now
+                  {paymentError ? (
+                    <div className="mt-4 rounded-[1.25rem] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-300">
+                      {paymentError}
+                    </div>
+                  ) : null}
+                  <Button
+                      type="button"
+                      className="mt-4 w-full"
+                      disabled={!draftOrder || paying}
+                      onClick={handlePayment}
+                  >
+                      {paying ? "Processing..." : "Pay Now"}
                   </Button>
                 </div>
 

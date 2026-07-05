@@ -17,13 +17,17 @@ export const authenticate = (
   _res: Response,
   next: NextFunction
 ): void => {
-  const authHeader = req.headers.authorization;
+  const authHeader = req.headers.authorization ?? req.headers.Authorization;
 
-  if (!authHeader?.startsWith("Bearer ")) {
+  if (typeof authHeader !== "string" || !authHeader.startsWith("Bearer ")) {
     throw new AppError("Authentication required", 401);
   }
 
   const token = authHeader.split(" ")[1];
+
+  if (!token) {
+    throw new AppError("Authentication required", 401);
+  }
 
   try {
     const payload = jwt.verify(token, env.JWT_ACCESS_SECRET) as {

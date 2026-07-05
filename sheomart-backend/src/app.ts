@@ -21,6 +21,8 @@ import reviewRoutes from "./routes/review.routes";
 import addressRoutes from "./routes/address.routes";
 import orderRoutes from "./routes/order.routes";
 
+import paymentRoutes from "./routes/payment.routes";
+
 const app = express();
 
 // Security Middleware
@@ -64,6 +66,7 @@ app.use("/api/v1/addresses", addressRoutes);
 app.use("/api/v1/orders", orderRoutes);
 app.use("/api/v1/inventory", inventoryRoutes);
 app.use("/api/v1", reviewRoutes);
+app.use("/api/v1/payments", paymentRoutes);
 // Global Error Handler (Always Last)
 app.use(errorHandler);
 
