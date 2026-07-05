@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { ArrowRight, Package2, Heart, MapPin, LifeBuoy } from "lucide-react";
+import { ArrowRight, Package2, Heart, MapPin, LifeBuoy, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const actions = [
   { title: "My Orders", description: "Track your recent purchases.", icon: Package2, href: "/orders" },
   { title: "Wishlist", description: "Save products you love.", icon: Heart, href: "/wishlist" },
   { title: "Saved Addresses", description: "Manage delivery locations.", icon: MapPin, href: "/addresses" },
+  { title: "Shopping Cart", description: "Review items and continue to checkout.", icon: ShoppingCart, href: "/cart" },
   { title: "Support", description: "Get help with orders and delivery.", icon: LifeBuoy, href: "/support" },
 ];
 
@@ -22,7 +23,7 @@ export function QuickActionsCard() {
                   <Icon className="h-4 w-4" />
                   {action.title}
                 </div>
-                <p className="mt-2 text-sm text-stone-600 dark:text-stone-300">Coming soon</p>
+                <p className="mt-2 text-sm text-stone-600 dark:text-stone-300">{action.description}</p>
               </div>
               <Button asChild variant="ghost" size="icon" aria-label={`Open ${action.title}`}>
                 <Link href={action.href}>

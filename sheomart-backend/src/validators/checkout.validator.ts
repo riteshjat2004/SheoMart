@@ -18,6 +18,8 @@ export const createOrderSchema = z.object({
   paymentMethod: z.enum(PAYMENT_METHODS, "Select a valid payment method"),
 });
 
+export type CreateOrderInput = z.infer<typeof createOrderSchema>;
+
 export const orderIdParamSchema = z.object({
   orderId: z.string().trim().min(1, "Order ID is required"),
 });

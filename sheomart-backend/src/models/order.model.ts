@@ -1,6 +1,20 @@
 import { Document, Schema, model } from "mongoose";
 import { v4 as uuidv4 } from "uuid";
 
+export const ORDER_STATUS = {
+  DRAFT: "DRAFT",
+  PENDING_PAYMENT: "PENDING_PAYMENT",
+  CANCELLED: "CANCELLED",
+  FAILED: "FAILED",
+} as const;
+
+export const PAYMENT_STATUS = {
+  PENDING_PAYMENT: "PENDING_PAYMENT",
+  PAID: "PAID",
+  FAILED: "FAILED",
+  CANCELLED: "CANCELLED",
+} as const;
+
 export interface IOrderItem {
   orderItemId: string;
   productId: string;
@@ -176,7 +190,8 @@ const orderSchema = new Schema<IOrder>(
     },
     status: {
       type: String,
-      default: "pending",
+      default: ORDER_STATUS.DRAFT,
+      enum: Object.values(ORDER_STATUS),
     },
   },
   {

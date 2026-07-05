@@ -1,9 +1,9 @@
 import { AppError } from "../errors/AppError";
-import { CartItem } from "../models/cart.model";
-import { Inventory, INVENTORY_STATUS } from "../models/inventory.model";
-import { Order } from "../models/order.model";
-import { Product } from "../models/product.model";
 import { Address } from "../models/address.model";
+import { CartItem } from "../models/cart.model";
+import { Inventory } from "../models/inventory.model";
+import { Order, ORDER_STATUS, PAYMENT_STATUS } from "../models/order.model";
+import { Product } from "../models/product.model";
 import { CreateOrderInput } from "../validators/checkout.validator";
 
 export class OrderService {
@@ -47,11 +47,10 @@ export class OrderService {
         throw new AppError(`Product ${item.productId} is unavailable`, 400);
       }
 
-      if (!product.isActive || !product.isPublished) {
-        throw new AppError(`Product ${product.name} is unavailable for purchase`, 400);
-      }
+      const inventory = await Inventory.findOne({ productId: item.productId });
+      const availableQuantity = inventory?.availableQuantity ?? product.quantity;
 
-      if (item.quantity > product.quantity) {
+      if (availableQuantity < item.quantity) {
         throw new AppError(`Insufficient stock for ${product.name}`, 400);
       }
 
@@ -97,40 +96,15 @@ export class OrderService {
       deliveryDate: data.deliveryDate,
       deliverySlot: data.deliverySlot,
       paymentMethod: data.paymentMethod,
-      paymentStatus: "pending",
+      paymentStatus: PAYMENT_STATUS.PENDING_PAYMENT,
       subtotal,
       discount,
       deliveryCharge,
       platformFee,
       grandTotal,
       orderItems,
-      status: "pending",
+      status: ORDER_STATUS.DRAFT,
     });
-
-    for (const item of cartItems) {
-      const productUpdate = await Product.updateOne(
-        { productId: item.productId, quantity: { $gte: item.quantity } },
-        { $inc: { quantity: -item.quantity } }
-      );
-
-      if (productUpdate.matchedCount === 0) {
-        throw new AppError("Unable to update product quantity", 400);
-      }
-
-      const inventory = await Inventory.findOne({ productId: item.productId });
-      if (inventory) {
-        inventory.availableQuantity = Math.max(0, inventory.availableQuantity - item.quantity);
-        inventory.soldQuantity += item.quantity;
-
-        if (inventory.availableQuantity === 0) {
-          inventory.status = INVENTORY_STATUS.OUT_OF_STOCK;
-        } else if (inventory.availableQuantity <= inventory.lowStockThreshold) {
-          inventory.status = INVENTORY_STATUS.LOW_STOCK;
-        }
-
-        await inventory.save();
-      }
-    }
 
     await CartItem.deleteMany({ userId });
 

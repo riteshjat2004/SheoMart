@@ -9,8 +9,9 @@ export class AddressService {
 
   static async createAddress(userId: string, data: CreateAddressInput) {
     const hasDefault = await Address.exists({ userId, isDefault: true });
+    const shouldBeDefault = data.isDefault || !hasDefault;
 
-    if (data.isDefault) {
+    if (shouldBeDefault) {
       await Address.updateMany({ userId, isDefault: true }, { isDefault: false });
     }
 
@@ -25,7 +26,7 @@ export class AddressService {
       state: data.state,
       pincode: data.pincode,
       addressType: data.addressType,
-      isDefault: data.isDefault || !hasDefault,
+      isDefault: shouldBeDefault,
     });
 
     return address;
@@ -37,9 +38,23 @@ export class AddressService {
       throw new AppError("Address not found", 404);
     }
 
-    if (data.isDefault) {
+    if (data.isDefault === false) {
+      const hasAnotherDefault = await Address.exists({
+        userId,
+        isDefault: true,
+        addressId: { $ne: address.addressId },
+      });
+
+      if (!hasAnotherDefault && address.isDefault) {
+        throw new AppError("At least one default address is required", 400);
+      }
+    }
+
+    if (data.isDefault === true) {
       await Address.updateMany({ userId, isDefault: true }, { isDefault: false });
       address.isDefault = true;
+    } else if (data.isDefault === false) {
+      address.isDefault = false;
     }
 
     if (data.fullName !== undefined) {
@@ -80,9 +95,10 @@ export class AddressService {
       throw new AppError("Address not found", 404);
     }
 
+    const wasDefault = address.isDefault;
     await address.deleteOne();
 
-    if (address.isDefault) {
+    if (wasDefault) {
       const nextAddress = await Address.findOne({ userId }).sort({ updatedAt: -1 });
       if (nextAddress) {
         nextAddress.isDefault = true;

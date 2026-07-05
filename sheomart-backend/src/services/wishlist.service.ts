@@ -34,7 +34,10 @@ export class WishlistService {
     const existingItem = await WishlistItem.findOne({ userId, productId: data.productId });
 
     if (existingItem) {
-      return existingItem;
+      return {
+        wishlistItemId: existingItem.wishlistItemId,
+        product,
+      };
     }
 
     const wishlistItem = await WishlistItem.create({
@@ -42,7 +45,10 @@ export class WishlistService {
       productId: data.productId,
     });
 
-    return wishlistItem;
+    return {
+      wishlistItemId: wishlistItem.wishlistItemId,
+      product,
+    };
   }
 
   static async removeWishlistItem(wishlistItemId: string, userId: string) {

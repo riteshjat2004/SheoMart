@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/layout/container";
@@ -12,6 +13,7 @@ import { EmptyState } from "@/components/common/empty-state";
 import { useCart, useClearCart, useRemoveCartItem, useUpdateCartItem } from "@/hooks/use-cart";
 
 export default function CartPage() {
+  const router = useRouter();
   const cartQuery = useCart();
   const updateCartItem = useUpdateCartItem();
   const removeCartItem = useRemoveCartItem();
@@ -21,6 +23,7 @@ export default function CartPage() {
   const cartData = cartQuery.data ?? { cartItems: [], summary: { totalItems: 0, subtotal: 0, totalProducts: 0, estimatedSavings: 0, hasUnavailableItems: false } };
   const cartItems = cartData.cartItems ?? [];
   const totals = cartData.summary ?? { totalItems: 0, subtotal: 0, totalProducts: 0, estimatedSavings: 0, hasUnavailableItems: false };
+  const canProceedToCheckout = cartItems.length > 0 && !totals.hasUnavailableItems;
 
   const handleQuantityChange = (cartItemId: string, quantity: number) => {
     setMessage(null);
@@ -144,8 +147,11 @@ export default function CartPage() {
                       </div>
                     ) : null}
                     <div className="rounded-3xl border border-stone-200 bg-stone-50 p-4 text-xs text-stone-500 dark:border-stone-800 dark:bg-stone-950/60 dark:text-stone-400">
-                      Checkout is not implemented in this phase. Review your cart and continue shopping for more items.
+                      Review your cart and continue to checkout when you are ready.
                     </div>
+                    <Button type="button" className="w-full" onClick={() => router.push("/checkout")} disabled={!canProceedToCheckout}>
+                      Proceed to Checkout
+                    </Button>
                   </div>
                 </div>
                 {message ? (

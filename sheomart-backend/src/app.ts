@@ -18,6 +18,8 @@ import cartRoutes from "./routes/cart.routes";
 import wishlistRoutes from "./routes/wishlist.routes";
 import inventoryRoutes from "./routes/inventory.routes";
 import reviewRoutes from "./routes/review.routes";
+import addressRoutes from "./routes/address.routes";
+import orderRoutes from "./routes/order.routes";
 
 const app = express();
 
@@ -58,6 +60,8 @@ app.use("/api/v1/categories", categoryRoutes);
 app.use("/api/v1/products", productRoutes);
 app.use("/api/v1/cart", cartRoutes);
 app.use("/api/v1/wishlist", wishlistRoutes);
+app.use("/api/v1/addresses", addressRoutes);
+app.use("/api/v1/orders", orderRoutes);
 app.use("/api/v1/inventory", inventoryRoutes);
 app.use("/api/v1", reviewRoutes);
 // Global Error Handler (Always Last)
