@@ -17,10 +17,7 @@ export function StoreCard({ store }: StoreCardProps) {
   const cityLabel = store.city ?? store.address ?? "City not available";
 
   return (
-    <Link
-      href={getStoreHref(store)}
-      className="group block overflow-hidden rounded-[1.5rem] border border-stone-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:border-stone-800 dark:bg-stone-900"
-    >
+    <Link href={getStoreHref(store)} className="group block overflow-hidden rounded-[1.5rem] border border-stone-200 bg-white p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-stone-800 dark:bg-zinc-900">
       <div className="flex items-center gap-3">
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-lg font-semibold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
           {initials}
@@ -35,13 +32,11 @@ export function StoreCard({ store }: StoreCardProps) {
       </div>
       <div className="mt-4 space-y-2 text-sm text-stone-600 dark:text-stone-300">
         <div className="flex items-center gap-2">
-          <MapPin className="h-4 w-4 text-emerald-600" />
+          <MapPin className="h-4 w-4 shrink-0 text-emerald-600" />
           <span>{cityLabel}</span>
         </div>
         {store.status ? (
-          <div className="text-xs font-medium uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">
-            {store.status}
-          </div>
+          <div className="text-xs font-medium uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400">{store.status}</div>
         ) : null}
       </div>
     </Link>

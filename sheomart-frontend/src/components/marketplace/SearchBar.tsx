@@ -47,6 +47,9 @@ export function SearchBar({ className, placeholder = "Search essentials, pantry,
         onChange={handleChange}
         className="w-full bg-transparent text-sm text-stone-700 outline-none placeholder:text-stone-400 dark:text-stone-200"
       />
+      <button type="submit" aria-label="Search" className="rounded-full bg-emerald-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30">
+        Search
+      </button>
     </form>
   );
 }

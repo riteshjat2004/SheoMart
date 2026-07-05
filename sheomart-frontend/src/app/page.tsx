@@ -46,15 +46,15 @@ export default function Home() {
 
   return (
     <PageWrapper>
-      <Section className="pt-8 sm:pt-10 lg:pt-12">
-        <Container className="space-y-8">
+      <Section className="pt-6 sm:pt-8 lg:pt-10">
+        <Container className="space-y-6 sm:space-y-8">
           <Hero />
 
-          <div className="rounded-[2rem] border border-stone-200 bg-white/80 p-4 shadow-sm backdrop-blur dark:border-stone-800 dark:bg-stone-900/80">
+          <div className="rounded-[2rem] border border-stone-200 bg-white/90 p-4 shadow-sm backdrop-blur dark:border-stone-800 dark:bg-zinc-900/85">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div>
+              <div className="max-w-2xl">
                 <p className="text-sm font-semibold uppercase tracking-[0.28em] text-emerald-600">Discover what you need</p>
-                <h2 className="mt-2 text-xl font-semibold text-stone-900 dark:text-stone-50">Search fresh groceries, pantry staples, and everyday essentials.</h2>
+                <h2 className="mt-2 text-lg font-semibold text-stone-900 sm:text-xl dark:text-stone-50">Search fresh groceries, pantry staples, and everyday essentials in seconds.</h2>
               </div>
               <div className="w-full lg:max-w-xl">
                 <SearchBar value={searchQuery} onChange={setSearchQuery} onSubmit={handleSearchSubmit} />
@@ -74,7 +74,7 @@ export default function Home() {
             {categoriesQuery.isLoading ? (
               <CategorySkeleton />
             ) : categoriesQuery.isError ? (
-              <div className="space-y-4">
+              <div className="space-y-4 rounded-[1.75rem] border border-stone-200 bg-white/80 p-5 shadow-sm dark:border-stone-800 dark:bg-zinc-900/80">
                 <ErrorState message={categoriesQuery.error instanceof Error ? categoriesQuery.error.message : "Unable to load categories."} />
                 <div className="flex justify-end">
                   <Button onClick={() => categoriesQuery.refetch()}>Retry</Button>
@@ -92,8 +92,8 @@ export default function Home() {
           </section>
 
           <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-            <OfferCard title="Weekend freshness festival" description="Enjoy extra savings on organic produce and pantry staples all weekend long." accent="bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300" />
-            <OfferCard title="First-order coupon" description="Use coupon SHEOMART10 for complimentary delivery on your first basket." accent="bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300" />
+            <OfferCard title="Weekend freshness festival" description="Enjoy extra savings on organic produce and pantry staples all weekend long." accent="bg-emerald-100 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300" />
+            <OfferCard title="First-order coupon" description="Use coupon SHEOMART10 for complimentary delivery on your first basket." accent="bg-amber-100 text-amber-700 dark:bg-amber-950/70 dark:text-amber-300" />
           </section>
 
           <section className="space-y-5">
@@ -101,7 +101,7 @@ export default function Home() {
             {productsQuery.isLoading ? (
               <ProductSkeleton />
             ) : productsQuery.isError ? (
-              <div className="space-y-4">
+              <div className="space-y-4 rounded-[1.75rem] border border-stone-200 bg-white/80 p-5 shadow-sm dark:border-stone-800 dark:bg-zinc-900/80">
                 <ErrorState message={productsQuery.error instanceof Error ? productsQuery.error.message : "Unable to load products."} />
                 <div className="flex justify-end">
                   <Button onClick={() => productsQuery.refetch()}>Retry</Button>
@@ -123,7 +123,7 @@ export default function Home() {
             {storesQuery.isLoading ? (
               <StoreSkeleton />
             ) : storesQuery.isError ? (
-              <div className="space-y-4">
+              <div className="space-y-4 rounded-[1.75rem] border border-stone-200 bg-white/80 p-5 shadow-sm dark:border-stone-800 dark:bg-zinc-900/80">
                 <ErrorState message={storesQuery.error instanceof Error ? storesQuery.error.message : "Unable to load stores."} />
                 <div className="flex justify-end">
                   <Button onClick={() => storesQuery.refetch()}>Retry</Button>
@@ -140,13 +140,13 @@ export default function Home() {
             )}
           </section>
 
-          <section className="rounded-[2rem] border border-stone-200 bg-white/80 p-6 shadow-sm dark:border-stone-800 dark:bg-stone-900/80">
+          <section className="rounded-[2rem] border border-stone-200 bg-white/90 p-6 shadow-sm dark:border-stone-800 dark:bg-zinc-900/85">
             <SectionHeading eyebrow="Why choose SheoMart" title="A thoughtful grocery experience" description="Modern shopping made simple, trustworthy, and beautifully designed." align="center" />
             <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               {[{ icon: Clock3, title: "Fast delivery", description: "Quick doorstep delivery with live updates" }, { icon: ShieldCheck, title: "Secure payments", description: "Protected transactions and trusted checkout" }, { icon: CheckCircle2, title: "Verified stores", description: "Only reliable sellers and quality checks" }, { icon: Leaf, title: "Fresh products", description: "Carefully selected, everyday essentials" }].map((item) => {
                 const Icon = item.icon;
                 return (
-                  <div key={item.title} className="rounded-[1.5rem] border border-stone-200 bg-stone-50 p-5 text-center dark:border-stone-800 dark:bg-stone-950/60">
+                  <div key={item.title} className="rounded-[1.5rem] border border-stone-200 bg-stone-50 p-5 text-center shadow-sm transition hover:-translate-y-1 hover:shadow-md dark:border-stone-800 dark:bg-stone-950/70">
                     <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
                       <Icon className="h-6 w-6" />
                     </div>
@@ -158,12 +158,12 @@ export default function Home() {
             </div>
           </section>
 
-          <section className="rounded-[2rem] border border-emerald-100 bg-gradient-to-r from-emerald-600 to-emerald-500 p-6 text-white shadow-[0_24px_80px_-40px_rgba(16,185,129,0.65)] sm:p-8">
+          <section className="rounded-[2rem] border border-emerald-100 bg-gradient-to-r from-emerald-600 via-emerald-500 to-emerald-600 p-6 text-white shadow-[0_24px_80px_-40px_rgba(16,185,129,0.65)] sm:p-8">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-              <div>
+              <div className="max-w-2xl">
                 <p className="text-sm font-semibold uppercase tracking-[0.28em] text-emerald-100">Download the app</p>
                 <h2 className="mt-3 text-3xl font-semibold sm:text-4xl">Shop smarter from your phone.</h2>
-                <p className="mt-3 max-w-2xl text-sm leading-7 text-emerald-50 sm:text-base">Get the SheoMart app for faster reorders, curated deals, and a smoother grocery routine.</p>
+                <p className="mt-3 text-sm leading-7 text-emerald-50 sm:text-base">Get the SheoMart app for faster reorders, curated deals, and a smoother grocery routine.</p>
               </div>
               <div className="flex flex-wrap gap-3">
                 <Button variant="secondary" className="bg-white text-stone-900 hover:bg-stone-100">
@@ -174,6 +174,24 @@ export default function Home() {
                   Learn more
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-[2rem] border border-stone-200 bg-white/90 p-6 shadow-sm dark:border-stone-800 dark:bg-zinc-900/85">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div className="max-w-2xl">
+                <p className="text-sm font-semibold uppercase tracking-[0.28em] text-emerald-600">Stay in the loop</p>
+                <h2 className="mt-2 text-2xl font-semibold text-stone-900 dark:text-stone-50">Get fresh deals and seasonal offers in your inbox.</h2>
+                <p className="mt-3 text-sm leading-7 text-stone-600 dark:text-stone-300">Subscribe for curated picks, speedy delivery reminders, and member-only savings.</p>
+              </div>
+              <div className="flex w-full max-w-xl flex-col gap-3 sm:flex-row">
+                <input
+                  type="email"
+                  placeholder="Enter your email"
+                  className="w-full rounded-full border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-700 outline-none ring-0 transition focus:border-emerald-500 focus:bg-white dark:border-stone-700 dark:bg-stone-950 dark:text-stone-200 dark:focus:bg-stone-900"
+                />
+                <Button className="shrink-0">Subscribe</Button>
               </div>
             </div>
           </section>
