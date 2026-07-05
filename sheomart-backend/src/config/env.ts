@@ -26,9 +26,16 @@ const envSchema = z.object({
 
   CLOUDINARY_API_SECRET: z.string().optional(),
 
-  RAZORPAY_KEY_ID: z.string().min(1, "RAZORPAY_KEY_ID is required"),
+  RAZORPAY_KEY_ID: z
+    .string()
+    .min(1, "RAZORPAY_KEY_ID is required")
+    .regex(/^rzp_(live|test)_[A-Za-z0-9]+$/, "RAZORPAY_KEY_ID must be a valid Razorpay key ID"),
 
-  RAZORPAY_KEY_SECRET: z.string().min(1, "RAZORPAY_KEY_SECRET is required"),
+  RAZORPAY_KEY_SECRET: z
+    .string()
+    .min(1, "RAZORPAY_KEY_SECRET is required")
+    .regex(/^[A-Za-z0-9]+$/, "RAZORPAY_KEY_SECRET must be a valid Razorpay secret")
+    .refine((value) => !/^x+$/.test(value), "RAZORPAY_KEY_SECRET appears to be a placeholder value"),
 });
 
 

@@ -47,6 +47,10 @@ export class PaymentService {
     const amountInPaise = Math.round(Number(order.grandTotal || 0) * 100);
 
     try {
+      if (!razorpay?.orders?.create) {
+        throw new Error("Razorpay client is not initialized");
+      }
+
       const razorpayOrder = await razorpay.orders.create({
         amount: amountInPaise,
         currency: "INR",
@@ -68,6 +72,11 @@ export class PaymentService {
         key: env.RAZORPAY_KEY_ID,
       };
     } catch (error) {
+      console.error("Razorpay Error:", error);
+      if (error instanceof Error) {
+        console.error(error.stack);
+      }
+
       throw new AppError(
         error instanceof Error ? error.message : "Unable to initialize Razorpay payment",
         502
