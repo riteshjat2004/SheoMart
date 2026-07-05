@@ -9,6 +9,7 @@ const api = axios.create({
   },
 });
 
+
 api.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
     const accessToken = useAuthStore.getState().accessToken;
@@ -57,5 +58,6 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+// console.log("API URL:", process.env.NEXT_PUBLIC_API_URL);
 
 export default api;

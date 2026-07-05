@@ -18,6 +18,11 @@ export class OrderService {
       throw new AppError("Delivery address not found", 404);
     }
 
+    const existingDraft = await Order.findOne({
+      userId,
+      status: ORDER_STATUS.DRAFT,
+    });
+
     const productIds = cartItems.map((item) => item.productId);
     const products = await Product.find({
       productId: { $in: productIds },
@@ -79,6 +84,39 @@ export class OrderService {
     const platformFee = 10;
     const grandTotal = subtotal + deliveryCharge + platformFee;
 
+    if (existingDraft) {
+      existingDraft.addressId = address.addressId;
+
+      existingDraft.shippingAddress = {
+        fullName: address.fullName,
+        mobile: address.mobile,
+        house: address.house,
+        street: address.street,
+        landmark: address.landmark,
+        city: address.city,
+        state: address.state,
+        pincode: address.pincode,
+        addressType: address.addressType,
+      };
+
+      existingDraft.deliveryDate = data.deliveryDate;
+      existingDraft.deliverySlot = data.deliverySlot;
+      existingDraft.paymentMethod = data.paymentMethod;
+      existingDraft.paymentStatus = PAYMENT_STATUS.PENDING_PAYMENT;
+
+      existingDraft.orderItems = orderItems;
+
+      existingDraft.subtotal = subtotal;
+      existingDraft.discount = discount;
+      existingDraft.deliveryCharge = deliveryCharge;
+      existingDraft.platformFee = platformFee;
+      existingDraft.grandTotal = grandTotal;
+
+      await existingDraft.save();
+
+      return existingDraft;
+    }
+
     const order = await Order.create({
       userId,
       addressId: address.addressId,
@@ -106,7 +144,9 @@ export class OrderService {
       status: ORDER_STATUS.DRAFT,
     });
 
-    await CartItem.deleteMany({ userId });
+    // TODO:
+    // Clear cart only after successful payment confirmation.
+    // await CartItem.deleteMany({ userId });
 
     return order;
   }
@@ -118,4 +158,12 @@ export class OrderService {
     }
     return order;
   }
+
+  static async getOrders(userId: string) {
+
+    return await Order.find({ userId })
+        .sort({ createdAt: -1 });
+
+  }
+  
 }

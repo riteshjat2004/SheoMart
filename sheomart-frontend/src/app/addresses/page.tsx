@@ -20,7 +20,7 @@ const emptyForm = {
   city: "",
   state: "",
   pincode: "",
-  addressType: "Home",
+  addressType: "home",
   isDefault: true,
 };
 

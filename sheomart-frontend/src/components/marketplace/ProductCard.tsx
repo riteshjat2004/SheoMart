@@ -1,4 +1,13 @@
-import { Star } from "lucide-react";
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Star, ShoppingCart } from "lucide-react";
+import Link from "next/link";
+
+import { useAuthStore } from "@/store/auth-store";
+import { useAddCartItem } from "@/hooks/use-cart";
+
 import type { ProductItem } from "@/types/marketplace";
 import { Button } from "@/components/ui/button";
 
@@ -7,9 +16,46 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product }: ProductCardProps) {
+  const router = useRouter();
+
+  const { isAuthenticated } = useAuthStore();
+
+  const addCartMutation = useAddCartItem();
+
+  const [message, setMessage] = useState<string | null>(null);
   const discountPercent = product.discount ?? (product.discountPrice && product.price ? Math.round(((product.price - product.discountPrice) / product.price) * 100) : 0);
   const displayPrice = product.discountPrice ?? product.price;
   const imageSrc = product.thumbnail || product.images?.[0] || "";
+
+  const handleAddToCart = () => {
+    if (!product.productId) return;
+
+    if (!isAuthenticated) {
+      router.push("/login");
+      return;
+    }
+
+    setMessage(null);
+
+    addCartMutation.mutate(
+      {
+        productId: product.productId,
+        quantity: 1,
+      },
+      {
+        onSuccess: () => {
+          setMessage("Added to cart");
+        },
+        onError: (error) => {
+          setMessage(
+            error instanceof Error
+              ? error.message
+              : "Unable to add item."
+          );
+        },
+      }
+    );
+  };
 
   return (
     <article className="group overflow-hidden rounded-[1.5rem] border border-stone-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg dark:border-stone-800 dark:bg-stone-900">
@@ -38,13 +84,38 @@ export function ProductCard({ product }: ProductCardProps) {
             {displayPrice !== product.price ? <p className="text-sm text-stone-400 line-through">₹{product.price}</p> : null}
           </div>
           {product.productId ? (
-            <Button asChild size="sm" variant="outline" className="rounded-full">
-              <a href={`/products/${encodeURIComponent(product.productId)}`}>View</a>
-            </Button>
+
+            <div className="flex items-center gap-2">
+              <Button
+                size="icon"
+                variant="default"
+                className="rounded-full"
+                onClick={handleAddToCart}
+                disabled={
+                    addCartMutation.isPending ||
+                    (product.quantity ?? 0) <= 0
+                }
+              >
+                <ShoppingCart className="h-4 w-4" />
+              </Button>
+              {message && (
+                  <p className="mt-2 text-xs text-emerald-600">
+                      {message}
+                  </p>
+              )}
+
+              <Button asChild size="sm" variant="outline" className="rounded-full">
+                  <Link href={`/products/${product.productId}`}>
+                      View
+                  </Link>
+              </Button>
+            </div>
+            
           ) : (
             <Button size="sm" variant="outline" className="rounded-full" disabled>
               View
             </Button>
+
           )}
         </div>
       </div>

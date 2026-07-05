@@ -46,8 +46,22 @@ function extractCartItem(payload: unknown): CartItem | undefined {
 }
 
 export async function fetchCart() {
-  const response = await api.get<ApiResponse<CartResponse>>("/api/v1/cart");
-  return response.data.data ?? { cartItems: [], summary: { totalItems: 0, subtotal: 0, totalProducts: 0, estimatedSavings: 0, hasUnavailableItems: false } };
+  const response = await api.get<ApiResponse<{ cart: CartResponse }>>(
+    "/api/v1/cart"
+  );
+
+  return (
+    response.data.data?.cart ?? {
+      cartItems: [],
+      summary: {
+        totalItems: 0,
+        subtotal: 0,
+        totalProducts: 0,
+        estimatedSavings: 0,
+        hasUnavailableItems: false,
+      },
+    }
+  );
 }
 
 export async function addCartItem(payload: AddCartItemPayload) {

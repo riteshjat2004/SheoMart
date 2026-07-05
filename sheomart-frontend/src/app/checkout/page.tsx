@@ -20,50 +20,69 @@ export default function CheckoutPage() {
   const [draftOrder, setDraftOrder] = useState<Awaited<ReturnType<typeof createDraftOrder>> | null>(null);
   const [draftError, setDraftError] = useState<string | null>(null);
 
+  const [paymentMethod, setPaymentMethod] =
+    useState<"cod" | "online">("cod");
+
+  const [selectedAddressId, setSelectedAddressId] = useState<string>("");
+  const [creatingOrder, setCreatingOrder] = useState(false);
+
   const cartData = cartQuery.data ?? { cartItems: [], summary: { totalItems: 0, subtotal: 0, totalProducts: 0, estimatedSavings: 0, hasUnavailableItems: false } };
   const cartItems = cartData.cartItems ?? [];
   const totals = cartData.summary ?? { totalItems: 0, subtotal: 0, totalProducts: 0, estimatedSavings: 0, hasUnavailableItems: false };
   const addresses = Array.isArray(addressesQuery.data) ? addressesQuery.data : [];
-  const defaultAddress = useMemo(() => addresses.find((address) => address.isDefault) ?? addresses[0], [addresses]);
+
+  const defaultAddress = useMemo(
+    () => addresses.find(a => a.isDefault) ?? addresses[0],
+    [addresses]
+  );
 
   useEffect(() => {
-    if (!cartItems.length || totals.hasUnavailableItems) {
-      return;
+    if (defaultAddress && !selectedAddressId) {
+      setSelectedAddressId(defaultAddress.addressId!);
     }
+  }, [defaultAddress, selectedAddressId]);
 
-    if (!defaultAddress?.addressId) {
-      return;
-    }
 
-    let active = true;
 
-    const createOrder = async () => {
-      try {
-        const order = await createDraftOrder({
-          addressId: defaultAddress.addressId!,
-          deliveryDate: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
-          deliverySlot: "10:00 AM - 12:00 PM",
-          paymentMethod: "cod",
-        });
 
-        if (active) {
-          setDraftOrder(order ?? null);
-        }
-      } catch (error) {
-        if (active) {
-          setDraftError(error instanceof Error ? error.message : "Unable to create draft order.");
-        }
-      }
-    };
-
-    void createOrder();
-
-    return () => {
-      active = false;
-    };
-  }, [cartItems.length, defaultAddress, totals.hasUnavailableItems]);
 
   const goBackToCart = () => router.push("/cart");
+
+  const handleContinue = async () => {
+      try {
+
+          setCreatingOrder(true);
+
+          const order = await createDraftOrder({
+
+              addressId: selectedAddressId,
+
+              deliveryDate: new Date(
+                  Date.now() + 86400000
+              ).toISOString().slice(0,10),
+
+              deliverySlot: "10:00 AM - 12:00 PM",
+
+              paymentMethod,
+
+          });
+
+          setDraftOrder(order);
+
+      } catch (error) {
+
+          setDraftError(
+              error instanceof Error
+                  ? error.message
+                  : "Unable to create order."
+          );
+
+      } finally {
+
+          setCreatingOrder(false);
+
+      }
+  };
 
   return (
     <PageWrapper>
@@ -119,6 +138,15 @@ export default function CheckoutPage() {
                   ) : (
                     <p className="mt-4 text-sm text-stone-500">No delivery address found.</p>
                   )}
+
+                  <Button
+                      className="mt-4 w-full"
+                      onClick={handleContinue}
+                      disabled={!selectedAddressId || creatingOrder}
+                  >
+                      {creatingOrder ? "Creating Order..." : "Continue"}
+                  </Button>
+
                 </div>
 
                 <div className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm dark:border-stone-800 dark:bg-stone-900">
@@ -135,6 +163,34 @@ export default function CheckoutPage() {
               </div>
 
               <div className="space-y-6">
+                <div className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm">
+                    <h3 className="font-semibold">
+                        Payment Method
+                    </h3>
+
+                    <div className="mt-4 space-y-3">
+
+                        <label className="flex items-center gap-3">
+                            <input
+                                type="radio"
+                                checked={paymentMethod === "cod"}
+                                onChange={() => setPaymentMethod("cod")}
+                            />
+                            Cash on Delivery
+                        </label>
+
+                        <label className="flex items-center gap-3">
+                            <input
+                                type="radio"
+                                checked={paymentMethod === "online"}
+                                onChange={() => setPaymentMethod("online")}
+                            />
+                            Online Payment
+                        </label>
+
+                    </div>
+                </div>
+
                 <div className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm dark:border-stone-800 dark:bg-stone-900">
                   <h3 className="text-sm font-semibold uppercase tracking-[0.28em] text-emerald-600">Payment integration</h3>
                   <div className="mt-4 rounded-[1.5rem] border border-stone-200 bg-stone-50 p-4 text-sm text-stone-600 dark:border-stone-800 dark:bg-stone-950/60 dark:text-stone-300">

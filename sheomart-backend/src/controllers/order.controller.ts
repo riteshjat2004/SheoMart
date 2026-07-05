@@ -18,6 +18,24 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
   res.status(201).json(new ApiResponse(true, "Order placed successfully", { order }));
 };
 
+export const getOrders = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+
+  const orders = await OrderService.getOrders(
+    req.user!.userId
+  );
+
+  res.status(200).json(
+    new ApiResponse(
+      true,
+      "Orders fetched successfully",
+      { orders }
+    )
+  );
+};
+
 export const getOrder = async (req: AuthRequest, res: Response): Promise<void> => {
   const orderId = Array.isArray(req.params.orderId) ? req.params.orderId[0] : req.params.orderId;
   const result = orderIdParamSchema.safeParse({ orderId });
