@@ -262,10 +262,7 @@ export default function AdminCategoriesPage() {
         open={Boolean(pendingDelete)}
         title="Delete category"
         description="This will deactivate the category and remove it from active listings."
-        submitLabel="Delete category"
-        isSubmitting={deleteMutation.isPending}
         onClose={() => setPendingDelete(null)}
-        onSubmit={handleDelete}
       >
         {pendingDelete ? (
           <DeleteDialog title="Delete this category?" description={`This action will deactivate ${pendingDelete.name}.`}>
@@ -283,10 +280,7 @@ export default function AdminCategoriesPage() {
         open={Boolean(pendingStatus)}
         title="Update category status"
         description="Toggle whether the category remains visible to shoppers."
-        submitLabel="Save status"
-        isSubmitting={statusMutation.isPending}
         onClose={() => setPendingStatus(null)}
-        onSubmit={handleStatusToggle}
       >
         {pendingStatus ? (
           <ConfirmDialog title={pendingStatus.isActive ? "Deactivate this category?" : "Activate this category?"} description="This will change the visibility of the category in the storefront.">

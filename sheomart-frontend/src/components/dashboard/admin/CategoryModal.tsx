@@ -8,7 +8,7 @@ interface CategoryModalProps {
   open: boolean;
   title: string;
   description?: string;
-  submitLabel: string;
+  submitLabel?: string;
   isSubmitting?: boolean;
   onClose: () => void;
   onSubmit?: () => void;
@@ -41,7 +41,7 @@ export function CategoryModal({ open, title, description, submitLabel, isSubmitt
               Cancel
             </Button>
             <Button type="button" onClick={onSubmit} disabled={isSubmitting}>
-              {isSubmitting ? "Saving..." : submitLabel}
+              {isSubmitting ? "Saving..." : submitLabel ?? "Confirm"}
             </Button>
           </div>
         ) : null}
