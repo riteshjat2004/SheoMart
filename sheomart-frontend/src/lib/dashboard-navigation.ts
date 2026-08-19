@@ -1,4 +1,4 @@
-import { BarChart3, Boxes, LayoutGrid, Package, Settings, ShoppingBag, Store, Users } from "lucide-react";
+import { BarChart3, Boxes, LayoutGrid, Package, Settings, ShoppingBag, Store, Tags, Users } from "lucide-react";
 import type { UserRole } from "@/types/auth";
 
 export interface DashboardNavItem {
@@ -26,7 +26,7 @@ export const dashboardNavigation: Record<UserRole, DashboardNavItem[]> = {
     { id: "admin-dashboard", title: "Dashboard", href: "/admin", icon: LayoutGrid, permission: "all" },
     { id: "admin-users", title: "Users", href: "/admin/users", icon: Users, permission: "platform_admin" },
     { id: "admin-stores", title: "Stores", href: "/admin/stores", icon: Store, permission: "platform_admin" },
-    { id: "admin-categories", title: "Categories", href: "/admin/categories", icon: BarChart3, permission: "platform_admin" },
+    { id: "admin-categories", title: "Categories", href: "/admin/categories", icon: Tags, permission: "platform_admin" },
     { id: "admin-products", title: "Products", href: "/admin/products", icon: Package, permission: "platform_admin" },
     { id: "admin-reviews", title: "Reviews", href: "/admin/reviews", icon: ShoppingBag, permission: "platform_admin" },
     { id: "admin-analytics", title: "Analytics", href: "/admin/analytics", icon: BarChart3, permission: "platform_admin" },

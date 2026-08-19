@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   createReview,
   deleteReview,
+  getAdminReviews,
   getProductReviews,
   getReview,
   updateReview,
@@ -14,6 +15,12 @@ import { USER_ROLES } from "../constants/roles";
 
 const router = Router();
 
+router.get(
+  "/reviews/admin",
+  authenticate,
+  authorize(USER_ROLES.PLATFORM_ADMIN),
+  asyncHandler(getAdminReviews)
+);
 router.get("/products/:productId/reviews", asyncHandler(getProductReviews));
 router.get("/reviews/:reviewId", asyncHandler(getReview));
 

@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Navbar } from "@/components/layout/navbar";
-import { Footer } from "@/components/layout/footer";
-import { RouteGuard } from "@/components/auth/RouteGuard";
+import { AppShell } from "@/components/layout/AppShell";
 import { GlobalProviders } from "@/providers/global-providers";
 import "./globals.css";
 
@@ -26,13 +24,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full bg-stone-50 text-stone-900 transition-colors duration-300 dark:bg-stone-950 dark:text-stone-100">
         <GlobalProviders>
-          <div className="flex min-h-screen flex-col">
-            <Navbar />
-            <main className="flex-1">
-              <RouteGuard>{children}</RouteGuard>
-            </main>
-            <Footer />
-          </div>
+          <AppShell>{children}</AppShell>
         </GlobalProviders>
       </body>
     </html>

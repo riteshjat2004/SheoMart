@@ -5,6 +5,7 @@ import {
   createProduct,
   deleteProduct,
   getMyProducts,
+  getAdminProducts,
   getProductById,
   getProducts,
   removeImage,
@@ -19,6 +20,12 @@ import { USER_ROLES } from "../constants/roles";
 
 const router = Router();
 
+router.get(
+  "/admin",
+  authenticate,
+  authorize(USER_ROLES.PLATFORM_ADMIN),
+  asyncHandler(getAdminProducts)
+);
 router.get("/", asyncHandler(getProducts));
 router.get(
   "/me",

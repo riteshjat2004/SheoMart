@@ -10,10 +10,133 @@ import {
   RemoveImageInput,
   UpdateProductInput,
   UpdateThumbnailInput,
+  AdminProductListQuery,
 } from "../validators/product.validator";
 import { InventoryService } from "./inventory.service";
 
+export interface AdminProductListItem {
+  productId: string;
+  name: string;
+  sku: string;
+  brand: string;
+  price: number;
+  discountPrice: number;
+  thumbnail: string;
+  isActive: boolean;
+  isPublished: boolean;
+  quantity: number;
+  inventoryStatus: string;
+  category: { categoryId: string; name: string } | null;
+  store: { storeId: string; storeName: string; status: string } | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function mapAdminProduct(product: AdminProductListItem): AdminProductListItem {
+  return {
+    productId: product.productId,
+    name: product.name,
+    sku: product.sku,
+    brand: product.brand,
+    price: product.price,
+    discountPrice: product.discountPrice,
+    thumbnail: product.thumbnail,
+    isActive: product.isActive,
+    isPublished: product.isPublished,
+    quantity: product.quantity,
+    inventoryStatus: product.inventoryStatus,
+    category: product.category,
+    store: product.store,
+    createdAt: product.createdAt,
+    updatedAt: product.updatedAt,
+  };
+}
+
 export class ProductService {
+  static async listAdminProducts(filters: AdminProductListQuery) {
+    const query: Record<string, unknown> = {};
+
+    if (filters.storeId) query.storeId = filters.storeId;
+    if (filters.categoryId) query.categoryId = filters.categoryId;
+    if (typeof filters.isActive === "boolean") query.isActive = filters.isActive;
+    if (typeof filters.isPublished === "boolean") query.isPublished = filters.isPublished;
+
+    if (filters.search) {
+      const search = new RegExp(escapeRegex(filters.search), "i");
+      query.$or = [{ name: search }, { sku: search }, { brand: search }, { productId: search }];
+    }
+
+    if (filters.inventoryStatus) {
+      const inventoryQuery = filters.inventoryStatus === "unavailable"
+        ? { productId: { $exists: true } }
+        : { status: filters.inventoryStatus };
+      const inventories = await Inventory.find(inventoryQuery).select("productId").lean();
+      const inventoryProductIds = inventories.map((inventory) => inventory.productId);
+      query.productId = filters.inventoryStatus === "unavailable"
+        ? { $nin: inventoryProductIds }
+        : { $in: inventoryProductIds };
+    }
+
+    const skip = (filters.page - 1) * filters.limit;
+    const sortDirection: 1 | -1 = filters.sortOrder === "asc" ? 1 : -1;
+    const sort = { [filters.sortBy]: sortDirection };
+    const safeFields = "productId name sku brand price discountPrice thumbnail isActive isPublished quantity categoryId storeId createdAt updatedAt";
+
+    const [products, total] = await Promise.all([
+      Product.find(query).select(safeFields).sort(sort).skip(skip).limit(filters.limit).lean(),
+      Product.countDocuments(query),
+    ]);
+
+    const productIds = products.map((product) => product.productId);
+    const categoryIds = [...new Set(products.map((product) => product.categoryId))];
+    const storeIds = [...new Set(products.map((product) => product.storeId))];
+    const [inventories, categories, stores] = await Promise.all([
+      Inventory.find({ productId: { $in: productIds } }).select("productId availableQuantity status").lean(),
+      Category.find({ categoryId: { $in: categoryIds } }).select("categoryId name").lean(),
+      Store.find({ storeId: { $in: storeIds } }).select("storeId storeName status").lean(),
+    ]);
+
+    const inventoryMap = new Map(inventories.map((inventory) => [inventory.productId, inventory]));
+    const categoryMap = new Map(categories.map((category) => [category.categoryId, category]));
+    const storeMap = new Map(stores.map((store) => [store.storeId, store]));
+
+    return {
+      products: products.map((product) => {
+        const inventory = inventoryMap.get(product.productId);
+        const category = categoryMap.get(product.categoryId);
+        const store = storeMap.get(product.storeId);
+
+        return mapAdminProduct({
+          productId: product.productId,
+          name: product.name,
+          sku: product.sku,
+          brand: product.brand,
+          price: product.price,
+          discountPrice: product.discountPrice ?? 0,
+          thumbnail: product.thumbnail ?? "",
+          isActive: product.isActive,
+          isPublished: product.isPublished,
+          quantity: inventory?.availableQuantity ?? product.quantity ?? 0,
+          inventoryStatus: inventory?.status ?? "unavailable",
+          category: category ? { categoryId: category.categoryId, name: category.name } : null,
+          store: store ? { storeId: store.storeId, storeName: store.storeName, status: store.status } : null,
+          createdAt: product.createdAt,
+          updatedAt: product.updatedAt,
+        });
+      }),
+      pagination: {
+        page: filters.page,
+        limit: filters.limit,
+        total,
+        totalPages: Math.ceil(total / filters.limit),
+      },
+    };
+  }
+
   private static async getProductForMedia(productId: string) {
     const product = await Product.findOne({ productId, isActive: true });
 

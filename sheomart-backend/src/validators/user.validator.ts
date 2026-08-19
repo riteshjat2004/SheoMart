@@ -1,5 +1,23 @@
 import { z } from "zod";
 
+import { USER_ROLES } from "../constants/roles";
+
+const booleanQueryParam = z.enum(["true", "false"]).transform((value) => value === "true");
+
+export const adminUserListQuerySchema = z.object({
+  search: z.string().trim().max(100).optional(),
+  role: z.enum([USER_ROLES.CUSTOMER, USER_ROLES.STORE_OWNER, USER_ROLES.PLATFORM_ADMIN]).optional(),
+  isActive: booleanQueryParam.optional(),
+  emailVerified: booleanQueryParam.optional(),
+  phoneVerified: booleanQueryParam.optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+  sortBy: z.enum(["createdAt", "name", "email", "role"]).default("createdAt"),
+  sortOrder: z.enum(["asc", "desc"]).default("desc"),
+}).strict();
+
+export type AdminUserListQuery = z.infer<typeof adminUserListQuerySchema>;
+
 export const updateProfileSchema = z
   .object({
     name: z.string().trim().min(2, "Name must be at least 2 characters").max(100).optional(),

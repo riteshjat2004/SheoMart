@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, XCircle, AlertTriangle, MoreHorizontal } from "lucide-react";
+import { CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import type { StoreItem } from "@/types/marketplace";
 import { Button } from "@/components/ui/button";
 
@@ -19,14 +19,16 @@ const statusStyles: Record<string, string> = {
 };
 
 export function StoreApprovalCard({ store, onApprove, onReject, onSuspend }: StoreApprovalCardProps) {
+  const status = store.status ?? "pending";
+
   return (
-    <div className="rounded-[1.5rem] border border-stone-200 bg-white/80 p-4 shadow-sm dark:border-stone-800 dark:bg-stone-900/80">
+    <div className="rounded-xl border border-stone-200 bg-white/80 p-4 shadow-sm dark:border-stone-800 dark:bg-stone-900/80">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h4 className="text-base font-semibold text-stone-900 dark:text-stone-50">{store.storeName ?? store.name ?? "Store"}</h4>
-            <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusStyles[store.status ?? "pending"] ?? statusStyles.pending}`}>
-              {(store.status ?? "pending").toUpperCase()}
+            <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusStyles[status] ?? statusStyles.pending}`}>
+              {status.toUpperCase()}
             </span>
           </div>
           <p className="mt-2 text-sm text-stone-600 dark:text-stone-300">{store.description ?? "No description provided."}</p>
@@ -38,21 +40,24 @@ export function StoreApprovalCard({ store, onApprove, onReject, onSuspend }: Sto
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={() => onApprove(store)}>
-            <CheckCircle2 className="h-4 w-4" />
-            Approve
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => onReject(store)}>
-            <XCircle className="h-4 w-4" />
-            Reject
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => onSuspend(store)}>
-            <AlertTriangle className="h-4 w-4" />
-            Suspend
-          </Button>
-          <Button variant="ghost" size="icon" aria-label="More actions">
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
+          {status !== "approved" ? (
+            <Button variant="outline" size="sm" onClick={() => onApprove(store)}>
+              <CheckCircle2 className="h-4 w-4" />
+              {status === "pending" ? "Approve" : "Reactivate"}
+            </Button>
+          ) : null}
+          {status === "pending" ? (
+            <Button variant="outline" size="sm" onClick={() => onReject(store)}>
+              <XCircle className="h-4 w-4" />
+              Reject
+            </Button>
+          ) : null}
+          {status === "approved" ? (
+            <Button variant="outline" size="sm" onClick={() => onSuspend(store)}>
+              <AlertTriangle className="h-4 w-4" />
+              Suspend
+            </Button>
+          ) : null}
         </div>
       </div>
     </div>

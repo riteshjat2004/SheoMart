@@ -3,7 +3,19 @@ import { AppError } from "../errors/AppError";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { ApiResponse } from "../utils/apiResponse";
 import { ReviewService } from "../services/review.service";
-import { createReviewSchema, updateReviewSchema, visibilitySchema } from "../validators/review.validator";
+import { adminReviewListQuerySchema, createReviewSchema, updateReviewSchema, visibilitySchema } from "../validators/review.validator";
+
+export const getAdminReviews = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const filters = adminReviewListQuerySchema.parse(req.query);
+  const result = await ReviewService.listAdminReviews(filters);
+
+  res.status(200).json(
+    new ApiResponse(true, "Reviews fetched successfully", result)
+  );
+};
 
 export const createReview = async (
   req: AuthRequest,

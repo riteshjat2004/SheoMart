@@ -2,7 +2,19 @@ import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { ApiResponse } from "../utils/apiResponse";
 import { UserService } from "../services/user.service";
-import { changePasswordSchema, updateProfileSchema } from "../validators/user.validator";
+import { adminUserListQuerySchema, changePasswordSchema, updateProfileSchema } from "../validators/user.validator";
+
+export const getAdminUsers = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const filters = adminUserListQuerySchema.parse(req.query);
+  const result = await UserService.listAdminUsers(filters);
+
+  res.status(200).json(
+    new ApiResponse(true, "Users fetched successfully", result)
+  );
+};
 
 export const getProfile = async (
   req: AuthRequest,

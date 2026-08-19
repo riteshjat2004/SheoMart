@@ -8,6 +8,7 @@ export interface CategoryItem {
   image?: string;
   isActive?: boolean;
   parentCategory?: string | null;
+  sortOrder?: number;
 }
 
 export interface ProductItem {

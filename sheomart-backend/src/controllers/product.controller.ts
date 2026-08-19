@@ -5,12 +5,25 @@ import { ApiResponse } from "../utils/apiResponse";
 import { ProductService } from "../services/product.service";
 import {
   addImagesSchema,
+  adminProductListQuerySchema,
   bulkCreateProductSchema,
   createProductSchema,
   removeImageSchema,
   updateProductSchema,
   updateThumbnailSchema,
 } from "../validators/product.validator";
+
+export const getAdminProducts = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const filters = adminProductListQuerySchema.parse(req.query);
+  const result = await ProductService.listAdminProducts(filters);
+
+  res.status(200).json(
+    new ApiResponse(true, "Products fetched successfully", result)
+  );
+};
 
 export const getProducts = async (
   _req: AuthRequest,

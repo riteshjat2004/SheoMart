@@ -22,6 +22,7 @@ import addressRoutes from "./routes/address.routes";
 import orderRoutes from "./routes/order.routes";
 
 import paymentRoutes from "./routes/payment.routes";
+import analyticsRoutes from "./routes/analytics.routes";
 
 const app = express();
 
@@ -67,6 +68,7 @@ app.use("/api/v1/orders", orderRoutes);
 app.use("/api/v1/inventory", inventoryRoutes);
 app.use("/api/v1", reviewRoutes);
 app.use("/api/v1/payments", paymentRoutes);
+app.use("/api/v1/analytics", analyticsRoutes);
 // Global Error Handler (Always Last)
 app.use(errorHandler);
 

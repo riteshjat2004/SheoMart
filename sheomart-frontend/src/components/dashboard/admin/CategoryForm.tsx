@@ -4,7 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { forwardRef } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Button } from "@/components/ui/button";
 
 const categoryFormSchema = z.object({
   name: z.string().trim().min(2, "Category name must be at least 2 characters"),
@@ -18,11 +17,10 @@ export type CategoryFormValues = z.infer<typeof categoryFormSchema>;
 
 interface CategoryFormProps {
   initialValues?: Partial<CategoryFormValues>;
-  isSubmitting?: boolean;
   onSubmit: (values: CategoryFormValues) => void;
 }
 
-export const CategoryForm = forwardRef<HTMLFormElement, CategoryFormProps>(function CategoryForm({ initialValues, isSubmitting = false, onSubmit }, ref) {
+export const CategoryForm = forwardRef<HTMLFormElement, CategoryFormProps>(function CategoryForm({ initialValues, onSubmit }, ref) {
   const {
     register,
     handleSubmit,
@@ -86,11 +84,6 @@ export const CategoryForm = forwardRef<HTMLFormElement, CategoryFormProps>(funct
         <span>Active</span>
       </label>
 
-      <div className="flex justify-end gap-2">
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Saving..." : "Save category"}
-        </Button>
-      </div>
     </form>
   );
 });

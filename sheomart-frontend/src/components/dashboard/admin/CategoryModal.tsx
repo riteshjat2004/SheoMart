@@ -22,7 +22,7 @@ export function CategoryModal({ open, title, description, submitLabel, isSubmitt
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/60 p-4">
-      <div className="w-full max-w-2xl rounded-[2rem] border border-stone-200 bg-white p-6 shadow-2xl dark:border-stone-800 dark:bg-stone-950">
+      <div className="w-full max-w-2xl rounded-xl border border-stone-200 bg-white p-6 shadow-2xl dark:border-stone-800 dark:bg-stone-950">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-50">{title}</h3>

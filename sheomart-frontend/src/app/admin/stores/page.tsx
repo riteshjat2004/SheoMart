@@ -7,6 +7,7 @@ import { Breadcrumb } from "@/components/dashboard/layout/Breadcrumb";
 import { DashboardContent } from "@/components/dashboard/layout/DashboardContent";
 import { PageHeader } from "@/components/dashboard/layout/PageHeader";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
+import { EmptyState } from "@/components/dashboard/EmptyState";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { StoreApprovalCard } from "@/components/dashboard/admin/StoreApprovalCard";
@@ -24,6 +25,7 @@ export default function AdminStoresPage() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [pendingAction, setPendingAction] = useState<{ store: StoreItem; status: "approved" | "rejected" | "suspended" } | null>(null);
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   const { data: stores = [], isLoading, isError, error } = useQuery<StoreItem[], Error>({
     queryKey: ["stores", "admin"],
@@ -48,9 +50,13 @@ export default function AdminStoresPage() {
       const response = await api.patch<ApiResponse<{ store: StoreItem }>>(`/api/v1/stores/${storeId}/status`, { status });
       return response.data.data?.store;
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["stores", "admin"] });
+      setFeedback({ type: "success", message: `Store status updated to ${variables.status}.` });
       setPendingAction(null);
+    },
+    onError: (mutationError: unknown) => {
+      setFeedback({ type: "error", message: mutationError instanceof Error ? mutationError.message : "Unable to update store status." });
     },
   });
 
@@ -83,6 +89,12 @@ export default function AdminStoresPage() {
         description="Review store applications and update approval states from one workspace."
       />
 
+      {feedback ? (
+        <div className={`rounded-lg border p-3 text-sm ${feedback.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-300" : "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/40 dark:text-rose-300"}`}>
+          {feedback.message}
+        </div>
+      ) : null}
+
       <DashboardCard title="Store requests" description="Search and filter stores by status before applying an approval action.">
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <label className="flex items-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-2 text-sm text-stone-500 shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:text-stone-400">
@@ -108,17 +120,17 @@ export default function AdminStoresPage() {
         </div>
 
         {isLoading ? (
-          <div className="rounded-2xl border border-dashed border-stone-200 p-6 text-sm text-stone-500">Loading stores…</div>
+          <EmptyState title="Loading stores" description="Fetching the latest store applications and statuses." />
         ) : null}
 
         {isError ? (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error?.message ?? "Unable to load stores"}</div>
+          <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/40 dark:text-rose-300">{error?.message ?? "Unable to load stores"}</div>
         ) : null}
 
         {!isLoading && !isError ? (
           <div className="space-y-3">
             {filteredStores.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-stone-200 p-6 text-sm text-stone-500">No store requests match the current search and filter.</div>
+              <EmptyState title="No stores found" description="No store requests match the current search and filter." />
             ) : null}
 
             {filteredStores.map((store) => (

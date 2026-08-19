@@ -7,6 +7,7 @@ import { Breadcrumb } from "@/components/dashboard/layout/Breadcrumb";
 import { DashboardContent } from "@/components/dashboard/layout/DashboardContent";
 import { PageHeader } from "@/components/dashboard/layout/PageHeader";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
+import { EmptyState } from "@/components/dashboard/EmptyState";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { DeleteDialog } from "@/components/dashboard/DeleteDialog";
 import { Button } from "@/components/ui/button";
@@ -183,17 +184,17 @@ export default function AdminCategoriesPage() {
         </div>
 
         {isLoading ? (
-          <div className="rounded-2xl border border-dashed border-stone-200 p-6 text-sm text-stone-500">Loading categories…</div>
+          <EmptyState title="Loading categories" description="Fetching the current marketplace taxonomy." />
         ) : null}
 
         {isError ? (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{error?.message ?? "Unable to load categories"}</div>
+          <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/40 dark:text-rose-300">{error?.message ?? "Unable to load categories"}</div>
         ) : null}
 
         {!isLoading && !isError ? (
           <div className="space-y-3">
             {filteredCategories.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-stone-200 p-6 text-sm text-stone-500">No categories found.</div>
+              <EmptyState title="No categories found" description="No categories match the current search." />
             ) : null}
 
             {filteredCategories.map((category) => (
@@ -238,7 +239,7 @@ export default function AdminCategoriesPage() {
           createFormRef.current?.requestSubmit();
         }}
       >
-        <CategoryForm ref={createFormRef} onSubmit={handleCreate} isSubmitting={createMutation.isPending} />
+          <CategoryForm ref={createFormRef} onSubmit={handleCreate} />
       </CategoryModal>
 
       <CategoryModal
@@ -253,7 +254,7 @@ export default function AdminCategoriesPage() {
         }}
       >
         {editingCategory ? (
-          <CategoryForm ref={editFormRef} initialValues={editingCategory} onSubmit={handleEdit} isSubmitting={updateMutation.isPending} />
+          <CategoryForm ref={editFormRef} initialValues={editingCategory} onSubmit={handleEdit} />
         ) : null}
       </CategoryModal>
 

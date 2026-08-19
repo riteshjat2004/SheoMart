@@ -1,5 +1,30 @@
 import { z } from "zod";
 
+import { INVENTORY_STATUS } from "../models/inventory.model";
+
+const booleanQueryParam = z.enum(["true", "false"]).transform((value) => value === "true");
+
+export const adminProductListQuerySchema = z.object({
+  search: z.string().trim().max(100).optional(),
+  storeId: z.string().trim().min(1).optional(),
+  categoryId: z.string().trim().min(1).optional(),
+  isActive: booleanQueryParam.optional(),
+  isPublished: booleanQueryParam.optional(),
+  inventoryStatus: z.enum([
+    INVENTORY_STATUS.IN_STOCK,
+    INVENTORY_STATUS.LOW_STOCK,
+    INVENTORY_STATUS.OUT_OF_STOCK,
+    INVENTORY_STATUS.DISCONTINUED,
+    "unavailable",
+  ]).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+  sortBy: z.enum(["createdAt", "name", "price", "quantity"]).default("createdAt"),
+  sortOrder: z.enum(["asc", "desc"]).default("desc"),
+}).strict();
+
+export type AdminProductListQuery = z.infer<typeof adminProductListQuerySchema>;
+
 export const createProductSchema = z.object({
   name: z.string().trim().min(2, "Product name must be at least 2 characters").max(120),
   description: z.string().trim().max(2000).optional().default(""),
