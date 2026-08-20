@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Search, Plus, ToggleLeft, ToggleRight, Pencil, Trash2 } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Breadcrumb } from "@/components/dashboard/layout/Breadcrumb";
 import { DashboardContent } from "@/components/dashboard/layout/DashboardContent";
 import { PageHeader } from "@/components/dashboard/layout/PageHeader";
@@ -23,6 +23,14 @@ import type { ApiResponse } from "@/types/api";
 import type { CategoryItem, ProductItem } from "@/types/marketplace";
 
 const PAGE_SIZE = 6;
+const CREATE_FORM_ID = "store-create-product-form";
+const EDIT_FORM_ID = "store-edit-product-form";
+
+type Feedback = { type: "success" | "error"; message: string } | null;
+
+function getMutationError(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
 
 export default function StoreProductsPage() {
   const queryClient = useQueryClient();
@@ -33,6 +41,7 @@ export default function StoreProductsPage() {
   const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
   const [pendingDelete, setPendingDelete] = useState<ProductItem | null>(null);
   const [pendingStatus, setPendingStatus] = useState<ProductItem | null>(null);
+  const [feedback, setFeedback] = useState<Feedback>(null);
 
   const { data: products = [], isLoading, isError, error } = useQuery<ProductItem[], Error>({
     queryKey: ["store-products"],
@@ -65,7 +74,8 @@ export default function StoreProductsPage() {
 
   const createMutation = useMutation({
     mutationFn: async (payload: ProductFormValues) => {
-      const response = await api.post<ApiResponse<{ product: ProductItem }>>("/api/v1/products", payload);
+      const createPayload = Object.fromEntries(Object.entries(payload).filter(([key]) => key !== "isActive"));
+      const response = await api.post<ApiResponse<{ product: ProductItem }>>("/api/v1/products", createPayload);
       return response.data.data?.product;
     },
     onSuccess: async () => {
@@ -77,7 +87,9 @@ export default function StoreProductsPage() {
       ]);
       setIsCreateOpen(false);
       setPage(1);
+      setFeedback({ type: "success", message: "Product created successfully." });
     },
+    onError: (error) => setFeedback({ type: "error", message: getMutationError(error, "Unable to create product.") }),
   });
 
   const updateMutation = useMutation({
@@ -94,7 +106,9 @@ export default function StoreProductsPage() {
       ]);
       setEditingProduct(null);
       setPage(1);
+      setFeedback({ type: "success", message: "Product updated successfully." });
     },
+    onError: (error) => setFeedback({ type: "error", message: getMutationError(error, "Unable to update product.") }),
   });
 
   const deleteMutation = useMutation({
@@ -110,7 +124,9 @@ export default function StoreProductsPage() {
         queryClient.invalidateQueries({ queryKey: ["inventory-map"] }),
       ]);
       setPendingDelete(null);
+      setFeedback({ type: "success", message: "Product archived successfully." });
     },
+    onError: (error) => setFeedback({ type: "error", message: getMutationError(error, "Unable to archive product.") }),
   });
 
   const statusMutation = useMutation({
@@ -126,10 +142,13 @@ export default function StoreProductsPage() {
         queryClient.invalidateQueries({ queryKey: ["inventory-map"] }),
       ]);
       setPendingStatus(null);
+      setFeedback({ type: "success", message: "Product visibility updated successfully." });
     },
+    onError: (error) => setFeedback({ type: "error", message: getMutationError(error, "Unable to update product visibility.") }),
   });
 
   const handleCreate = (values: ProductFormValues) => {
+    setFeedback(null);
     createMutation.mutate(values);
   };
 
@@ -137,6 +156,7 @@ export default function StoreProductsPage() {
     if (!editingProduct?.productId) {
       return;
     }
+    setFeedback(null);
     updateMutation.mutate({ productId: editingProduct.productId, payload: values });
   };
 
@@ -144,6 +164,7 @@ export default function StoreProductsPage() {
     if (!pendingDelete?.productId) {
       return;
     }
+    setFeedback(null);
     deleteMutation.mutate(pendingDelete.productId);
   };
 
@@ -151,6 +172,7 @@ export default function StoreProductsPage() {
     if (!pendingStatus?.productId) {
       return;
     }
+    setFeedback(null);
     statusMutation.mutate({ productId: pendingStatus.productId, isActive: pendingStatus.isActive === false });
   };
 
@@ -167,6 +189,8 @@ export default function StoreProductsPage() {
           </Button>
         }
       />
+
+      {feedback ? <div className={`rounded-2xl border p-4 text-sm ${feedback.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-rose-200 bg-rose-50 text-rose-700"}`}>{feedback.message}</div> : null}
 
       <DashboardCard title="Catalog controls" description="Use the search, filters, and actions below to keep your manager inventory tidy.">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -214,8 +238,14 @@ export default function StoreProductsPage() {
         title="Create product"
         description="Add a new product to your catalog and share it with customers once you publish it."
         onClose={() => setIsCreateOpen(false)}
+        footer={
+          <>
+            <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)} disabled={createMutation.isPending}>Cancel</Button>
+            <Button type="submit" form={CREATE_FORM_ID} disabled={createMutation.isPending}>{createMutation.isPending ? "Saving..." : "Create product"}</Button>
+          </>
+        }
       >
-        <ProductForm categories={categories} isSubmitting={createMutation.isPending} onSubmit={handleCreate} submitLabel="Create product" />
+        <ProductForm key="create" formId={CREATE_FORM_ID} categories={categories} onSubmit={handleCreate} />
       </ProductModal>
 
       <ProductModal
@@ -223,25 +253,30 @@ export default function StoreProductsPage() {
         title="Edit product"
         description="Update the product details, pricing, and image URLs."
         onClose={() => setEditingProduct(null)}
+        footer={
+          <>
+            <Button type="button" variant="outline" onClick={() => setEditingProduct(null)} disabled={updateMutation.isPending}>Cancel</Button>
+            <Button type="submit" form={EDIT_FORM_ID} disabled={updateMutation.isPending}>{updateMutation.isPending ? "Saving..." : "Save changes"}</Button>
+          </>
+        }
       >
         {editingProduct ? (
           <ProductForm
             initialValues={{
               name: editingProduct.name,
               description: editingProduct.description ?? "",
-              brand: "",
+              brand: editingProduct.brand ?? "",
               sku: editingProduct.sku ?? "",
               price: editingProduct.price,
               discountPrice: editingProduct.discountPrice ?? 0,
-              quantity: 0,
               categoryId: editingProduct.categoryId ?? "",
               images: editingProduct.images ?? [],
               isPublished: editingProduct.isPublished ?? false,
+              isActive: editingProduct.isActive ?? true,
             }}
             categories={categories}
-            isSubmitting={updateMutation.isPending}
             onSubmit={handleEdit}
-            submitLabel="Save changes"
+            formId={EDIT_FORM_ID}
           />
         ) : null}
       </ProductModal>

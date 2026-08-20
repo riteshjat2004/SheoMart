@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
-import { Button } from "@/components/ui/button";
+import { useState, type FormEvent } from "react";
 import type { CategoryItem } from "@/types/marketplace";
 
 export interface ProductFormValues {
@@ -11,18 +10,17 @@ export interface ProductFormValues {
   sku: string;
   price: number;
   discountPrice: number;
-  quantity: number;
   categoryId: string;
   images: string[];
   isPublished: boolean;
+  isActive: boolean;
 }
 
 interface ProductFormProps {
   initialValues?: Partial<ProductFormValues>;
   categories: CategoryItem[];
-  isSubmitting?: boolean;
   onSubmit: (values: ProductFormValues) => void;
-  submitLabel?: string;
+  formId: string;
 }
 
 const emptyValues: ProductFormValues = {
@@ -32,10 +30,10 @@ const emptyValues: ProductFormValues = {
   sku: "",
   price: 0,
   discountPrice: 0,
-  quantity: 0,
   categoryId: "",
   images: [],
   isPublished: false,
+  isActive: true,
 };
 
 function toNumber(value: string) {
@@ -43,20 +41,12 @@ function toNumber(value: string) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-export function ProductForm({ initialValues, categories, isSubmitting = false, onSubmit, submitLabel = "Save product" }: ProductFormProps) {
+export function ProductForm({ initialValues, categories, onSubmit, formId }: ProductFormProps) {
   const [values, setValues] = useState<ProductFormValues>({
     ...emptyValues,
     ...initialValues,
     images: initialValues?.images ?? [],
   });
-
-  useEffect(() => {
-    setValues({
-      ...emptyValues,
-      ...initialValues,
-      images: initialValues?.images ?? [],
-    });
-  }, [initialValues]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -64,13 +54,12 @@ export function ProductForm({ initialValues, categories, isSubmitting = false, o
       ...values,
       price: toNumber(String(values.price)),
       discountPrice: toNumber(String(values.discountPrice)),
-      quantity: toNumber(String(values.quantity)),
       images: values.images.filter(Boolean),
     });
   };
 
   return (
-    <form className="space-y-4" onSubmit={handleSubmit}>
+    <form id={formId} className="space-y-4" onSubmit={handleSubmit}>
       <div className="grid gap-4 md:grid-cols-2">
         <label className="space-y-2 text-sm text-stone-700 dark:text-stone-300">
           <span className="font-medium">Product name</span>
@@ -135,7 +124,7 @@ export function ProductForm({ initialValues, categories, isSubmitting = false, o
         />
       </label>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <label className="space-y-2 text-sm text-stone-700 dark:text-stone-300">
           <span className="font-medium">Price</span>
           <input
@@ -160,17 +149,6 @@ export function ProductForm({ initialValues, categories, isSubmitting = false, o
           />
         </label>
 
-        <label className="space-y-2 text-sm text-stone-700 dark:text-stone-300">
-          <span className="font-medium">Quantity</span>
-          <input
-            type="number"
-            min="0"
-            step="1"
-            value={values.quantity}
-            onChange={(event) => setValues((current) => ({ ...current, quantity: toNumber(event.target.value) }))}
-            className="w-full rounded-2xl border border-stone-200 bg-white px-3 py-2 outline-none ring-0 focus:border-emerald-500 dark:border-stone-800 dark:bg-stone-950"
-          />
-        </label>
       </div>
 
       <label className="block space-y-2 text-sm text-stone-700 dark:text-stone-300">
@@ -194,11 +172,15 @@ export function ProductForm({ initialValues, categories, isSubmitting = false, o
         Publish immediately
       </label>
 
-      <div className="flex justify-end gap-2 pt-2">
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Saving..." : submitLabel}
-        </Button>
-      </div>
+      <label className="flex items-center gap-2 text-sm text-stone-700 dark:text-stone-300">
+        <input
+          type="checkbox"
+          checked={values.isActive}
+          onChange={(event) => setValues((current) => ({ ...current, isActive: event.target.checked }))}
+          className="h-4 w-4 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500"
+        />
+        Visible in catalog
+      </label>
     </form>
   );
 }

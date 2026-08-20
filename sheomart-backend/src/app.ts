@@ -20,6 +20,7 @@ import inventoryRoutes from "./routes/inventory.routes";
 import reviewRoutes from "./routes/review.routes";
 import addressRoutes from "./routes/address.routes";
 import orderRoutes from "./routes/order.routes";
+import billingRoutes from "./routes/billing.routes";
 
 import paymentRoutes from "./routes/payment.routes";
 import analyticsRoutes from "./routes/analytics.routes";
@@ -66,6 +67,7 @@ app.use("/api/v1/wishlist", wishlistRoutes);
 app.use("/api/v1/addresses", addressRoutes);
 app.use("/api/v1/orders", orderRoutes);
 app.use("/api/v1/inventory", inventoryRoutes);
+app.use("/api/v1/billing", billingRoutes);
 app.use("/api/v1", reviewRoutes);
 app.use("/api/v1/payments", paymentRoutes);
 app.use("/api/v1/analytics", analyticsRoutes);

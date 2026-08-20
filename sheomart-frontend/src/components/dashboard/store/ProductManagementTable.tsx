@@ -1,6 +1,6 @@
 "use client";
 
-import { Pencil, Trash2, ToggleLeft, ToggleRight, Eye, EyeOff } from "lucide-react";
+import { Pencil, Trash2, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/dashboard/DataTable";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
@@ -42,8 +42,17 @@ export function ProductManagementTable({ products, onEdit, onDelete, onToggleSta
           <td className="px-4 py-3 text-sm text-stone-600 dark:text-stone-300">{product.category ?? "Uncategorized"}</td>
           <td className="px-4 py-3 text-sm text-stone-600 dark:text-stone-300">{product.discountPrice ?? product.price}</td>
           <td className="px-4 py-3">
-            <StatusBadge status={product.isPublished ? "Published" : "Draft"} />
-            {product.isActive === false ? <span className="ml-2 text-xs text-stone-400">Archived</span> : null}
+            <StatusBadge
+              status={
+                product.isActive === false
+                  ? product.isPublished
+                    ? "Hidden"
+                    : "Archived"
+                  : product.isPublished
+                    ? "Published"
+                    : "Draft"
+              }
+            />
           </td>
           <td className="px-4 py-3">
             <div className="flex flex-wrap gap-2">

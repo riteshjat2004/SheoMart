@@ -10,9 +10,10 @@ interface ProductModalProps {
   description?: string;
   onClose: () => void;
   children: ReactNode;
+  footer?: ReactNode;
 }
 
-export function ProductModal({ open, title, description, onClose, children }: ProductModalProps) {
+export function ProductModal({ open, title, description, onClose, children, footer }: ProductModalProps) {
   if (!open) {
     return null;
   }
@@ -30,6 +31,7 @@ export function ProductModal({ open, title, description, onClose, children }: Pr
           </Button>
         </div>
         <div className="mt-6">{children}</div>
+        {footer ? <div className="mt-6 flex justify-end gap-2 border-t border-stone-200 pt-4 dark:border-stone-800">{footer}</div> : null}
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { BarChart3, Boxes, LayoutGrid, Package, Settings, ShoppingBag, Store, Tags, Users } from "lucide-react";
+import { BarChart3, Boxes, LayoutGrid, Package, Receipt, Settings, ShoppingBag, Store, Tags, Users } from "lucide-react";
 import type { UserRole } from "@/types/auth";
 
 export interface DashboardNavItem {
@@ -18,6 +18,7 @@ export const dashboardNavigation: Record<UserRole, DashboardNavItem[]> = {
     { id: "store-reviews", title: "Reviews", href: "/store/reviews", icon: ShoppingBag, permission: "store_owner" },
     { id: "store-orders", title: "Orders", href: "/store/orders", icon: ShoppingBag, permission: "store_owner" },
     { id: "store-customers", title: "Customers", href: "/store/customers", icon: Users, permission: "store_owner" },
+    { id: "store-billing", title: "Billing", href: "/store/billing", icon: Receipt, permission: "store_owner" },
     { id: "store-coupons", title: "Coupons", href: "/store/coupons", icon: Store, permission: "store_owner" },
     { id: "store-analytics", title: "Analytics", href: "/store/analytics", icon: BarChart3, permission: "store_owner" },
     { id: "store-settings", title: "Settings", href: "/store/settings", icon: Settings, permission: "store_owner" },

@@ -9,8 +9,9 @@ import { Navbar } from "@/components/layout/navbar";
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const isAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/");
+  const isStoreRoute = pathname === "/store" || pathname.startsWith("/store/");
 
-  if (isAdminRoute) {
+  if (isAdminRoute || isStoreRoute) {
     return <RouteGuard>{children}</RouteGuard>;
   }
 

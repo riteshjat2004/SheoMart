@@ -57,6 +57,8 @@ export interface StoreItem {
   description?: string;
   logo?: string;
   banner?: string;
+  email?: string;
+  phone?: string;
   rating?: number;
   totalReviews?: number;
   deliveryTime?: string;

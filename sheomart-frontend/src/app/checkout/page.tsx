@@ -3,7 +3,7 @@
 import { createPaymentOrder, verifyPayment } from "@/services/payment";
 import { loadRazorpay } from "@/lib/loadRazorpay";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/common/empty-state";
 import { useCart } from "@/hooks/use-cart";
 import { useAddresses } from "@/hooks/use-addresses";
 import { createDraftOrder } from "@/services/orders";
+import { CheckCircle2, Clock3, MapPin, Store, Truck } from "lucide-react";
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -27,8 +28,10 @@ export default function CheckoutPage() {
 
   const [paymentMethod, setPaymentMethod] =
     useState<"cod" | "online">("cod");
+  const [paymentOption, setPaymentOption] = useState<"cash" | "upi" | "credit">("cash");
+  const [deliveryMethod, setDeliveryMethod] = useState<"pickup" | "delivery">("pickup");
 
-  const [selectedAddressId, setSelectedAddressId] = useState<string>("");
+  const [selectedAddressId] = useState<string>("");
   const [creatingOrder, setCreatingOrder] = useState(false);
   const [paying, setPaying] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
@@ -36,19 +39,15 @@ export default function CheckoutPage() {
   const cartData = cartQuery.data ?? { cartItems: [], summary: { totalItems: 0, subtotal: 0, totalProducts: 0, estimatedSavings: 0, hasUnavailableItems: false } };
   const cartItems = cartData.cartItems ?? [];
   const totals = cartData.summary ?? { totalItems: 0, subtotal: 0, totalProducts: 0, estimatedSavings: 0, hasUnavailableItems: false };
-  const addresses = Array.isArray(addressesQuery.data) ? addressesQuery.data : [];
+  const addresses = useMemo(
+    () => (Array.isArray(addressesQuery.data) ? addressesQuery.data : []),
+    [addressesQuery.data]
+  );
 
   const defaultAddress = useMemo(
     () => addresses.find(a => a.isDefault) ?? addresses[0],
     [addresses]
   );
-
-  useEffect(() => {
-    if (defaultAddress && !selectedAddressId) {
-      setSelectedAddressId(defaultAddress.addressId!);
-    }
-  }, [defaultAddress, selectedAddressId]);
-
 
   const goBackToCart = () => router.push("/cart");
 
@@ -59,7 +58,7 @@ export default function CheckoutPage() {
 
           const order = await createDraftOrder({
 
-              addressId: selectedAddressId,
+              addressId: selectedAddressId || defaultAddress?.addressId || "",
 
               deliveryDate: new Date(
                   Date.now() + 86400000
@@ -190,6 +189,37 @@ export default function CheckoutPage() {
             <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
               <div className="space-y-6">
                 <div className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm dark:border-stone-800 dark:bg-stone-900">
+                  <h3 className="text-sm font-semibold uppercase tracking-[0.28em] text-emerald-600">Delivery method</h3>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {[
+                      { id: "pickup" as const, title: "Store Pickup", description: "Collect your order from the store.", icon: Store },
+                      { id: "delivery" as const, title: "Home Delivery", description: "Available only if this store supports delivery.", icon: Truck },
+                    ].map((method) => {
+                      const Icon = method.icon;
+                      const isSelected = deliveryMethod === method.id;
+                      return (
+                        <button
+                          key={method.id}
+                          type="button"
+                          onClick={() => setDeliveryMethod(method.id)}
+                          className={`relative rounded-[1.5rem] border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${isSelected ? "border-emerald-500 bg-emerald-50/70 dark:border-emerald-400 dark:bg-emerald-500/10" : "border-stone-200 bg-stone-50 hover:border-emerald-300 dark:border-stone-800 dark:bg-stone-950/60 dark:hover:border-emerald-800"}`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <Icon className={`h-5 w-5 ${isSelected ? "text-emerald-600 dark:text-emerald-400" : "text-stone-500"}`} />
+                              <span className="font-semibold text-stone-900 dark:text-stone-50">{method.title}</span>
+                            </div>
+                            {isSelected ? <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" /> : null}
+                          </div>
+                          <p className="mt-3 text-sm leading-6 text-stone-600 dark:text-stone-300">{method.description}</p>
+                          {method.id === "delivery" ? <span className="mt-3 inline-flex rounded-full bg-stone-200 px-2 py-1 text-xs font-medium text-stone-600 dark:bg-stone-800 dark:text-stone-300">Coming soon</span> : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm dark:border-stone-800 dark:bg-stone-900">
                   <h3 className="text-sm font-semibold uppercase tracking-[0.28em] text-emerald-600">Order summary</h3>
                   <div className="mt-4 space-y-3 text-sm text-stone-600 dark:text-stone-300">
                     <div className="flex items-center justify-between">
@@ -203,6 +233,38 @@ export default function CheckoutPage() {
                     <div className="flex items-center justify-between">
                       <span>Total</span>
                       <span className="font-semibold text-stone-900 dark:text-stone-50">₹{totals.subtotal}</span>
+                    </div>
+                    <div className="flex items-center justify-between border-t border-stone-200 pt-3 font-medium text-emerald-700 dark:border-stone-800 dark:text-emerald-400">
+                      <span>Payment Status</span>
+                      <span>Pending (Pay at Shop)</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm dark:border-stone-800 dark:bg-stone-900">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="text-sm font-semibold uppercase tracking-[0.28em] text-emerald-600">Pickup information</h3>
+                      <p className="mt-2 text-sm text-stone-600 dark:text-stone-300">Placeholder store details for your selected pickup.</p>
+                    </div>
+                    <MapPin className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-[1.25rem] bg-stone-50 p-4 dark:bg-stone-950/60">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500 dark:text-stone-400">Store Name</p>
+                      <p className="mt-2 font-semibold text-stone-900 dark:text-stone-50">SheoMart Store</p>
+                    </div>
+                    <div className="rounded-[1.25rem] bg-stone-50 p-4 dark:bg-stone-950/60">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500 dark:text-stone-400">Pickup Address</p>
+                      <p className="mt-2 text-sm text-stone-700 dark:text-stone-200">Main Market, Sheopur</p>
+                    </div>
+                    <div className="rounded-[1.25rem] bg-stone-50 p-4 dark:bg-stone-950/60">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500 dark:text-stone-400">Pickup Hours</p>
+                      <p className="mt-2 text-sm text-stone-700 dark:text-stone-200">10:00 AM - 8:00 PM</p>
+                    </div>
+                    <div className="rounded-[1.25rem] bg-stone-50 p-4 dark:bg-stone-950/60">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500 dark:text-stone-400">Estimated pickup time</p>
+                      <p className="mt-2 flex items-center gap-2 text-sm text-stone-700 dark:text-stone-200"><Clock3 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" /> 30 - 45 minutes</p>
                     </div>
                   </div>
                 </div>
@@ -223,7 +285,7 @@ export default function CheckoutPage() {
                   <Button
                       className="mt-4 w-full"
                       onClick={handleContinue}
-                      disabled={!selectedAddressId || creatingOrder}
+                      disabled={!(selectedAddressId || defaultAddress?.addressId) || creatingOrder}
                   >
                       {creatingOrder ? "Creating Order..." : "Continue"}
                   </Button>
@@ -245,31 +307,36 @@ export default function CheckoutPage() {
 
               <div className="space-y-6">
                 <div className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm text-black">
-                    <h3 className="font-semibold text-black">
-                        Payment Method
-                    </h3>
-
-                    <div className="mt-4 space-y-3">
-
-                        <label className="flex items-center gap-3 text-black">
-                            <input
-                                type="radio"
-                                checked={paymentMethod === "cod"}
-                                onChange={() => setPaymentMethod("cod")}
-                            />
-                            Cash on Delivery
-                        </label>
-
-                        <label className="flex items-center gap-3 text-black">
-                            <input
-                                type="radio"
-                                checked={paymentMethod === "online"}
-                                onChange={() => setPaymentMethod("online")}
-                            />
-                            Online Payment
-                        </label>
-
-                    </div>
+                  <h3 className="text-sm font-semibold uppercase tracking-[0.28em] text-emerald-600">Payment Method</h3>
+                  <div className="mt-4 space-y-3">
+                    {[
+                      { id: "cash" as const, label: "Cash at Shop", helper: "Pay when you collect your order." },
+                      { id: "upi" as const, label: "UPI at Shop", helper: "Pay by UPI during pickup." },
+                      { id: "credit" as const, label: "Credit", helper: "Pay at shop during pickup." },
+                    ].map((option) => (
+                      <label key={option.id} className="flex cursor-pointer items-center gap-3 rounded-[1.25rem] border border-stone-200 bg-stone-50 p-4 text-stone-700 transition has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-50/70 dark:border-stone-800 dark:bg-stone-950/60 dark:text-stone-200 dark:has-[:checked]:border-emerald-400 dark:has-[:checked]:bg-emerald-500/10">
+                        <input
+                          type="radio"
+                          name="checkout-payment-method"
+                          checked={paymentOption === option.id}
+                          onChange={() => {
+                            setPaymentOption(option.id);
+                            setPaymentMethod("cod");
+                          }}
+                          className="accent-emerald-600"
+                        />
+                        <span className="flex-1">
+                          <span className="block font-semibold">{option.label}</span>
+                          <span className="mt-1 block text-sm text-stone-500 dark:text-stone-400">{option.helper}</span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  <p className="mt-4 text-xs text-stone-500 dark:text-stone-400">Online payments will be available in a future update.</p>
+                  <div className="mt-5 rounded-[1.25rem] border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-300">
+                    <p className="font-semibold">PLUS Customer</p>
+                    <p className="mt-1">Plus customers can pay at the shop during pickup.</p>
+                  </div>
                 </div>
 
                 <div className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm dark:border-stone-800 dark:bg-stone-900">

@@ -28,7 +28,11 @@ function SidebarContent({ role, onNavigate }: { role: SidebarProps["role"]; onNa
 
       <nav aria-label="Dashboard navigation" className="flex-1 space-y-1 px-3 py-4">
         {items.map((item) => {
-          const isActive = item.href === "/admin" ? pathname === item.href : pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const isDashboardItem = item.href === "/admin" || item.href === "/store";
+          const isBillingItem = item.href === "/store/billing";
+          const isActive = isDashboardItem || isBillingItem
+            ? pathname === item.href
+            : pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;
           return (
             <Link

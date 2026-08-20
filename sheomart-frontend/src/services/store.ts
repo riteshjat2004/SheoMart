@@ -21,6 +21,17 @@ export interface CreateStoreApplicationPayload {
   pincode: string;
 }
 
+export interface UpdateMyStorePayload {
+  description?: string;
+  logo?: string;
+  banner?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+}
+
 function normalizeStore(store: Record<string, unknown>): StoreItem {
   const rawName =
     typeof store.storeName === "string"
@@ -77,4 +88,11 @@ export async function fetchMyStore() {
     }
     throw error;
   }
+}
+
+export async function updateMyStore(payload: UpdateMyStorePayload) {
+  const response = await api.patch<ApiResponse<{ store: StoreItem }>>("/api/v1/stores/me", payload);
+  const store = response.data.data?.store;
+
+  return store ? normalizeStore(store as Record<string, unknown>) : null;
 }
