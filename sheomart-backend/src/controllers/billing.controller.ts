@@ -153,11 +153,24 @@ export const completePickupPayment = async (req: AuthRequest, res: Response): Pr
     throw new AppError(message, 400);
   }
 
-  void result.data;
-  await completePickupPaymentService();
-  res.status(501).json({
-    success: false,
-    message: "Billing service is not implemented yet.",
+  const payload = (req.body && typeof req.body === "object" ? req.body : {}) as Record<
+    string,
+    unknown
+  >;
+  const paymentMethod = payload.paymentMethod;
+  if (paymentMethod !== "CASH" && paymentMethod !== "UPI" && paymentMethod !== "CREDIT") {
+    throw new AppError("Payment method must be CASH, UPI, or CREDIT", 400);
+  }
+
+  const order = await completePickupPaymentService(
+    req.user?.userId as string,
+    result.data.orderId,
+    paymentMethod
+  );
+  res.status(200).json({
+    success: true,
+    message: "Pickup payment collected successfully",
+    data: { order },
   });
 };
 

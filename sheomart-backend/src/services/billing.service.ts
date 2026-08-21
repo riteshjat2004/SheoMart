@@ -8,6 +8,8 @@ import { OfflineInvoice } from "../models/offlineInvoice.model";
 import { OfflineInvoiceItem } from "../models/offlineInvoiceItem.model";
 import { Product } from "../models/product.model";
 import { Store } from "../models/store.model";
+import { StoreCustomer } from "../models/storeCustomer.model";
+import { Order } from "../models/order.model";
 import { User } from "../models/user.model";
 import type { CreateOfflineInvoiceInput } from "../validators/billing.validator";
 import { generateInvoiceNumber } from "../utils/invoice-number.util";
@@ -424,8 +426,61 @@ export const listPickupOrders = async (): Promise<never> => {
   throw new AppError("TODO: listPickupOrders is not implemented yet", 501);
 };
 
-export const completePickupPayment = async (): Promise<never> => {
-  throw new AppError("TODO: completePickupPayment is not implemented yet", 501);
+export const completePickupPayment = async (
+  ownerId: string,
+  orderId: string,
+  paymentMethod: "CASH" | "UPI" | "CREDIT"
+) => {
+  const store = await getStoreForOwner(ownerId);
+  const order = await Order.findOne({ orderId }).lean();
+  if (!order) {
+    throw new AppError("Order not found", 404);
+  }
+
+  const customer = await StoreCustomer.findOne({
+    storeId: store.storeId,
+    customerId: order.userId,
+  }).lean();
+
+  if (!customer || customer.customerId !== order.userId) {
+    throw new AppError("Order does not belong to this store", 403);
+  }
+
+  if (order.status !== "READY_FOR_PICKUP") {
+    throw new AppError("Only orders ready for pickup can be paid", 409);
+  }
+
+  if (order.paymentStatus !== "PENDING") {
+    throw new AppError("Only pending orders can be paid", 409);
+  }
+
+  if (!customer.isPlusCustomer) {
+    throw new AppError("Only PLUS customers can pay at pickup", 403);
+  }
+
+  const updatedOrder = await Order.findOneAndUpdate(
+    {
+      orderId,
+      userId: order.userId,
+      status: "READY_FOR_PICKUP",
+      paymentStatus: "PENDING",
+    },
+    {
+      $set: {
+        paymentStatus: "PAID",
+        paymentMethod,
+        status: "PICKED_UP",
+        ...(Order.schema.path("pickedUpAt") ? { pickedUpAt: new Date() } : {}),
+      },
+    },
+    { new: true, runValidators: false }
+  );
+
+  if (!updatedOrder) {
+    throw new AppError("Order changed before payment could be collected", 409);
+  }
+
+  return updatedOrder;
 };
 
 export const listStoreCustomers = async (): Promise<never> => {

@@ -1,11 +1,15 @@
 "use client";
 
 import { Package } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/dashboard/DataTable";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import type { ProductItem } from "@/types/marketplace";
 import type { InventoryItem } from "@/types/inventory";
+import { InventoryLedgerDrawer } from "@/components/dashboard/store/InventoryLedgerDrawer";
+import { RestockModal } from "@/components/dashboard/store/RestockModal";
+import { useRestockInventory } from "@/hooks/use-restock-inventory";
 
 interface InventoryManagementTableProps {
   rows: Array<{ product: ProductItem; inventory: InventoryItem | null }>;
@@ -36,8 +40,12 @@ function formatUpdatedAt(value?: string) {
 }
 
 export function InventoryManagementTable({ rows, onEdit }: InventoryManagementTableProps) {
+  const [historyProduct, setHistoryProduct] = useState<ProductItem | null>(null);
+  const [restockProduct, setRestockProduct] = useState<{ product: ProductItem; quantity: number } | null>(null);
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const restockMutation = useRestockInventory({ onSuccess: () => { setRestockProduct(null); setFeedback({ type: "success", message: "Inventory restocked successfully." }); }, onError: (error) => setFeedback({ type: "error", message: error instanceof Error ? error.message : "Unable to restock inventory." }) });
   return (
-    <DataTable
+    <div className="space-y-4">{feedback ? <div className={`rounded-lg border p-3 text-sm ${feedback.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-rose-200 bg-rose-50 text-rose-700"}`}>{feedback.message}</div> : null}<DataTable
       columns={[
         { key: "product", label: "Product" },
         { key: "sku", label: "SKU" },
@@ -46,7 +54,7 @@ export function InventoryManagementTable({ rows, onEdit }: InventoryManagementTa
         { key: "threshold", label: "Threshold" },
         { key: "status", label: "Status" },
         { key: "updated", label: "Last updated" },
-        { key: "actions", label: "Update stock" },
+        { key: "actions", label: "Actions" },
       ]}
       rows={rows}
       renderRow={({ product, inventory }) => (
@@ -65,14 +73,9 @@ export function InventoryManagementTable({ rows, onEdit }: InventoryManagementTa
           <td className="px-4 py-3 text-sm text-stone-600 dark:text-stone-300">{inventory?.lowStockThreshold ?? 0}</td>
           <td className="px-4 py-3"><StatusBadge status={getStatus(inventory)} /></td>
           <td className="px-4 py-3 text-sm text-stone-600 dark:text-stone-300">{formatUpdatedAt(inventory?.updatedAt)}</td>
-          <td className="px-4 py-3">
-            <Button variant="outline" size="sm" onClick={() => onEdit(product)}>
-              <Package className="h-4 w-4" />
-              Update stock
-            </Button>
-          </td>
+          <td className="px-4 py-3"><div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" onClick={() => onEdit(product)}><Package className="h-4 w-4" />Update stock</Button><Button variant="outline" size="sm" onClick={() => setHistoryProduct(product)}>View History</Button><Button size="sm" onClick={() => setRestockProduct({ product, quantity: inventory?.availableQuantity ?? 0 })}>Restock</Button></div></td>
         </>
       )}
-    />
+    />{historyProduct ? <InventoryLedgerDrawer product={historyProduct} onClose={() => setHistoryProduct(null)} /> : null}{restockProduct ? <RestockModal product={restockProduct.product} currentQuantity={restockProduct.quantity} isSubmitting={restockMutation.isPending} onClose={() => { if (!restockMutation.isPending) setRestockProduct(null); }} onSubmit={(quantity, note) => { setFeedback(null); restockMutation.mutate({ productId: restockProduct.product.productId ?? "", currentQuantity: restockProduct.quantity, quantity, note }); }} /> : null}</div>
   );
 }
