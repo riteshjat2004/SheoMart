@@ -25,6 +25,11 @@ export interface AddCartItemResponse {
   cart: CartResponse;
 }
 
+export interface CartMutationResponse {
+  cartItem?: CartItem;
+  cart: CartResponse;
+}
+
 function extractCartItem(payload: unknown): CartItem | undefined {
   if (!payload || typeof payload !== "object") {
     return undefined;
@@ -78,13 +83,13 @@ export async function addCartItem(payload: AddCartItemPayload) {
 }
 
 export async function updateCartItem(cartItemId: string, payload: { quantity: number }) {
-  const response = await api.patch<ApiResponse<{ cartItem: unknown }>>(`/api/v1/cart/${cartItemId}`, payload);
-  return extractCartItem(response.data.data?.cartItem);
+  const response = await api.patch<ApiResponse<{ cartItem: unknown; cart: CartResponse }>>(`/api/v1/cart/${cartItemId}`, payload);
+  return { cartItem: extractCartItem(response.data.data?.cartItem), cart: response.data.data?.cart } as CartMutationResponse;
 }
 
 export async function removeCartItem(cartItemId: string) {
-  const response = await api.delete<ApiResponse<{ cartItem: unknown }>>(`/api/v1/cart/${cartItemId}`);
-  return extractCartItem(response.data.data?.cartItem);
+  const response = await api.delete<ApiResponse<{ cartItem: unknown; cart: CartResponse }>>(`/api/v1/cart/${cartItemId}`);
+  return { cartItem: extractCartItem(response.data.data?.cartItem), cart: response.data.data?.cart } as CartMutationResponse;
 }
 
 export async function clearCart() {

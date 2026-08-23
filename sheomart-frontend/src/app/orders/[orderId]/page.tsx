@@ -48,27 +48,27 @@ export default function OrderDetailsPage() {
                 <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500 dark:text-stone-400">Invoice Number</p><p className="mt-2 font-semibold text-stone-900 dark:text-stone-50">{order.invoiceNumber ?? "Not available"}</p></div>
                 <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500 dark:text-stone-400">Order ID</p><p className="mt-2 font-semibold text-stone-900 dark:text-stone-50">{order.orderId}</p></div>
                 <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500 dark:text-stone-400">Order Date</p><p className="mt-2 font-semibold text-stone-900 dark:text-stone-50">{order.createdAt ? new Date(order.createdAt).toLocaleDateString() : "Recently"}</p></div>
-                <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500 dark:text-stone-400">Store Name</p><p className="mt-2 font-semibold text-stone-900 dark:text-stone-50">{order.storeName ?? "SheoMart Store"}</p></div>
+                <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500 dark:text-stone-400">Store Name</p><p className="mt-2 font-semibold text-stone-900 dark:text-stone-50">{order.store?.storeName ?? order.storeName ?? "Store details unavailable"}</p></div>
               </div>
               <div className="flex flex-wrap gap-2 lg:justify-end">
-                <StatusBadge status={statusLabel(order.status)} />
-                <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">Payment: {paymentLabel(order.paymentStatus)}</span>
+                <StatusBadge status={statusLabel(order.pickupStatus)} />
+                <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">Payment: {order.paymentStatus === "PAID" ? "Payment Received" : "Pending (Pay at Shop)"}</span>
               </div>
             </div>
           </section>
 
           <div className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200">
-            {order.status === "PICKED_UP" ? "Your order has been completed." : order.status === "READY_FOR_PICKUP" ? "Your order is ready for pickup. Bring your order ID when collecting it." : "Your order status is being updated."}
+            {order.pickupStatus === "PICKED_UP" ? "Your order has been completed." : order.pickupStatus === "READY_FOR_PICKUP" ? "Your order is ready for pickup. Bring your order ID when collecting it." : "Your order status is being updated."}
           </div>
 
           <OrderItemsList items={(order.orderItems ?? []).map((item) => ({ name: item.name ?? "Product", quantity: item.quantity ?? 0, price: `₹${item.discountPrice ?? item.price ?? 0}`, total: `₹${item.totalPrice ?? 0}` }))} />
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <PaymentSummaryCard paymentMethod={order.paymentMethod} />
+            <PaymentSummaryCard subtotal={order.subtotal} discount={order.discount} deliveryCharge={order.deliveryCharge} platformFee={order.platformFee} grandTotal={order.grandTotal} amountPaid={order.amountPaid} remainingAmount={order.remainingAmount} paymentMethod={order.paymentMethod} paymentStatus={order.paymentStatus === "PAID" ? "Paid" : "Pending"} />
             <PickupInfoCard order={order} />
           </div>
 
-          <div className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm dark:border-stone-800 dark:bg-stone-900"><p className="text-sm font-semibold uppercase tracking-[0.28em] text-emerald-600">Order timeline</p><div className="mt-5"><OrderStatusTimeline status={order.status} /></div></div>
+          <div className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm dark:border-stone-800 dark:bg-stone-900"><p className="text-sm font-semibold uppercase tracking-[0.28em] text-emerald-600">Order timeline</p><div className="mt-5"><OrderStatusTimeline pickupStatus={order.pickupStatus} statusUpdatedAt={order.statusUpdatedAt} paymentStatus={order.paymentStatus} createdAt={order.createdAt} /></div></div>
 
           <section className="flex flex-col gap-4 rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-stone-800 dark:bg-stone-900">
             <div className="flex items-start gap-3">

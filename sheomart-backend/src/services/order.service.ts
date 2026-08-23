@@ -8,7 +8,15 @@ import { Order, ORDER_STATUS, PAYMENT_STATUS } from "../models/order.model";
 import { Product } from "../models/product.model";
 import { Store } from "../models/store.model";
 import { StoreCustomer } from "../models/storeCustomer.model";
+import { User } from "../models/user.model";
 import { CreateOrderInput } from "../validators/checkout.validator";
+
+const createInvoiceNumber = async (storeId: string, date: Date) => {
+  const datePart = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}${String(date.getDate()).padStart(2, "0")}`;
+  const prefix = `INV-${datePart}-`;
+  const count = await Order.countDocuments({ invoiceNumber: { $regex: `^${prefix}` } });
+  return `${prefix}${String(count + 1).padStart(4, "0")}`;
+};
 
 export class OrderService {
   static async markPaymentReceived(
@@ -370,6 +378,9 @@ export class OrderService {
       existingDraft.deliveryCharge = deliveryCharge;
       existingDraft.platformFee = platformFee;
       existingDraft.grandTotal = grandTotal;
+      if (!existingDraft.invoiceNumber) {
+        existingDraft.invoiceNumber = await createInvoiceNumber(existingDraft.storeId, new Date());
+      }
 
       await existingDraft.save();
       await CartItem.deleteMany({ userId });
@@ -379,6 +390,7 @@ export class OrderService {
 
     const order = await Order.create({
       userId,
+      invoiceNumber: await createInvoiceNumber(data.storeId, new Date()),
       storeId: data.storeId,
       addressId: address.addressId,
       shippingAddress: {
@@ -418,16 +430,56 @@ export class OrderService {
     const order = await Order.findOne({
       orderId,
       $or: [{ userId }, ...(ownedStore ? [{ storeId: ownedStore.storeId }] : [])],
-    });
+    }).lean();
     if (!order) {
       throw new AppError("Order not found", 404);
     }
-    return order;
+
+    const [customer, store] = await Promise.all([
+      User.findOne({ userId: order.userId }).select("userId name mobile email").lean(),
+      Store.findOne({ storeId: order.storeId }).select("storeId storeName address city state pincode").lean(),
+    ]);
+
+    if (!order.invoiceNumber && order.status !== ORDER_STATUS.DRAFT) {
+      const invoiceNumber = await createInvoiceNumber(order.storeId, new Date(order.createdAt));
+      await Order.updateOne({ orderId: order.orderId, $or: [{ invoiceNumber: { $exists: false } }, { invoiceNumber: null }] }, { $set: { invoiceNumber } });
+      order.invoiceNumber = invoiceNumber;
+    }
+
+    return {
+      ...order,
+      customerName: customer?.name,
+      customerPhone: customer?.mobile,
+      customerEmail: customer?.email,
+      storeName: store?.storeName,
+      pickupAddress: [store?.address, store?.city, store?.state, store?.pincode].filter(Boolean).join(", "),
+      store: store ? { storeId: store.storeId, storeName: store.storeName, address: store.address } : null,
+    };
   }
 
   static async getOrders(userId: string) {
-    return await Order.find({ userId, status: { $ne: ORDER_STATUS.DRAFT } }).sort({
+    const orders = await Order.find({ userId, status: { $ne: ORDER_STATUS.DRAFT } }).sort({
       createdAt: -1,
+    }).lean();
+    const storeIds = [...new Set(orders.map((order) => order.storeId))];
+    const stores = await Store.find({ storeId: { $in: storeIds } })
+      .select("storeId storeName phone address city state pincode")
+      .lean();
+    const storeMap = new Map(stores.map((store) => [store.storeId, store]));
+
+    return orders.map((order) => {
+      const store = storeMap.get(order.storeId);
+      const isPaid = order.paymentStatus === PAYMENT_STATUS.PAID;
+      return {
+        ...order,
+        amountPaid: isPaid ? order.grandTotal : (order.amountPaid ?? 0),
+        remainingAmount: isPaid ? 0 : (order.remainingAmount ?? order.grandTotal),
+        storeName: store?.storeName,
+        storePhone: store?.phone,
+        pickupAddress: [store?.address, store?.city, store?.state, store?.pincode].filter(Boolean).join(", "),
+        pickupHours: "10:00 AM - 8:00 PM",
+        store: store ? { storeId: store.storeId, storeName: store.storeName, phone: store.phone, address: store.address } : null,
+      };
     });
   }
 }

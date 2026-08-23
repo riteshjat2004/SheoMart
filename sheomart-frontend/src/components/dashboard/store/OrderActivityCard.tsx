@@ -11,14 +11,14 @@ const getOrderValue = (order: StoreOrder, key: string): string | undefined => {
 };
 
 export function OrderActivityCard({ order }: { order: StoreOrder }) {
-  const status = order.orderStatus ?? order.status ?? "ORDER_PLACED";
+  const status = (order as StoreOrder & { pickupStatus?: string }).pickupStatus ?? order.orderStatus ?? order.status ?? "ORDER_PLACED";
   const events: ActivityEvent[] = [
     { label: "Order placed.", timestamp: order.createdAt },
   ];
-  if (["PREPARING", "READY_FOR_PICKUP", "PICKED_UP"].includes(status)) events.unshift({ label: "Seller started preparing.", timestamp: getOrderValue(order, "preparingAt") });
-  if (["READY_FOR_PICKUP", "PICKED_UP"].includes(status)) events.unshift({ label: "Ready for pickup.", timestamp: getOrderValue(order, "readyForPickupAt") });
+  if (["PREPARING", "READY_FOR_PICKUP", "PICKED_UP"].includes(status)) events.unshift({ label: "Seller started preparing.", timestamp: status === "PREPARING" ? getOrderValue(order, "statusUpdatedAt") ?? getOrderValue(order, "preparingAt") ?? order.createdAt : getOrderValue(order, "preparingAt") ?? order.createdAt });
+  if (["READY_FOR_PICKUP", "PICKED_UP"].includes(status)) events.unshift({ label: "Ready for pickup.", timestamp: status === "READY_FOR_PICKUP" ? getOrderValue(order, "statusUpdatedAt") ?? getOrderValue(order, "readyForPickupAt") ?? order.createdAt : getOrderValue(order, "readyForPickupAt") ?? order.createdAt });
   if (order.paymentStatus === "PAID") events.unshift({ label: "Payment collected.", timestamp: getOrderValue(order, "paidAt") ?? getOrderValue(order, "pickedUpAt") });
-  if (status === "PICKED_UP") events.unshift({ label: "Picked up.", timestamp: getOrderValue(order, "pickedUpAt") });
+  if (status === "PICKED_UP") events.unshift({ label: "Picked up.", timestamp: getOrderValue(order, "statusUpdatedAt") ?? getOrderValue(order, "pickedUpAt") ?? order.createdAt });
   if (status === "CANCELLED") events.unshift({ label: "Order cancelled.", timestamp: getOrderValue(order, "cancelledAt") ?? getOrderValue(order, "updatedAt") });
 
   return (

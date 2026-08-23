@@ -4,6 +4,8 @@ interface OrderStatusTimelineProps {
   pickupStatus?: string;
   status?: string;
   statusUpdatedAt?: string;
+  paymentStatus?: string;
+  createdAt?: string;
 }
 
 const steps = [
@@ -23,7 +25,7 @@ const getCurrentStep = (status?: string): number => {
   return stepsByStatus[status ?? ""] ?? 0;
 };
 
-export function OrderStatusTimeline({ pickupStatus, status, statusUpdatedAt }: OrderStatusTimelineProps) {
+export function OrderStatusTimeline({ pickupStatus, status, statusUpdatedAt, paymentStatus, createdAt }: OrderStatusTimelineProps) {
   const currentStatus = pickupStatus ?? status;
   const isCancelled = currentStatus === "CANCELLED";
   const currentStep = getCurrentStep(currentStatus);
@@ -64,12 +66,18 @@ export function OrderStatusTimeline({ pickupStatus, status, statusUpdatedAt }: O
       <div className="mt-2 border-t border-stone-200 pt-4 dark:border-stone-700">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500 dark:text-stone-400">Activity</p>
         <div className="mt-3 space-y-2">
+          {paymentStatus === "PAID" ? (
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <span className="font-medium text-emerald-700 dark:text-emerald-300">Payment received</span>
+              {statusUpdatedAt ? <time className="shrink-0 text-xs text-stone-500 dark:text-stone-400" dateTime={statusUpdatedAt}>{new Date(statusUpdatedAt).toLocaleString()}</time> : null}
+            </div>
+          ) : null}
           {[...activityLabels].reverse().map((label, index) => (
             <div key={label} className="flex items-center justify-between gap-3 text-sm">
               <span className={`font-medium ${label === "Cancelled" ? "text-red-700 dark:text-red-300" : "text-stone-700 dark:text-stone-200"}`}>{label}</span>
-              {index === 0 && statusUpdatedAt ? (
-                <time className="shrink-0 text-xs text-stone-500 dark:text-stone-400" dateTime={statusUpdatedAt}>
-                  {new Date(statusUpdatedAt).toLocaleString()}
+              {index === 0 && (statusUpdatedAt || createdAt) ? (
+                <time className="shrink-0 text-xs text-stone-500 dark:text-stone-400" dateTime={statusUpdatedAt ?? createdAt}>
+                  {new Date(statusUpdatedAt ?? createdAt!).toLocaleString()}
                 </time>
               ) : null}
             </div>

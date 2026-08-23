@@ -185,19 +185,28 @@ export class CartService {
       throw new AppError("Cart item not found", 404);
     }
 
-    const product = await Product.findOne({ productId: cartItem.productId });
+    const product = await Product.findOne({ productId: cartItem.productId, isActive: true });
 
     if (!product) {
       throw new AppError("Product not found", 404);
     }
 
     const inventory = await Inventory.findOne({ productId: cartItem.productId });
+    if (data.quantity === 0) {
+      await cartItem.deleteOne();
+      return {
+        cartItem: null,
+        cart: await this.getCartForUser(userId),
+      };
+    }
+
     const availability = this.buildAvailability(product, inventory, data.quantity);
 
     if (!availability.isAvailable) {
       return {
         cartItem: null,
         availability,
+        cart: await this.getCartForUser(userId),
       };
     }
 
@@ -207,6 +216,7 @@ export class CartService {
     return {
       cartItem,
       availability,
+      cart: await this.getCartForUser(userId),
     };
   }
 
@@ -218,7 +228,10 @@ export class CartService {
     }
 
     await cartItem.deleteOne();
-    return cartItem;
+    return {
+      cartItem,
+      cart: await this.getCartForUser(userId),
+    };
   }
 
   static async clearCart(userId: string) {

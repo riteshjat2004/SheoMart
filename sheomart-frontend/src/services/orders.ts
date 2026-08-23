@@ -17,6 +17,9 @@ export interface OrderRecord {
   pickupStatus?: string;
   statusUpdatedAt?: string;
   paymentStatus?: string;
+  paymentMethod?: string;
+  amountPaid?: number;
+  remainingAmount?: number;
   subtotal?: number;
   discount?: number;
   deliveryCharge?: number;
@@ -24,6 +27,11 @@ export interface OrderRecord {
   grandTotal?: number;
   createdAt?: string;
   shippingAddress?: Record<string, unknown>;
+  storeName?: string;
+  storePhone?: string;
+  pickupAddress?: string;
+  pickupHours?: string;
+  store?: { storeName?: string; phone?: string; address?: string } | null;
   orderItems?: OrderItemSummary[];
 }
 

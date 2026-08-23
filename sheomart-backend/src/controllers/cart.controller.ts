@@ -48,10 +48,10 @@ export const updateCartItem = async (
     throw new AppError(message, 400);
   }
 
-  const cartItem = await CartService.updateCartItem(cartItemId, req.user?.userId as string, result.data);
+  const resultData = await CartService.updateCartItem(cartItemId, req.user?.userId as string, result.data);
 
   res.status(200).json(
-    new ApiResponse(true, "Cart item updated successfully", { cartItem })
+    new ApiResponse(true, "Cart item updated successfully", resultData)
   );
 };
 
@@ -60,10 +60,10 @@ export const removeCartItem = async (
   res: Response
 ): Promise<void> => {
   const cartItemId = Array.isArray(req.params.cartItemId) ? req.params.cartItemId[0] : req.params.cartItemId;
-  const cartItem = await CartService.removeCartItem(cartItemId, req.user?.userId as string);
+  const resultData = await CartService.removeCartItem(cartItemId, req.user?.userId as string);
 
   res.status(200).json(
-    new ApiResponse(true, "Cart item removed successfully", { cartItem })
+    new ApiResponse(true, "Cart item removed successfully", resultData)
   );
 };
 

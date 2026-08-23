@@ -100,11 +100,11 @@ export default function CartPage() {
                           <div className="flex flex-wrap items-center gap-3 text-sm text-stone-600 dark:text-stone-300">
                             <p>Quantity:</p>
                             <div className="flex items-center gap-2">
-                              <Button type="button" variant="outline" size="sm" onClick={() => handleQuantityChange(item.cartItemId, Math.max(1, item.quantity - 1))} disabled={!item.isAvailable || item.quantity <= 1}>
+                              <Button type="button" variant="outline" size="sm" onClick={() => { if (item.quantity === 1) { if (window.confirm("Remove item?")) handleRemoveItem(item.cartItemId); return; } handleQuantityChange(item.cartItemId, item.quantity - 1); }} disabled={updateCartItem.isPending || removeCartItem.isPending || !item.isAvailable}>
                                 −
                               </Button>
                               <span className="min-w-[1.5rem] text-center">{item.quantity}</span>
-                              <Button type="button" variant="outline" size="sm" onClick={() => handleQuantityChange(item.cartItemId, item.quantity + 1)} disabled={!item.isAvailable || item.quantity >= (item.maxAvailableQuantity ?? item.quantity)}>
+                              <Button type="button" variant="outline" size="sm" onClick={() => handleQuantityChange(item.cartItemId, item.quantity + 1)} disabled={updateCartItem.isPending || removeCartItem.isPending || !item.isAvailable || item.quantity >= (item.maxAvailableQuantity ?? item.quantity)}>
                                 +
                               </Button>
                             </div>

@@ -56,6 +56,7 @@ export interface IShippingAddress {
 
 export interface IOrder extends Document {
   orderId: string;
+  invoiceNumber?: string;
   userId: string;
   storeId: string;
   addressId: string;
@@ -65,6 +66,8 @@ export interface IOrder extends Document {
   deliveryMethod: string;
   paymentMethod: string;
   paymentStatus: string;
+  amountPaid?: number;
+  remainingAmount?: number;
   pickupStatus: string;
 
   razorpayOrderId?: string;
@@ -154,6 +157,11 @@ const orderSchema = new Schema<IOrder>(
       unique: true,
       immutable: true,
     },
+    invoiceNumber: {
+      type: String,
+      sparse: true,
+      unique: true,
+    },
     userId: {
       type: String,
       required: true,
@@ -193,6 +201,8 @@ const orderSchema = new Schema<IOrder>(
       required: true,
       default: "pending",
     },
+    amountPaid: { type: Number, min: 0, default: 0 },
+    remainingAmount: { type: Number, min: 0, default: 0 },
     pickupStatus: {
       type: String,
       required: true,
