@@ -136,23 +136,14 @@ export class StoreService {
   }
 
   static async getAllStores(location?: { pincode?: string; city?: string; state?: string }) {
-    const stores = await Store.find({ status: STORE_STATUS.APPROVED }).sort({ createdAt: -1 }).lean();
-    const normalized = {
-      pincode: location?.pincode?.trim().toLowerCase(),
-      city: location?.city?.trim().toLowerCase(),
-      state: location?.state?.trim().toLowerCase(),
-    };
+    const stores = await Store.find({ status: STORE_STATUS.APPROVED })
+      .sort({ createdAt: -1 })
+      .lean();
+    const pincode = location?.pincode?.trim().toLowerCase();
 
-    if (!normalized.pincode && !normalized.city && !normalized.state) return stores.slice(0, 6);
+    if (!pincode) return stores;
 
-    const rank = (store: (typeof stores)[number]) => {
-      if (normalized.pincode && store.pincode?.trim().toLowerCase() === normalized.pincode) return 0;
-      if (normalized.city && store.city?.trim().toLowerCase() === normalized.city) return 1;
-      if (normalized.state && store.state?.trim().toLowerCase() === normalized.state) return 3;
-      return 4;
-    };
-
-    return stores.filter((store) => rank(store) < 4).sort((first, second) => rank(first) - rank(second)).slice(0, 6);
+    return stores.filter((store) => store.pincode?.trim().toLowerCase() === pincode);
   }
 
   static async getAdminStores() {

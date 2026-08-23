@@ -34,12 +34,12 @@ export default function Home() {
   const isCustomer = useAuthStore((state) => state.user?.role === "customer");
   const addressesQuery = useAddresses(isCustomer);
   const defaultAddress = addressesQuery.data?.find((address) => address.isDefault) ?? addressesQuery.data?.[0];
-  const storesQuery = useStores(isCustomer ? (defaultAddress ? { pincode: defaultAddress.pincode, city: defaultAddress.city, state: defaultAddress.state } : { pincode: "__no_saved_address__" }) : undefined);
+  const storesQuery = useStores(isCustomer && defaultAddress ? { pincode: defaultAddress.pincode } : undefined);
 
   const categories = Array.isArray(categoriesQuery.data) ? categoriesQuery.data : [];
   const products = Array.isArray(productsQuery.data) ? productsQuery.data : [];
   const stores = Array.isArray(storesQuery.data) ? storesQuery.data : [];
-  const nearbyStores = stores.slice(0, 6);
+  const nearbyStores = stores.slice(0, 8);
   const featuredCategories = categories.slice(0, 4);
   const featuredProducts = products.slice(0, 8);
 
@@ -133,10 +133,20 @@ export default function Home() {
                 </div>
               </div>
             ) : nearbyStores.length ? (
-              <div className="grid gap-4 md:grid-cols-3">
-                {nearbyStores.map((store) => (
-                  <StoreCard key={store.storeId ?? store.storeName ?? store.name ?? "store"} store={store} />
-                ))}
+              <div className="space-y-5">
+                <div className="grid gap-4 md:grid-cols-3">
+                  {nearbyStores.map((store) => (
+                    <StoreCard key={store.storeId ?? store.storeName ?? store.name ?? "store"} store={store} />
+                  ))}
+                </div>
+                <div className="flex justify-center">
+                  <Button asChild variant="outline">
+                    <Link href="/stores">
+                      View All Stores
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="space-y-4"><EmptyState title="No nearby stores found in your area." description="Try exploring all approved stores to find another seller." /><div className="flex justify-center"><Button asChild variant="outline"><Link href="/explore">Explore all stores</Link></Button></div></div>

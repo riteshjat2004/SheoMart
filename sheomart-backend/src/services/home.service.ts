@@ -16,7 +16,8 @@ export interface HeroShowcaseItem {
 
 export class HomeService {
   static async getTrendingProducts() {
-    return Product.find({ isActive: true, isPublished: true }).sort({ createdAt: -1 });
+    const products = await Product.find({ isActive: true, isPublished: true }).sort({ createdAt: -1 });
+    return products.slice(0, 8);
   }
 
   static async getHeroCarousel(): Promise<HeroShowcaseItem[]> {
