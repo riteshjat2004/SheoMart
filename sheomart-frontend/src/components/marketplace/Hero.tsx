@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SearchBar } from "@/components/marketplace/SearchBar";
+import { HeroCarousel } from "@/components/home/HeroCarousel";
 
 export function Hero() {
   return (
@@ -28,22 +28,8 @@ export function Hero() {
             </Button>
           </div>
         </div>
-        <div className="rounded-[1.75rem] border border-white/70 bg-white/80 p-4 shadow-lg backdrop-blur dark:border-stone-800 dark:bg-zinc-900/80">
-          <div className="rounded-[1.35rem] bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.18),_transparent_55%)] p-5">
-            <p className="text-sm font-semibold uppercase tracking-[0.28em] text-stone-500 dark:text-stone-400">Search essentials</p>
-            <div className="mt-4">
-              <SearchBar />
-            </div>
-            <div className="mt-5 flex flex-col gap-3 rounded-[1.25rem] border border-stone-200 bg-stone-50 px-4 py-3 shadow-sm dark:border-stone-800 dark:bg-stone-950/70 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm font-semibold text-stone-800 dark:text-stone-100">Today’s top pick</p>
-                <p className="text-sm text-stone-500 dark:text-stone-400">Free delivery above ₹499</p>
-              </div>
-              <Button variant="ghost" size="sm" className="gap-1 self-start sm:self-auto">
-                View <ArrowRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+        <div className="relative rounded-[1.75rem] border border-emerald-200/70 bg-zinc-950 p-1 shadow-[0_0_34px_-12px_rgba(16,185,129,0.9)] dark:border-emerald-900/80">
+          <HeroCarousel />
         </div>
       </div>
     </section>

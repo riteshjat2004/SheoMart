@@ -30,6 +30,8 @@ export interface UpdateMyStorePayload {
   city?: string;
   state?: string;
   pincode?: string;
+  pickupOpeningTime?: string;
+  pickupClosingTime?: string;
 }
 
 function normalizeStore(store: Record<string, unknown>): StoreItem {
@@ -48,12 +50,21 @@ function normalizeStore(store: Record<string, unknown>): StoreItem {
     city: typeof store.city === "string" ? store.city : typeof store.address === "string" ? store.address : undefined,
     address: typeof store.address === "string" ? store.address : typeof store.city === "string" ? store.city : undefined,
     rating: typeof store.rating === "number" ? store.rating : undefined,
+    totalReviews: typeof store.totalReviews === "number" ? store.totalReviews : undefined,
+    pickupOpeningTime: typeof store.pickupOpeningTime === "string" ? store.pickupOpeningTime : "10:00",
+    pickupClosingTime: typeof store.pickupClosingTime === "string" ? store.pickupClosingTime : "20:00",
     status: typeof store.status === "string" ? store.status : undefined,
   };
 }
 
-export async function fetchStores() {
-  const response = await api.get<ApiResponse<GetStoresResponse>>("/api/v1/stores");
+export interface StoreLocation {
+  pincode?: string;
+  city?: string;
+  state?: string;
+}
+
+export async function fetchStores(location?: StoreLocation) {
+  const response = await api.get<ApiResponse<GetStoresResponse>>("/api/v1/stores", { params: location });
   const stores = Array.isArray(response.data.data?.stores) ? response.data.data.stores : [];
 
   return stores.map((store) => normalizeStore(store as Record<string, unknown>));

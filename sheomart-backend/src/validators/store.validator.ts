@@ -9,6 +9,8 @@ export const allowedStoreUpdateFields = [
   "city",
   "state",
   "pincode",
+  "pickupOpeningTime",
+  "pickupClosingTime",
 ] as const;
 
 export const protectedStoreUpdateFields = [
@@ -53,6 +55,8 @@ export const updateStoreSchema = z
     city: z.string().trim().max(100).optional(),
     state: z.string().trim().max(100).optional(),
     pincode: z.string().trim().max(10).optional(),
+    pickupOpeningTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+    pickupClosingTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
   })
   .strict();
 

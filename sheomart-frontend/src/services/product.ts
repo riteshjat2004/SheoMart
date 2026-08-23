@@ -11,8 +11,8 @@ export async function fetchProducts() {
   return response.data.data?.products ?? [];
 }
 
-export async function fetchProductById(productId: string) {
-  const response = await api.get<ApiResponse<{ product: ProductItem }>>(`/api/v1/products/${productId}`);
+export async function fetchProductById(productId: string, storeId?: string) {
+  const response = await api.get<ApiResponse<{ product: ProductItem }>>(`/api/v1/products/${productId}`, { params: storeId ? { storeId } : undefined });
   return response.data.data?.product ?? null;
 }
 

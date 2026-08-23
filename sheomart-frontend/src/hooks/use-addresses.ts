@@ -4,13 +4,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { addAddress, fetchAddresses, removeAddress } from "@/services/addresses";
 import type { AddressItem, CreateAddressPayload } from "@/services/addresses";
 
-export function useAddresses() {
+export function useAddresses(enabled = true) {
   return useQuery<AddressItem[], Error>({
     queryKey: ["addresses"],
     queryFn: fetchAddresses,
     staleTime: 1000 * 60 * 2,
     retry: 1,
     refetchOnWindowFocus: false,
+    enabled,
   });
 }
 

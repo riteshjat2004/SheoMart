@@ -72,10 +72,14 @@ export const getStoreById = async (
 };
 
 export const getAllStores = async (
-  _req: AuthRequest,
+  req: AuthRequest,
   res: Response
 ): Promise<void> => {
-  const stores = await StoreService.getAllStores();
+  const stores = await StoreService.getAllStores({
+    pincode: typeof req.query.pincode === "string" ? req.query.pincode : undefined,
+    city: typeof req.query.city === "string" ? req.query.city : undefined,
+    state: typeof req.query.state === "string" ? req.query.state : undefined,
+  });
 
   res.status(200).json(
     new ApiResponse(true, "Stores fetched successfully", { stores })

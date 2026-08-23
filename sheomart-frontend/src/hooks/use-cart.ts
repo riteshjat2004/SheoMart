@@ -17,7 +17,7 @@ export function useCart() {
 
 export function useAddCartItem() {
   const queryClient = useQueryClient();
-  return useMutation<{ cartItem?: CartItem; cart: CartResponse }, Error, { productId: string; quantity?: number }, { previousCount?: number; previousCart?: CartResponse }>({
+  return useMutation<{ cartItem?: CartItem; cart: CartResponse }, Error, { productId: string; storeId?: string; quantity?: number }, { previousCount?: number; previousCart?: CartResponse }>({
     mutationFn: addCartItem,
     onMutate: async ({ quantity = 1 }) => {
       await queryClient.cancelQueries({ queryKey: ["cart-count"] });

@@ -118,6 +118,9 @@ export class CartService {
     if (!product) {
       throw new AppError("Product not found", 404);
     }
+    if (data.storeId && data.storeId !== product.storeId) {
+      throw new AppError("Product is not available from the selected store", 409);
+    }
 
     const existingCartItems = await CartItem.find({ userId }).select("productId").lean();
     if (existingCartItems.length) {
@@ -168,6 +171,7 @@ export class CartService {
     const cartItem = await CartItem.create({
       userId,
       productId: data.productId,
+      storeId: data.storeId ?? product.storeId,
       quantity,
     });
 

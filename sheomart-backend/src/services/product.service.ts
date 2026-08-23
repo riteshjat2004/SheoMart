@@ -222,8 +222,8 @@ export class ProductService {
     return this.enrichProductsWithInventory(products);
   }
 
-  static async getProductById(productId: string) {
-    const product = await Product.findOne({ productId, isActive: true, isPublished: true });
+  static async getProductById(productId: string, storeId?: string) {
+    const product = await Product.findOne({ productId, ...(storeId ? { storeId } : {}), isActive: true, isPublished: true });
 
     if (!product) {
       throw new AppError("Product not found", 404);

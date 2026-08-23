@@ -1,19 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { LogOut, Moon, ShoppingCart, Sparkles, Sun, UserCircle2 } from "lucide-react";
+import { LogOut, Menu, Moon, ShoppingCart, Sparkles, Sun, UserCircle2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/layout/container";
 import { useTheme } from "@/providers/theme-provider";
 import { useAuthStore } from "@/store/auth-store";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/hooks/use-cart";
+import { NavbarSearch } from "@/components/layout/NavbarSearch";
+import { useState } from "react";
 
 export function Navbar() {
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
   const { isAuthenticated, user, logout } = useAuthStore();
   const cartQuery = useCart();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -37,9 +40,13 @@ export function Navbar() {
           <Link href="/" className="transition hover:text-emerald-600">Home</Link>
           <Link href="/explore" className="transition hover:text-emerald-600">Explore</Link>
           <Link href="/about" className="transition hover:text-emerald-600">About</Link>
+          <NavbarSearch className="hidden w-[260px] lg:block" />
         </nav>
 
         <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"} className="md:hidden" onClick={() => setIsMobileMenuOpen((open) => !open)}>
+            {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
           {isAuthenticated && user?.role === "customer" ? (
             <Button asChild variant="ghost" size="sm" className="relative">
               <Link href="/cart" aria-label="Open shopping cart">
@@ -81,6 +88,7 @@ export function Navbar() {
           )}
         </div>
       </Container>
+      {isMobileMenuOpen ? <div className="border-t border-stone-200/70 px-4 py-3 md:hidden dark:border-stone-800"><NavbarSearch /></div> : null}
     </header>
   );
 }

@@ -22,6 +22,8 @@ export interface IStore extends Document {
   approvedBy: string | null;
   rating: number;
   totalReviews: number;
+  pickupOpeningTime: string;
+  pickupClosingTime: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -140,6 +142,16 @@ const storeSchema = new Schema<IStore>(
     totalReviews: {
       type: Number,
       default: 0,
+    },
+
+    pickupOpeningTime: {
+      type: String,
+      default: "10:00",
+    },
+
+    pickupClosingTime: {
+      type: String,
+      default: "20:00",
     },
   },
   {

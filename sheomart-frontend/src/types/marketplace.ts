@@ -38,6 +38,7 @@ export interface ProductItem {
 export interface CartItem {
   cartItemId: string;
   quantity: number;
+  storeId?: string;
   product: ProductItem;
   isAvailable?: boolean;
   availabilityMessage?: string;
@@ -61,6 +62,8 @@ export interface StoreItem {
   phone?: string;
   rating?: number;
   totalReviews?: number;
+  pickupOpeningTime?: string;
+  pickupClosingTime?: string;
   deliveryTime?: string;
   address?: string;
   city?: string;

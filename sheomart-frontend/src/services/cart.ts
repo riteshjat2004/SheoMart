@@ -1,6 +1,6 @@
 import api from "./api";
 import type { ApiResponse } from "@/types/api";
-import type { CartItem, ProductItem } from "@/types/marketplace";
+import type { CartItem } from "@/types/marketplace";
 
 export interface CartSummary {
   totalItems: number;
@@ -17,6 +17,7 @@ export interface CartResponse {
 
 export interface AddCartItemPayload {
   productId: string;
+  storeId?: string;
   quantity?: number;
 }
 
@@ -93,6 +94,6 @@ export async function removeCartItem(cartItemId: string) {
 }
 
 export async function clearCart() {
-  const response = await api.delete<ApiResponse<{}>>("/api/v1/cart");
+  const response = await api.delete<ApiResponse<object>>("/api/v1/cart");
   return response.data.data;
 }

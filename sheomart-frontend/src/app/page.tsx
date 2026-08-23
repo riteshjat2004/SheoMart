@@ -10,7 +10,7 @@ import { PageWrapper } from "@/components/layout/page-wrapper";
 import { Hero } from "@/components/marketplace/Hero";
 import { SearchBar } from "@/components/marketplace/SearchBar";
 import { CategoryCard } from "@/components/marketplace/CategoryCard";
-import { ProductCard } from "@/components/marketplace/ProductCard";
+import { TrendingProducts } from "@/components/home/TrendingProducts";
 import { StoreCard } from "@/components/marketplace/StoreCard";
 import { OfferCard } from "@/components/marketplace/OfferCard";
 import { SectionHeading } from "@/components/marketplace/SectionHeading";
@@ -20,23 +20,28 @@ import { CategorySkeleton } from "@/components/marketplace/skeletons/CategorySke
 import { ProductSkeleton } from "@/components/marketplace/skeletons/ProductSkeleton";
 import { StoreSkeleton } from "@/components/marketplace/skeletons/StoreSkeleton";
 import { useCategories } from "@/hooks/use-categories";
-import { useProducts } from "@/hooks/use-products";
+import { useTrendingProducts } from "@/hooks/use-home";
 import { useStores } from "@/hooks/use-stores";
+import { useAddresses } from "@/hooks/use-addresses";
+import { useAuthStore } from "@/store/auth-store";
 import { ArrowRight, CheckCircle2, Clock3, Leaf, ShieldCheck, Smartphone } from "lucide-react";
 
 export default function Home() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const categoriesQuery = useCategories();
-  const productsQuery = useProducts();
-  const storesQuery = useStores();
+  const productsQuery = useTrendingProducts();
+  const isCustomer = useAuthStore((state) => state.user?.role === "customer");
+  const addressesQuery = useAddresses(isCustomer);
+  const defaultAddress = addressesQuery.data?.find((address) => address.isDefault) ?? addressesQuery.data?.[0];
+  const storesQuery = useStores(isCustomer ? (defaultAddress ? { pincode: defaultAddress.pincode, city: defaultAddress.city, state: defaultAddress.state } : { pincode: "__no_saved_address__" }) : undefined);
 
   const categories = Array.isArray(categoriesQuery.data) ? categoriesQuery.data : [];
   const products = Array.isArray(productsQuery.data) ? productsQuery.data : [];
   const stores = Array.isArray(storesQuery.data) ? storesQuery.data : [];
+  const nearbyStores = stores.slice(0, 6);
   const featuredCategories = categories.slice(0, 4);
   const featuredProducts = products.slice(0, 8);
-  const nearbyStores = stores.slice(0, 3);
 
   const handleSearchSubmit = () => {
     const trimmedQuery = searchQuery.trim();
@@ -57,7 +62,7 @@ export default function Home() {
                 <h2 className="mt-2 text-lg font-semibold text-stone-900 sm:text-xl dark:text-stone-50">Search fresh groceries, pantry staples, and everyday essentials in seconds.</h2>
               </div>
               <div className="w-full lg:max-w-xl">
-                <SearchBar value={searchQuery} onChange={setSearchQuery} onSubmit={handleSearchSubmit} />
+                <SearchBar value={searchQuery} onChange={setSearchQuery} onSubmit={handleSearchSubmit} enableSuggestions />
               </div>
             </div>
           </div>
@@ -109,9 +114,7 @@ export default function Home() {
               </div>
             ) : featuredProducts.length ? (
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                {featuredProducts.map((product) => (
-                  <ProductCard key={product.productId ?? product.name} product={product} />
-                ))}
+                <TrendingProducts products={featuredProducts} />
               </div>
             ) : (
               <EmptyState title="No products available yet." description="Check back soon for fresh SheoMart arrivals." />
@@ -136,7 +139,7 @@ export default function Home() {
                 ))}
               </div>
             ) : (
-              <EmptyState title="No stores available yet." description="New stores will appear here once they are live." />
+              <div className="space-y-4"><EmptyState title="No nearby stores found in your area." description="Try exploring all approved stores to find another seller." /><div className="flex justify-center"><Button asChild variant="outline"><Link href="/explore">Explore all stores</Link></Button></div></div>
             )}
           </section>
 

@@ -5,6 +5,7 @@ export interface ICartItem extends Document {
   cartItemId: string;
   userId: string;
   productId: string;
+  storeId?: string;
   quantity: number;
   createdAt: Date;
   updatedAt: Date;
@@ -26,6 +27,10 @@ const cartSchema = new Schema<ICartItem>(
     productId: {
       type: String,
       required: true,
+      index: true,
+    },
+    storeId: {
+      type: String,
       index: true,
     },
     quantity: {

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/layout/container";
@@ -14,16 +14,17 @@ import { EmptyState } from "@/components/common/empty-state";
 import { useAuthStore } from "@/store/auth-store";
 import { useProduct } from "@/hooks/use-product";
 import { useProducts } from "@/hooks/use-products";
+import { useStore } from "@/hooks/use-store";
+import { useCategories } from "@/hooks/use-categories";
 import { useAddCartItem } from "@/hooks/use-cart";
 import { useAddWishlistItem, useWishlist } from "@/hooks/use-wishlist";
 import { addRecentlyViewedProduct } from "@/lib/recently-viewed";
 
-export default function ProductDetailPage() {
-  const params = useParams<{ productId: string }>();
+export function ProductDetailContent({ productId, storeId }: { productId?: string; storeId?: string }) {
   const router = useRouter();
-  const productId = params?.productId;
-  const productQuery = useProduct(productId);
+  const productQuery = useProduct(productId, storeId);
   const productsQuery = useProducts();
+  const categoriesQuery = useCategories();
   const wishlistQuery = useWishlist();
   const addCartItemMutation = useAddCartItem();
   const addWishlistItemMutation = useAddWishlistItem();
@@ -31,6 +32,8 @@ export default function ProductDetailPage() {
   const [message, setMessage] = useState<string | null>(null);
 
   const product = productQuery.data;
+  const selectedStoreId = storeId ?? product?.storeId;
+  const storeQuery = useStore(selectedStoreId ?? undefined);
   const products = Array.isArray(productsQuery.data) ? productsQuery.data : [];
   const wishlist = Array.isArray(wishlistQuery.data) ? wishlistQuery.data : [];
   const isInWishlist = wishlist.some((item) => item.product.productId === product?.productId);
@@ -41,19 +44,8 @@ export default function ProductDetailPage() {
     }
   }, [product]);
 
-  const relatedProducts = useMemo(
-    () =>
-      product
-        ? products.filter(
-            (item) =>
-              item.productId !== product.productId &&
-              item.categoryId === product.categoryId &&
-              item.isPublished &&
-              item.isActive
-          )
-        : [],
-    [product, products]
-  );
+  const relatedProducts = useMemo(() => product ? products.filter((item) => item.productId !== product.productId && item.isPublished && item.isActive).sort((first, second) => Number(second.categoryId === product.categoryId) - Number(first.categoryId === product.categoryId) || Number(second.storeId === selectedStoreId) - Number(first.storeId === selectedStoreId)).slice(0, 4) : [], [product, products, selectedStoreId]);
+  const categoryName = categoriesQuery.data?.find((category) => category.categoryId === product?.categoryId)?.name ?? product?.category ?? "Category unavailable";
 
   const handleAddToCart = () => {
     if (!product?.productId) {
@@ -67,7 +59,7 @@ export default function ProductDetailPage() {
 
     setMessage(null);
     addCartItemMutation.mutate(
-      { productId: product.productId, quantity: 1 },
+      { productId: product.productId, storeId: selectedStoreId ?? undefined, quantity: 1 },
       {
         onSuccess: () => {
           setMessage("Added to cart.");
@@ -234,9 +226,11 @@ export default function ProductDetailPage() {
               <aside className="space-y-6">
                 <div className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm dark:border-stone-800 dark:bg-stone-900">
                   <h3 className="text-sm font-semibold uppercase tracking-[0.28em] text-emerald-600">Product details</h3>
+                  {storeQuery.data ? <div className="mt-4 overflow-hidden rounded-2xl border border-stone-200 dark:border-stone-800"><div className="h-24 bg-stone-100 dark:bg-stone-800">{storeQuery.data.banner ? <img src={storeQuery.data.banner} alt="" className="h-full w-full object-cover" /> : null}</div><div className="flex items-center gap-3 p-3"><div className="h-12 w-12 overflow-hidden rounded-full border-2 border-white bg-emerald-100 dark:border-stone-900">{storeQuery.data.logo ? <img src={storeQuery.data.logo} alt="" className="h-full w-full object-cover" /> : null}</div><p className="font-semibold text-stone-900 dark:text-stone-50">{storeQuery.data.storeName ?? storeQuery.data.name}</p></div></div> : null}
                   <div className="mt-4 space-y-3 text-sm leading-6 text-stone-600 dark:text-stone-300">
-                    <p><span className="font-semibold text-stone-900 dark:text-stone-50">Category:</span> {product.categoryId}</p>
-                    <p><span className="font-semibold text-stone-900 dark:text-stone-50">Store:</span> {product.storeId}</p>
+                    <p><span className="font-semibold text-stone-900 dark:text-stone-50">Category:</span> {categoryName}</p>
+                    <p><span className="font-semibold text-stone-900 dark:text-stone-50">Store:</span> {storeQuery.data?.storeName ?? storeQuery.data?.name ?? "Store unavailable"}</p>
+                    {storeQuery.data ? <><p><span className="font-semibold text-stone-900 dark:text-stone-50">Store logo:</span> {storeQuery.data.logo ? "Available" : "Not available"}</p><p><span className="font-semibold text-stone-900 dark:text-stone-50">Store banner:</span> {storeQuery.data.banner ? "Available" : "Not available"}</p><p><span className="font-semibold text-stone-900 dark:text-stone-50">Store rating:</span> {storeQuery.data.rating?.toFixed(1) ?? "New"} ({storeQuery.data.totalReviews ?? 0} reviews)</p><p><span className="font-semibold text-stone-900 dark:text-stone-50">Address:</span> {[storeQuery.data.address, storeQuery.data.city, storeQuery.data.state, storeQuery.data.pincode].filter(Boolean).join(", ") || "N/A"}</p><p><span className="font-semibold text-stone-900 dark:text-stone-50">Phone:</span> {storeQuery.data.phone ?? "N/A"}</p><p><span className="font-semibold text-stone-900 dark:text-stone-50">Pickup hours:</span> {storeQuery.data.pickupOpeningTime ?? "10:00"} - {storeQuery.data.pickupClosingTime ?? "20:00"}</p></> : null}
                     <p><span className="font-semibold text-stone-900 dark:text-stone-50">Published:</span> {product.isPublished ? "Yes" : "No"}</p>
                     <p><span className="font-semibold text-stone-900 dark:text-stone-50">Status:</span> {product.isActive ? "Active" : "Inactive"}</p>
                     <p><span className="font-semibold text-stone-900 dark:text-stone-50">Last updated:</span> {product.updatedAt ? new Date(product.updatedAt).toLocaleDateString() : "Unknown"}</p>
@@ -251,4 +245,10 @@ export default function ProductDetailPage() {
       </Section>
     </PageWrapper>
   );
+}
+
+export default function ProductDetailPage() {
+  const params = useParams<{ productId: string }>();
+  const searchParams = useSearchParams();
+  return <ProductDetailContent productId={params?.productId} storeId={searchParams.get("storeId") ?? undefined} />;
 }

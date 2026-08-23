@@ -52,7 +52,8 @@ export const getProductById = async (
   res: Response
 ): Promise<void> => {
   const productId = Array.isArray(req.params.productId) ? req.params.productId[0] : req.params.productId;
-  const product = await ProductService.getProductById(productId);
+  const storeId = typeof req.query.storeId === "string" ? req.query.storeId : undefined;
+  const product = await ProductService.getProductById(productId, storeId);
 
   res.status(200).json(
     new ApiResponse(true, "Product fetched successfully", { product })
