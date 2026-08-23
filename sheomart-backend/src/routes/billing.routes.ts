@@ -6,6 +6,7 @@ import {
   completePickupPayment,
   createOfflineInvoice,
   getInvoiceById,
+  getStoreCustomer,
   listInvoices,
   listPickupOrders,
   listStoreCustomers,
@@ -64,6 +65,13 @@ router.get(
   authenticate,
   authorize(USER_ROLES.STORE_OWNER),
   asyncHandler(listStoreCustomers)
+);
+
+router.get(
+  "/customers/:customerId",
+  authenticate,
+  authorize(USER_ROLES.STORE_OWNER, USER_ROLES.CUSTOMER),
+  asyncHandler(getStoreCustomer)
 );
 
 router.patch(

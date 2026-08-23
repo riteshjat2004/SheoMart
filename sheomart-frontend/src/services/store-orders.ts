@@ -13,7 +13,7 @@ export async function fetchStoreOrders(filters: StoreOrderFilters): Promise<Stor
   return { orders: data?.orders ?? [], pagination: data && "pagination" in data ? data.pagination : undefined };
 }
 
-export async function updateOrderStatus(orderId: string, status: string): Promise<StoreOrder | null> {
+export async function updateOrderStatus(orderId: string, status: "PREPARING" | "READY_FOR_PICKUP" | "PICKED_UP" | "CANCELLED"): Promise<StoreOrder | null> {
   const response = await api.patch<ApiResponse<{ order?: StoreOrder }>>(`/api/v1/orders/${orderId}/status`, { status });
   return response.data.data?.order ?? null;
 }
@@ -23,9 +23,9 @@ export async function fetchStoreOrder(orderId: string): Promise<StoreOrder | nul
   return response.data.data?.order ?? null;
 }
 
-export type PickupPaymentMethod = "CASH" | "UPI" | "CREDIT";
+export type PickupPaymentMethod = "CASH" | "UPI" | "CARD";
 
 export async function collectPickupPayment(orderId: string, paymentMethod: PickupPaymentMethod): Promise<StoreOrder | null> {
-  const response = await api.patch<ApiResponse<{ order?: StoreOrder }>>(`/api/v1/billing/pickup-orders/${encodeURIComponent(orderId)}/pay`, { paymentMethod });
+  const response = await api.patch<ApiResponse<{ order?: StoreOrder }>>(`/api/v1/orders/${encodeURIComponent(orderId)}/payment`, { paymentMethod });
   return response.data.data?.order ?? null;
 }

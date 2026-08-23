@@ -1,7 +1,9 @@
 import { Check, CircleCheck, Clock3, PackageCheck, Store, X } from "lucide-react";
 
 interface OrderStatusTimelineProps {
+  pickupStatus?: string;
   status?: string;
+  statusUpdatedAt?: string;
 }
 
 const steps = [
@@ -11,26 +13,30 @@ const steps = [
   { label: "Picked Up", icon: PackageCheck },
 ];
 
-const normalizeStatus = (status?: string): string => (status ?? "pending").toLowerCase().replace(/[_-]+/g, " ");
-
 const getCurrentStep = (status?: string): number => {
-  const normalized = normalizeStatus(status);
-  if (normalized.includes("picked") || normalized.includes("completed")) return 3;
-  if (normalized.includes("ready")) return 2;
-  if (normalized.includes("prepar") || normalized.includes("confirm")) return 1;
-  return 0;
+  const stepsByStatus: Record<string, number> = {
+    ORDER_PLACED: 0,
+    PREPARING: 1,
+    READY_FOR_PICKUP: 2,
+    PICKED_UP: 3,
+  };
+  return stepsByStatus[status ?? ""] ?? 0;
 };
 
-export function OrderStatusTimeline({ status }: OrderStatusTimelineProps) {
-  const normalizedStatus = normalizeStatus(status);
-  const isCancelled = normalizedStatus.includes("cancel");
-  const currentStep = getCurrentStep(status);
+export function OrderStatusTimeline({ pickupStatus, status, statusUpdatedAt }: OrderStatusTimelineProps) {
+  const currentStatus = pickupStatus ?? status;
+  const isCancelled = currentStatus === "CANCELLED";
+  const currentStep = getCurrentStep(currentStatus);
+  const activityLabels = steps.slice(0, currentStep + 1).map((step) => step.label);
+  if (isCancelled) {
+    activityLabels.push("Cancelled");
+  }
 
   return (
     <div aria-label="Order status timeline" className="space-y-0">
       {steps.map((step, index) => {
         const Icon = step.icon;
-        const isCompleted = !isCancelled && index < currentStep;
+        const isCompleted = !isCancelled && index <= currentStep;
         const isCurrent = !isCancelled && index === currentStep;
         return (
           <div key={step.label} className="relative flex gap-3 pb-5 last:pb-0">
@@ -55,6 +61,21 @@ export function OrderStatusTimeline({ status }: OrderStatusTimelineProps) {
           <span className="pt-0.5 text-sm font-semibold text-red-700 dark:text-red-300">Cancelled <span className="ml-2 text-xs font-medium">Current</span></span>
         </div>
       ) : null}
+      <div className="mt-2 border-t border-stone-200 pt-4 dark:border-stone-700">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500 dark:text-stone-400">Activity</p>
+        <div className="mt-3 space-y-2">
+          {[...activityLabels].reverse().map((label, index) => (
+            <div key={label} className="flex items-center justify-between gap-3 text-sm">
+              <span className={`font-medium ${label === "Cancelled" ? "text-red-700 dark:text-red-300" : "text-stone-700 dark:text-stone-200"}`}>{label}</span>
+              {index === 0 && statusUpdatedAt ? (
+                <time className="shrink-0 text-xs text-stone-500 dark:text-stone-400" dateTime={statusUpdatedAt}>
+                  {new Date(statusUpdatedAt).toLocaleString()}
+                </time>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

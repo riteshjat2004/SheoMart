@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { useQueryClient } from "@tanstack/react-query";
 import { Container } from "@/components/layout/container";
 import { PageWrapper } from "@/components/layout/page-wrapper";
 import { Section } from "@/components/layout/section";
@@ -10,17 +11,20 @@ import { ErrorState } from "@/components/common/error-state";
 import { EmptyState } from "@/components/common/empty-state";
 import { OrderStatusTimeline } from "@/components/profile/OrderStatusTimeline";
 import { useOrders } from "@/hooks/use-orders";
-import { Clock3, MapPin, Store } from "lucide-react";
+import type { OrderRecord } from "@/services/orders";
+import { Clock3, MapPin, RefreshCw, Store } from "lucide-react";
 
 const normalizeStatus = (status?: string): string => (status ?? "pending").toLowerCase().replace(/[_-]+/g, " ");
 
 const getOrderStatusLabel = (status?: string): string => {
-  const normalized = normalizeStatus(status);
-  if (normalized.includes("cancel")) return "Cancelled";
-  if (normalized.includes("picked") || normalized.includes("completed")) return "Picked Up";
-  if (normalized.includes("ready")) return "Ready for Pickup";
-  if (normalized.includes("prepar") || normalized.includes("confirm")) return "Preparing";
-  return "Order Placed";
+  const labels: Record<string, string> = {
+    ORDER_PLACED: "Order Placed",
+    PREPARING: "Preparing",
+    READY_FOR_PICKUP: "Ready for Pickup",
+    PICKED_UP: "Picked Up",
+    CANCELLED: "Cancelled",
+  };
+  return labels[status ?? ""] ?? "Order Placed";
 };
 
 const getStatusClasses = (status: string): string => {
@@ -38,9 +42,12 @@ const getPaymentStatusLabel = (status?: string): string => {
   return "Pending (Pay at Shop)";
 };
 
+type LiveOrder = OrderRecord & { storeName?: string };
+
 export default function OrdersPage() {
+  const queryClient = useQueryClient();
   const ordersQuery = useOrders();
-  const orders = Array.isArray(ordersQuery.data) ? ordersQuery.data : [];
+  const orders = (Array.isArray(ordersQuery.data) ? ordersQuery.data : []) as LiveOrder[];
 
   return (
     <PageWrapper>
@@ -50,9 +57,7 @@ export default function OrdersPage() {
             <div>
               <SectionHeading eyebrow="Orders" title="Your recent orders" description="Review active and completed purchases from the marketplace." />
             </div>
-            <Button asChild variant="outline" className="h-fit">
-              <Link href="/explore">Continue shopping</Link>
-            </Button>
+            <div className="flex flex-wrap gap-2"><Button type="button" variant="outline" className="h-fit" onClick={() => void queryClient.invalidateQueries({ queryKey: ["customer-orders"] })}><RefreshCw className="mr-2 h-4 w-4" />Refresh orders</Button><Button asChild variant="outline" className="h-fit"><Link href="/explore">Continue shopping</Link></Button></div>
           </div>
 
           {ordersQuery.isLoading ? (
@@ -64,11 +69,11 @@ export default function OrdersPage() {
           ) : orders.length ? (
             <div className="space-y-4">
               {orders.map((order) => {
-                const orderStatus = getOrderStatusLabel(order.status);
+                const orderStatus = getOrderStatusLabel(order.pickupStatus);
                 const paymentStatus = getPaymentStatusLabel(order.paymentStatus);
                 const isReadyForPickup = orderStatus === "Ready for Pickup";
                 return (
-                  <Link href={`/orders/${encodeURIComponent(order.orderId ?? "pending")}`} key={order.orderId} className="block rounded-[1.5rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
+                    <Link href={`/orders/${encodeURIComponent(order.orderId ?? "pending")}`} key={order.orderId} className="block rounded-[1.5rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
                   <article className={`rounded-[1.5rem] border bg-white p-5 shadow-sm dark:bg-stone-900 ${isReadyForPickup ? "border-emerald-400 bg-emerald-50/40 dark:border-emerald-700 dark:bg-emerald-950/20" : "border-stone-200 dark:border-stone-800"}`}>
                     {isReadyForPickup ? <div className="mb-5 rounded-[1.25rem] border border-emerald-200 bg-emerald-100 px-4 py-3 text-sm font-semibold text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">Your order is ready for pickup.</div> : null}
 
@@ -94,7 +99,7 @@ export default function OrdersPage() {
                           <Store className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
                           <div>
                             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500 dark:text-stone-400">Store Name</p>
-                            <p className="mt-1 font-semibold text-stone-900 dark:text-stone-50">SheoMart Store</p>
+                            <p className="mt-1 font-semibold text-stone-900 dark:text-stone-50">{order.storeName ?? "SheoMart Store"}</p>
                           </div>
                         </div>
 
@@ -122,7 +127,7 @@ export default function OrdersPage() {
 
                       <div className="rounded-[1.25rem] border border-stone-200 bg-stone-50 p-4 dark:border-stone-800 dark:bg-stone-950/60">
                         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-600">Order timeline</p>
-                        <div className="mt-4"><OrderStatusTimeline status={order.status} /></div>
+                        <div className="mt-4"><OrderStatusTimeline pickupStatus={order.pickupStatus} statusUpdatedAt={order.statusUpdatedAt} /></div>
                       </div>
                     </div>
                   </article>

@@ -20,6 +20,11 @@ export interface AddCartItemPayload {
   quantity?: number;
 }
 
+export interface AddCartItemResponse {
+  cartItem?: CartItem;
+  cart: CartResponse;
+}
+
 function extractCartItem(payload: unknown): CartItem | undefined {
   if (!payload || typeof payload !== "object") {
     return undefined;
@@ -65,8 +70,11 @@ export async function fetchCart() {
 }
 
 export async function addCartItem(payload: AddCartItemPayload) {
-  const response = await api.post<ApiResponse<{ cartItem: unknown }>>("/api/v1/cart", payload);
-  return extractCartItem(response.data.data?.cartItem);
+  const response = await api.post<ApiResponse<{ cartItem: unknown; cart: CartResponse }>>("/api/v1/cart", payload);
+  return {
+    cartItem: extractCartItem(response.data.data?.cartItem),
+    cart: response.data.data?.cart,
+  } as AddCartItemResponse;
 }
 
 export async function updateCartItem(cartItemId: string, payload: { quantity: number }) {

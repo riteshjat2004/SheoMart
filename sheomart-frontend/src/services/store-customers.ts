@@ -13,6 +13,7 @@ export interface StoreCustomerPurchase {
 
 export interface StoreCustomerDetails {
   customer?: StoreCustomerListResponse["customers"][number];
+  isPlusCustomer?: boolean;
   totalOrders?: number;
   totalPurchases?: number;
   totalOfflinePurchases?: number;
@@ -34,11 +35,14 @@ export async function fetchStoreCustomers(filters: StoreCustomerFilters): Promis
   };
 }
 
-export async function updatePlusCustomer(customerId: string, isPlusCustomer: boolean): Promise<void> {
-  await api.patch(`/api/v1/billing/customers/${customerId}/plus`, { isPlusCustomer });
+export async function updatePlusCustomer(customerId: string, isPlusCustomer: boolean): Promise<StoreCustomerListResponse["customers"][number]> {
+  const response = await api.patch<ApiResponse<{ customer: StoreCustomerListResponse["customers"][number] }>>(`/api/v1/billing/customers/${customerId}/plus`, { isPlusCustomer });
+  return response.data.data?.customer ?? { customerId, isPlusCustomer };
 }
 
-export async function fetchStoreCustomer(customerId: string): Promise<StoreCustomerDetails | null> {
-  const response = await api.get<ApiResponse<StoreCustomerDetails>>(`/api/v1/billing/customers/${encodeURIComponent(customerId)}`);
+export async function fetchStoreCustomer(customerId: string, storeId?: string): Promise<StoreCustomerDetails | null> {
+  const response = await api.get<ApiResponse<StoreCustomerDetails>>(`/api/v1/billing/customers/${encodeURIComponent(customerId)}`, {
+    params: storeId ? { storeId } : undefined,
+  });
   return response.data.data ?? null;
 }

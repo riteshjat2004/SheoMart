@@ -113,10 +113,21 @@ export class CartService {
   }
 
   static async addCartItem(userId: string, data: AddCartItemInput) {
-    const product = await Product.findOne({ productId: data.productId });
+    const product = await Product.findOne({ productId: data.productId, isActive: true });
 
     if (!product) {
       throw new AppError("Product not found", 404);
+    }
+
+    const existingCartItems = await CartItem.find({ userId }).select("productId").lean();
+    if (existingCartItems.length) {
+      const cartProducts = await Product.find({
+        productId: { $in: existingCartItems.map((item) => item.productId) },
+      }).select("productId storeId").lean();
+      const storeIds = new Set(cartProducts.map((cartProduct) => cartProduct.storeId));
+      if (storeIds.size > 0 && !storeIds.has(product.storeId)) {
+        throw new AppError("Cart can contain products from only one store", 409);
+      }
     }
 
     const inventory = await Inventory.findOne({ productId: data.productId });
@@ -127,6 +138,7 @@ export class CartService {
       return {
         cartItem: null,
         availability,
+        cart: await this.getCartForUser(userId),
       };
     }
 
@@ -140,6 +152,7 @@ export class CartService {
         return {
           cartItem: null,
           availability: updatedAvailability,
+          cart: await this.getCartForUser(userId),
         };
       }
 
@@ -148,6 +161,7 @@ export class CartService {
       return {
         cartItem: existingCartItem,
         availability: updatedAvailability,
+        cart: await this.getCartForUser(userId),
       };
     }
 
@@ -160,6 +174,7 @@ export class CartService {
     return {
       cartItem,
       availability,
+      cart: await this.getCartForUser(userId),
     };
   }
 

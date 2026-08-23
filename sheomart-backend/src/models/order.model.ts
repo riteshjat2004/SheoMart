@@ -57,12 +57,15 @@ export interface IShippingAddress {
 export interface IOrder extends Document {
   orderId: string;
   userId: string;
+  storeId: string;
   addressId: string;
   shippingAddress: IShippingAddress;
   deliveryDate: string;
   deliverySlot: string;
+  deliveryMethod: string;
   paymentMethod: string;
   paymentStatus: string;
+  pickupStatus: string;
 
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
@@ -76,6 +79,7 @@ export interface IOrder extends Document {
   grandTotal: number;
   orderItems: IOrderItem[];
   status: string;
+  statusUpdatedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -155,6 +159,11 @@ const orderSchema = new Schema<IOrder>(
       required: true,
       index: true,
     },
+    storeId: {
+      type: String,
+      required: true,
+      index: true,
+    },
     addressId: {
       type: String,
       required: true,
@@ -171,6 +180,10 @@ const orderSchema = new Schema<IOrder>(
       type: String,
       required: true,
     },
+    deliveryMethod: {
+      type: String,
+      required: true,
+    },
     paymentMethod: {
       type: String,
       required: true,
@@ -179,6 +192,11 @@ const orderSchema = new Schema<IOrder>(
       type: String,
       required: true,
       default: "pending",
+    },
+    pickupStatus: {
+      type: String,
+      required: true,
+      default: "ORDER_PLACED",
     },
     razorpayOrderId: {
       type: String,
@@ -233,6 +251,10 @@ const orderSchema = new Schema<IOrder>(
       type: String,
       default: ORDER_STATUS.DRAFT,
       enum: Object.values(ORDER_STATUS),
+    },
+    statusUpdatedAt: {
+      type: Date,
+      default: null,
     },
   },
   {

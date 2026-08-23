@@ -6,10 +6,10 @@ import type { OrderRecord } from "@/services/orders";
 
 export function useOrders() {
   return useQuery<OrderRecord[], Error>({
-    queryKey: ["orders"],
+    queryKey: ["customer-orders"],
     queryFn: fetchOrders,
-    staleTime: 1000 * 60 * 2,
+    staleTime: 1000 * 30,
     retry: 1,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
   });
 }

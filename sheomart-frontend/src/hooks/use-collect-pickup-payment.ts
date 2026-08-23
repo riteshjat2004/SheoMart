@@ -18,6 +18,9 @@ export function useCollectPickupPayment(options?: {
     mutationFn: ({ orderId, paymentMethod }: CollectPickupPaymentVariables) => collectPickupPayment(orderId, paymentMethod),
     onSuccess: (data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ["store-orders"] });
+      void queryClient.invalidateQueries({ queryKey: ["store-order", variables.orderId] });
+      void queryClient.invalidateQueries({ queryKey: ["customer-orders"] });
+      void queryClient.invalidateQueries({ queryKey: ["order-details"] });
       options?.onSuccess?.(data, variables);
     },
     onError: options?.onError,

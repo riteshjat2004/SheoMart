@@ -28,10 +28,10 @@ export const addCartItem = async (
     throw new AppError(message, 400);
   }
 
-  const cartItem = await CartService.addCartItem(req.user?.userId as string, result.data);
+  const resultData = await CartService.addCartItem(req.user?.userId as string, result.data);
 
   res.status(201).json(
-    new ApiResponse(true, "Product added to cart successfully", { cartItem })
+    new ApiResponse(true, "Product added to cart successfully", resultData)
   );
 };
 

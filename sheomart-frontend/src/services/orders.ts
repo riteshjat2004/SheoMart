@@ -14,6 +14,8 @@ export interface OrderItemSummary {
 export interface OrderRecord {
   orderId?: string;
   status?: string;
+  pickupStatus?: string;
+  statusUpdatedAt?: string;
   paymentStatus?: string;
   subtotal?: number;
   discount?: number;
@@ -38,6 +40,8 @@ export async function createDraftOrder(payload: {
   addressId: string;
   deliveryDate: string;
   deliverySlot: string;
+  storeId: string;
+  deliveryMethod: "pickup" | "delivery";
   paymentMethod: "cod" | "online";
 }) {
   const response = await api.post<ApiResponse<{ order: OrderRecord }>>("/api/v1/orders", payload);

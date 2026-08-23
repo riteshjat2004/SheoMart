@@ -1,17 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { LogOut, Moon, Sparkles, Sun, UserCircle2 } from "lucide-react";
+import { LogOut, Moon, ShoppingCart, Sparkles, Sun, UserCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/layout/container";
 import { useTheme } from "@/providers/theme-provider";
 import { useAuthStore } from "@/store/auth-store";
 import { useRouter } from "next/navigation";
+import { useCart } from "@/hooks/use-cart";
 
 export function Navbar() {
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
   const { isAuthenticated, user, logout } = useAuthStore();
+  const cartQuery = useCart();
 
   const handleLogout = () => {
     logout();
@@ -38,6 +40,19 @@ export function Navbar() {
         </nav>
 
         <div className="flex items-center gap-2">
+          {isAuthenticated && user?.role === "customer" ? (
+            <Button asChild variant="ghost" size="sm" className="relative">
+              <Link href="/cart" aria-label="Open shopping cart">
+                <ShoppingCart className="mr-2 h-4 w-4" />
+                Cart
+                {(cartQuery.data?.summary.totalItems ?? 0) > 0 ? (
+                  <span className="ml-1 inline-flex min-w-5 items-center justify-center rounded-full bg-emerald-600 px-1.5 text-xs font-semibold text-white">
+                    {cartQuery.data?.summary.totalItems}
+                  </span>
+                ) : null}
+              </Link>
+            </Button>
+          ) : null}
           <Button variant="ghost" size="icon" aria-label="Toggle theme" onClick={toggleTheme}>
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>

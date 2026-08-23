@@ -5,7 +5,7 @@ import { updateOrderStatus } from "@/services/store-orders";
 
 interface UpdateOrderStatusVariables {
   orderId: string;
-  status: string;
+  status: "PREPARING" | "READY_FOR_PICKUP" | "PICKED_UP" | "CANCELLED";
 }
 
 export function useUpdateOrderStatus(options?: {
@@ -18,6 +18,9 @@ export function useUpdateOrderStatus(options?: {
     mutationFn: async ({ orderId, status }: UpdateOrderStatusVariables) => updateOrderStatus(orderId, status),
     onSuccess: async (data, variables) => {
       await queryClient.invalidateQueries({ queryKey: ["store-orders"] });
+      await queryClient.invalidateQueries({ queryKey: ["store-order", variables.orderId] });
+      await queryClient.invalidateQueries({ queryKey: ["customer-orders"] });
+      await queryClient.invalidateQueries({ queryKey: ["order-details"] });
       options?.onSuccess?.(data, variables);
     },
     onError: (error, variables) => {

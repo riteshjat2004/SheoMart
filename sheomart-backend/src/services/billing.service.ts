@@ -27,6 +27,17 @@ export interface BillingInvoiceListFilters {
   paymentMethod?: string;
   from?: string;
   to?: string;
+  orderStatus?: string;
+}
+
+export interface BillingOrderListFilters {
+  page: number;
+  limit: number;
+  search?: string;
+  orderStatus?: string;
+  paymentStatus?: string;
+  from?: string;
+  to?: string;
 }
 
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
@@ -422,8 +433,64 @@ export const cancelInvoice = async (): Promise<never> => {
   throw new AppError("TODO: cancelInvoice is not implemented yet", 501);
 };
 
-export const listPickupOrders = async (): Promise<never> => {
-  throw new AppError("TODO: listPickupOrders is not implemented yet", 501);
+export const listPickupOrders = async (ownerId: string, filters: BillingOrderListFilters) => {
+  const store = await getStoreForOwner(ownerId);
+  const query: Record<string, unknown> = {
+    storeId: store.storeId,
+    status: { $ne: "DRAFT" },
+  };
+
+  if (filters.orderStatus) {
+    query.pickupStatus = filters.orderStatus;
+  }
+  if (filters.paymentStatus) {
+    query.paymentStatus = filters.paymentStatus;
+  }
+  if (filters.from || filters.to) {
+    query.createdAt = {
+      ...(filters.from ? { $gte: parseDateBoundary(filters.from, false) } : {}),
+      ...(filters.to ? { $lte: parseDateBoundary(filters.to, true) } : {}),
+    };
+  }
+
+  if (filters.search) {
+    const search = new RegExp(escapeRegex(filters.search), "i");
+    const customers = await User.find({
+      $or: [{ name: search }, { mobile: search }, { email: search }],
+    })
+      .select("userId")
+      .lean();
+    query.$or = [
+      { orderId: search },
+      { userId: { $in: customers.map((customer) => customer.userId) } },
+    ];
+  }
+
+  const skip = (filters.page - 1) * filters.limit;
+  const [orders, total] = await Promise.all([
+    Order.find(query).sort({ createdAt: -1 }).skip(skip).limit(filters.limit).lean(),
+    Order.countDocuments(query),
+  ]);
+
+  const customerIds = [...new Set(orders.map((order) => order.userId))];
+  const customers = await User.find({ userId: { $in: customerIds } })
+    .select("userId name mobile email")
+    .lean();
+  const customerMap = new Map(customers.map((customer) => [customer.userId, customer]));
+
+  return {
+    orders: orders.map((order) => ({
+      ...order,
+      orderStatus: order.pickupStatus,
+      customer: customerMap.get(order.userId) ?? null,
+    })),
+    pagination: {
+      page: filters.page,
+      limit: filters.limit,
+      total,
+      totalPages: Math.ceil(total / filters.limit),
+    },
+  };
 };
 
 export const completePickupPayment = async (
@@ -483,10 +550,109 @@ export const completePickupPayment = async (
   return updatedOrder;
 };
 
-export const listStoreCustomers = async (): Promise<never> => {
-  throw new AppError("TODO: listStoreCustomers is not implemented yet", 501);
+export const listStoreCustomers = async (
+  ownerId: string,
+  filters: BillingInvoiceListFilters & { isPlusCustomer?: boolean }
+) => {
+  const store = await getStoreForOwner(ownerId);
+  const query: Record<string, unknown> = { storeId: store.storeId };
+
+  if (filters.isPlusCustomer !== undefined) {
+    query.isPlusCustomer = filters.isPlusCustomer;
+  }
+
+  const search = filters.search
+    ? new RegExp(escapeRegex(filters.search), "i")
+    : undefined;
+  const customers = await StoreCustomer.find(query)
+    .sort({ lastPurchaseAt: -1, joinedAt: -1 })
+    .skip((filters.page - 1) * filters.limit)
+    .limit(filters.limit)
+    .lean();
+  const total = await StoreCustomer.countDocuments(query);
+
+  const customerIds = customers.map((customer) => customer.customerId);
+  const users = await User.find({
+    userId: { $in: customerIds },
+    ...(search ? { $or: [{ name: search }, { mobile: search }, { email: search }] } : {}),
+  })
+    .select("userId name email mobile")
+    .lean();
+  const userMap = new Map(users.map((user) => [user.userId, user]));
+  const filteredCustomers = search
+    ? customers.filter((customer) => userMap.has(customer.customerId))
+    : customers;
+
+  return {
+    customers: filteredCustomers.map((customer) => ({
+      ...customer,
+      ...(userMap.get(customer.customerId) ?? {}),
+    })),
+    pagination: {
+      page: filters.page,
+      limit: filters.limit,
+      total: search ? filteredCustomers.length : total,
+      totalPages: Math.ceil((search ? filteredCustomers.length : total) / filters.limit),
+    },
+  };
 };
 
-export const updatePlusCustomer = async (): Promise<never> => {
-  throw new AppError("TODO: updatePlusCustomer is not implemented yet", 501);
+export const getStoreCustomer = async (
+  ownerId: string,
+  customerId: string,
+  storeId?: string
+) => {
+  const ownerStore = await getStoreForOwner(ownerId);
+  const customer = await StoreCustomer.findOne({
+    storeId: storeId ?? ownerStore.storeId,
+    customerId,
+  }).lean();
+
+  if (!customer) {
+    throw new AppError("Store customer not found", 404);
+  }
+
+  return { customer, isPlusCustomer: customer.isPlusCustomer };
+};
+
+export const getStoreCustomerForUser = async (
+  customerId: string,
+  storeId: string
+) => {
+  const store = await Store.findOne({
+    storeId,
+    status: STORE_STATUS.APPROVED,
+  })
+    .select("storeId")
+    .lean();
+
+  if (!store) {
+    throw new AppError("Store not found", 404);
+  }
+
+  const customer = await StoreCustomer.findOne({ storeId, customerId }).lean();
+  if (!customer) {
+    throw new AppError("Store customer not found", 404);
+  }
+
+  return { customer, isPlusCustomer: customer.isPlusCustomer };
+};
+
+export const updatePlusCustomer = async (
+  ownerId: string,
+  customerId: string,
+  isPlusCustomer: boolean
+) => {
+  const store = await getStoreForOwner(ownerId);
+  const customer = await StoreCustomer.findOneAndUpdate(
+    { storeId: store.storeId, customerId },
+    { $set: { isPlusCustomer } },
+    { new: true, runValidators: true }
+  ).lean();
+
+  if (!customer) {
+    throw new AppError("Store customer not found", 404);
+  }
+
+  return customer;
 };

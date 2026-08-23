@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { Search } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Check, Search } from "lucide-react";
 import { useState } from "react";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
 import { EmptyState } from "@/components/dashboard/EmptyState";
@@ -46,7 +46,7 @@ const paymentClasses: Record<string, string> = {
 };
 
 const formatDate = (value?: string) => (value ? new Date(value).toLocaleDateString() : "-");
-const getStatus = (order: StoreOrder) => order.orderStatus ?? order.status ?? "ORDER_PLACED";
+const getStatus = (order: StoreOrder) => (order as StoreOrder & { pickupStatus?: string }).pickupStatus ?? order.orderStatus ?? order.status ?? "ORDER_PLACED";
 const getCustomerName = (order: StoreOrder) => order.customerName ?? order.customer?.name ?? order.customer?.fullName ?? "Customer";
 const getCustomerPhone = (order: StoreOrder) => order.customerMobile ?? order.customerPhone ?? order.customer?.mobile ?? order.customer?.phone ?? "-";
 const isPickupOrder = (order: StoreOrder) => (!order.fulfillmentType && !order.deliveryMethod) || [order.fulfillmentType, order.deliveryMethod].some((value) => value?.toLowerCase().includes("pickup"));
@@ -73,6 +73,7 @@ function ColoredBadge({ value, label, classes }: { value: string; label: string;
 }
 
 export function StoreOrdersTable({ filters, onFiltersChange }: StoreOrdersTableProps) {
+  const router = useRouter();
   const ordersQuery = useStoreOrders(filters);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const updateOrderStatusMutation = useUpdateOrderStatus({
@@ -98,7 +99,8 @@ export function StoreOrdersTable({ filters, onFiltersChange }: StoreOrdersTableP
     const nextStatus = getNextOrderStatus(status);
     if (!nextStatus) return;
 
-    const confirmed = window.confirm(`Update order ${order.orderId} from ${statusLabels[status]} to ${statusLabels[nextStatus]}?`);
+    const messages: Record<string, string> = { PREPARING: "Start preparing this order?", READY_FOR_PICKUP: "Mark order ready for pickup?", PICKED_UP: "Confirm customer picked up this order?" };
+    const confirmed = window.confirm(messages[nextStatus]);
     if (!confirmed) return;
 
     updateOrderStatusMutation.mutate({ orderId: order.orderId, status: nextStatus });
@@ -108,7 +110,7 @@ export function StoreOrdersTable({ filters, onFiltersChange }: StoreOrdersTableP
     const status = getStatus(order);
     if (!canCancelOrder(status)) return;
 
-    const confirmed = window.confirm(`Cancel order ${order.orderId}? This action cannot be undone.`);
+    const confirmed = window.confirm("Cancel this order?");
     if (!confirmed) return;
 
     updateOrderStatusMutation.mutate({ orderId: order.orderId, status: "CANCELLED" });
@@ -257,7 +259,7 @@ export function StoreOrdersTable({ filters, onFiltersChange }: StoreOrdersTableP
                                   ? "Start Preparing"
                                   : nextStatus === "READY_FOR_PICKUP"
                                     ? "Mark Ready for Pickup"
-                                    : "Mark Picked Up"}
+                                    : <><Check className="mr-1 h-4 w-4" />Order Picked Up</>}
                             </Button>
                           ) : status === "PICKED_UP" || status === "CANCELLED" ? (
                             <span className="text-xs text-stone-500">{status === "PICKED_UP" ? "Completed" : "Cancelled"}</span>
@@ -276,9 +278,7 @@ export function StoreOrdersTable({ filters, onFiltersChange }: StoreOrdersTableP
                             </Button>
                           ) : null}
 
-                          <Button asChild type="button" variant="outline" size="sm">
-                            <Link href={`/store/orders/${encodeURIComponent(order.orderId)}`}>View</Link>
-                          </Button>
+                          <Button type="button" variant="outline" size="sm" onClick={() => router.push(`/store/orders/${encodeURIComponent(order.orderId)}`)}>View</Button>
                         </div>
                       </td>
                     </tr>

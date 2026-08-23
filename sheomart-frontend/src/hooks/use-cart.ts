@@ -17,9 +17,41 @@ export function useCart() {
 
 export function useAddCartItem() {
   const queryClient = useQueryClient();
-  return useMutation<CartItem | undefined, Error, { productId: string; quantity?: number }>({
+  return useMutation<{ cartItem?: CartItem; cart: CartResponse }, Error, { productId: string; quantity?: number }, { previousCount?: number; previousCart?: CartResponse }>({
     mutationFn: addCartItem,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["cart"] }),
+    onMutate: async ({ quantity = 1 }) => {
+      await queryClient.cancelQueries({ queryKey: ["cart-count"] });
+      await queryClient.cancelQueries({ queryKey: ["cart"] });
+      const previousCount = queryClient.getQueryData<number>(["cart-count"]);
+      const previousCart = queryClient.getQueryData<CartResponse>(["cart"]);
+      if (previousCount !== undefined) {
+        queryClient.setQueryData(["cart-count"], previousCount + quantity);
+      }
+      if (previousCart) {
+        queryClient.setQueryData<CartResponse>(["cart"], {
+          ...previousCart,
+          summary: {
+            ...previousCart.summary,
+            totalItems: previousCart.summary.totalItems + quantity,
+          },
+        });
+      }
+      return { previousCount, previousCart };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previousCount !== undefined) {
+        queryClient.setQueryData(["cart-count"], context.previousCount);
+      }
+      if (context?.previousCart) {
+        queryClient.setQueryData(["cart"], context.previousCart);
+      }
+    },
+    onSuccess: (result) => {
+      queryClient.setQueryData(["cart"], result.cart);
+      queryClient.setQueryData(["cart-count"], result.cart.summary.totalItems);
+      void queryClient.invalidateQueries({ queryKey: ["cart"] });
+      void queryClient.invalidateQueries({ queryKey: ["cart-count"] });
+    },
   });
 }
 

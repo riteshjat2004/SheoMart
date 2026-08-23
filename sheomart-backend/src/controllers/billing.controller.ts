@@ -1,14 +1,20 @@
 import { type Response } from "express";
 
 import { AppError } from "../errors/AppError";
+import { USER_ROLES } from "../constants/roles";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { PAYMENT_METHOD } from "../types/billing";
-import type { BillingInvoiceListFilters } from "../services/billing.service";
+import type {
+  BillingInvoiceListFilters,
+  BillingOrderListFilters,
+} from "../services/billing.service";
 import {
   cancelInvoice as cancelInvoiceService,
   completePickupPayment as completePickupPaymentService,
   createOfflineInvoice as createOfflineInvoiceService,
   getInvoiceById as getInvoiceByIdService,
+  getStoreCustomer as getStoreCustomerService,
+  getStoreCustomerForUser as getStoreCustomerForUserService,
   listInvoices as listInvoicesService,
   listPickupOrders as listPickupOrdersService,
   listStoreCustomers as listStoreCustomersService,
@@ -134,13 +140,21 @@ export const cancelInvoice = async (req: AuthRequest, res: Response): Promise<vo
 };
 
 export const listPickupOrders = async (req: AuthRequest, res: Response): Promise<void> => {
-  const filters = listBillingQuerySchema.parse(req.query);
-
-  void filters;
-  await listPickupOrdersService();
-  res.status(501).json({
-    success: false,
-    message: "Billing service is not implemented yet.",
+  const parsed = listBillingQuerySchema.parse(req.query);
+  const filters: BillingOrderListFilters = {
+    page: parsed.page ?? 1,
+    limit: parsed.limit ?? 20,
+    search: parsed.search,
+    paymentStatus: parsed.paymentStatus,
+    orderStatus: getQueryString(req.query.orderStatus) ?? parsed.status,
+    from: getQueryString(req.query.from),
+    to: getQueryString(req.query.to),
+  };
+  const result = await listPickupOrdersService(req.user!.userId, filters);
+  res.status(200).json({
+    success: true,
+    message: "Orders fetched successfully",
+    data: result,
   });
 };
 
@@ -176,13 +190,43 @@ export const completePickupPayment = async (req: AuthRequest, res: Response): Pr
 
 export const listStoreCustomers = async (req: AuthRequest, res: Response): Promise<void> => {
   const filters = listBillingQuerySchema.parse(req.query);
-
-  void filters;
-  await listStoreCustomersService();
-  res.status(501).json({
-    success: false,
-    message: "Billing service is not implemented yet.",
+  const isPlusCustomer = getQueryString(req.query.isPlusCustomer);
+  const result = await listStoreCustomersService(req.user?.userId as string, {
+    ...filters,
+    page: filters.page ?? 1,
+    limit: filters.limit ?? 20,
+    isPlusCustomer: isPlusCustomer === undefined ? undefined : isPlusCustomer === "true",
   });
+  res.status(200).json({ success: true, message: "Store customers fetched successfully", data: result });
+};
+
+export const getStoreCustomer = async (req: AuthRequest, res: Response): Promise<void> => {
+  const customerId = Array.isArray(req.params.customerId)
+    ? req.params.customerId[0]
+    : req.params.customerId;
+  const paramsResult = customerIdParamSchema.safeParse({ customerId });
+  if (!paramsResult.success) {
+    throw new AppError(paramsResult.error.issues[0]?.message || "Invalid customer ID", 400);
+  }
+
+  const storeId = getQueryString(req.query.storeId);
+  if (req.user?.role === USER_ROLES.CUSTOMER) {
+    if (!storeId) {
+      throw new AppError("Store ID is required", 400);
+    }
+    if (paramsResult.data.customerId !== req.user.userId) {
+      throw new AppError("Access denied", 403);
+    }
+  }
+
+  const result = req.user?.role === USER_ROLES.CUSTOMER
+    ? await getStoreCustomerForUserService(req.user.userId, storeId as string)
+    : await getStoreCustomerService(
+        req.user?.userId as string,
+        paramsResult.data.customerId,
+        storeId
+      );
+  res.status(200).json({ success: true, message: "Store customer fetched successfully", data: result });
 };
 
 export const updatePlusCustomer = async (req: AuthRequest, res: Response): Promise<void> => {
@@ -207,11 +251,18 @@ export const updatePlusCustomer = async (req: AuthRequest, res: Response): Promi
     throw new AppError(message, 400);
   }
 
-  void paramsResult.data;
-  void bodyResult.data;
-  await updatePlusCustomerService();
-  res.status(501).json({
-    success: false,
-    message: "Billing service is not implemented yet.",
+  if (bodyResult.data.isPlusCustomer === undefined) {
+    throw new AppError("isPlusCustomer is required", 400);
+  }
+
+  const customer = await updatePlusCustomerService(
+    req.user?.userId as string,
+    paramsResult.data.customerId,
+    bodyResult.data.isPlusCustomer
+  );
+  res.status(200).json({
+    success: true,
+    message: "PLUS membership updated successfully",
+    data: { customer },
   });
 };

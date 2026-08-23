@@ -79,6 +79,7 @@ export interface InventoryLedgerData {
   storeId: string;
   productId: string;
   movementType: InventoryMovementType;
+  source?: "ONLINE_ORDER" | "ORDER_CANCELLED_RESTORE";
   referenceType: ReferenceType;
   referenceId: string;
   quantityChange: number;

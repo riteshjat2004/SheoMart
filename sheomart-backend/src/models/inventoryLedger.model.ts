@@ -27,6 +27,7 @@ const inventoryLedgerSchema = new Schema<IInventoryLedger>(
       enum: Object.values(INVENTORY_MOVEMENT_TYPE),
       index: true,
     },
+    source: { type: String, enum: ["ONLINE_ORDER", "ORDER_CANCELLED_RESTORE"] },
     referenceType: { type: String, required: true, enum: Object.values(REFERENCE_TYPE) },
     referenceId: { type: String, required: true },
     quantityChange: { type: Number, required: true },

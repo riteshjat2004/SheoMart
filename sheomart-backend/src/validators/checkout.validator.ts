@@ -15,6 +15,8 @@ export const createOrderSchema = z.object({
   addressId: z.string().trim().min(1, "Delivery address is required"),
   deliveryDate: z.string().trim().min(1, "Delivery date is required"),
   deliverySlot: z.enum(DELIVERY_SLOTS, "Select a valid delivery slot"),
+  storeId: z.string().trim().min(1, "Store is required"),
+  deliveryMethod: z.enum(["pickup", "delivery"], "Select a valid delivery method"),
   paymentMethod: z.enum(PAYMENT_METHODS, "Select a valid payment method"),
 });
 
