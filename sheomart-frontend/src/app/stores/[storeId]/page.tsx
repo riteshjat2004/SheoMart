@@ -1,8 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Crown, ShieldCheck } from "lucide-react";
+import { Boxes, Clock3, Crown, MapPin, MessageSquareText, PackageSearch, Phone, Search, ShieldCheck, SortAsc, Star } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/layout/container";
 import { PageWrapper } from "@/components/layout/page-wrapper";
@@ -11,18 +13,233 @@ import { SectionHeading } from "@/components/marketplace/SectionHeading";
 import { ProductCard } from "@/components/marketplace/ProductCard";
 import { ErrorState } from "@/components/common/error-state";
 import { EmptyState } from "@/components/common/empty-state";
+import { useCategories } from "@/hooks/use-categories";
 import { useStore } from "@/hooks/use-store";
 import { useProductsByStore } from "@/hooks/use-products-by-store";
-import { MapPin, Phone, Star } from "lucide-react";
+
+const CATEGORY_ORDER = [
+  "featured",
+  "vegetables",
+  "fruits",
+  "dairy",
+  "bakery",
+  "snacks",
+  "beverages",
+  "instant-foods",
+  "household",
+  "beauty-personal-care",
+  "uncategorized",
+];
+
+const normalizeCategorySlug = (value?: string) =>
+  (value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "uncategorized";
+
+type SortMode = "recommended" | "price-low" | "price-high" | "newest" | "biggest-discount" | "az";
+
+const DEFAULT_SORT: SortMode = "recommended";
+
+const sortProducts = (items: typeof products, mode: SortMode) => {
+  const nextItems = [...items];
+
+  switch (mode) {
+    case "price-low":
+      return nextItems.sort((first, second) => Number(first.price ?? 0) - Number(second.price ?? 0));
+    case "price-high":
+      return nextItems.sort((first, second) => Number(second.price ?? 0) - Number(first.price ?? 0));
+    case "newest":
+      return nextItems.sort((first, second) => Number(new Date(second.updatedAt ?? second.createdAt ?? 0).getTime()) - Number(new Date(first.updatedAt ?? first.createdAt ?? 0).getTime()));
+    case "biggest-discount":
+      return nextItems.sort((first, second) => (Number(second.discount ?? 0) || Number(second.discountPrice && second.price ? ((second.price - second.discountPrice) / second.price) * 100 : 0)) - (Number(first.discount ?? 0) || Number(first.discountPrice && first.price ? ((first.price - first.discountPrice) / first.price) * 100 : 0)));
+    case "az":
+      return nextItems.sort((first, second) => (first.name ?? "").localeCompare(second.name ?? ""));
+    case "recommended":
+    default:
+      return nextItems.sort((first, second) => {
+        const firstScore = Number(second.rating ?? 0) + Number(second.discount ?? 0) + Number(second.discountPrice && second.price ? ((second.price - second.discountPrice) / second.price) * 100 : 0) * 0.5;
+        const secondScore = Number(first.rating ?? 0) + Number(first.discount ?? 0) + Number(first.discountPrice && first.price ? ((first.price - first.discountPrice) / first.price) * 100 : 0) * 0.5;
+        return secondScore - firstScore;
+      });
+  }
+};
+
+function ProductSkeleton() {
+  return <div className="h-[330px] animate-pulse rounded-2xl border border-stone-200 bg-stone-100 dark:border-stone-800 dark:bg-stone-950" />;
+}
+
+function StoreEmptyState({ title, description, actionLabel, onAction }: { title: string; description: string; actionLabel: string; onAction: () => void }) {
+  return (
+    <div className="rounded-3xl border border-dashed border-stone-300 bg-white/70 p-8 text-center shadow-sm dark:border-stone-700 dark:bg-stone-950/70">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+        <PackageSearch className="h-6 w-6" />
+      </div>
+      <h3 className="mt-4 text-lg font-semibold text-stone-900 dark:text-stone-50">{title}</h3>
+      <p className="mx-auto mt-2 max-w-md text-sm text-stone-600 dark:text-stone-300">{description}</p>
+      <Button type="button" onClick={onAction} className="mt-5 rounded-full bg-emerald-500 text-white transition-colors duration-200 hover:bg-emerald-600 dark:bg-emerald-500 dark:hover:bg-emerald-400">
+        {actionLabel}
+      </Button>
+    </div>
+  );
+}
 
 export default function StoreDetailPage() {
   const params = useParams<{ storeId: string }>();
   const storeId = params?.storeId;
   const storeQuery = useStore(storeId);
   const productsQuery = useProductsByStore(storeId);
+  const categoriesQuery = useCategories();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [sortMode, setSortMode] = useState<SortMode>(DEFAULT_SORT);
+  const [highlightedCategory, setHighlightedCategory] = useState<string | null>(null);
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+  const categoryRefs = useRef<Record<string, HTMLElement | null>>({});
 
   const store = storeQuery.data;
-  const products = Array.isArray(productsQuery.data) ? productsQuery.data : [];
+  const products = useMemo(() => (Array.isArray(productsQuery.data) ? productsQuery.data : []), [productsQuery.data]);
+  const categories = useMemo(() => (Array.isArray(categoriesQuery.data) ? categoriesQuery.data : []), [categoriesQuery.data]);
+  const categoryMap = useMemo(
+    () => new Map(categories.map((category) => [category.categoryId ?? normalizeCategorySlug(category.name), category])),
+    [categories]
+  );
+
+  const filteredProducts = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+
+    return products.filter((product) => {
+      const matchesTerm =
+        !term ||
+        product.name.toLowerCase().includes(term) ||
+        (product.description ?? "").toLowerCase().includes(term) ||
+        (product.category ?? "").toLowerCase().includes(term);
+      const matchesCategory = !activeCategory || product.categoryId === activeCategory || normalizeCategorySlug(product.category ?? categoryMap.get(product.categoryId ?? "")?.name ?? "") === activeCategory;
+      return matchesTerm && matchesCategory;
+    });
+  }, [activeCategory, categoryMap, products, searchTerm]);
+
+  const sortedFilteredProducts = useMemo(() => sortProducts(filteredProducts, sortMode), [filteredProducts, sortMode]);
+
+  const categoryOptions = useMemo(
+    () =>
+      categories.filter((category) =>
+        products.some((product) => product.categoryId === category.categoryId || normalizeCategorySlug(product.category ?? categoryMap.get(product.categoryId ?? "")?.name ?? "") === normalizeCategorySlug(category.name))
+      ),
+    [categories, categoryMap, products]
+  );
+
+  const groupedProducts = useMemo(() => {
+    const productGroups = new Map<string, { id: string; name: string; products: typeof products }>();
+
+    products.forEach((product) => {
+      const resolvedCategoryName = categoryMap.get(product.categoryId ?? "")?.name ?? product.category ?? "Uncategorized";
+      const normalizedKey = normalizeCategorySlug(product.categoryId ?? resolvedCategoryName);
+      const resolvedKey = resolvedCategoryName.toLowerCase() === "featured" ? "featured" : normalizedKey;
+      const existingGroup = productGroups.get(resolvedKey) ?? {
+        id: resolvedKey,
+        name: resolvedCategoryName || "Uncategorized",
+        products: [],
+      };
+
+      existingGroup.products.push(product);
+      productGroups.set(resolvedKey, existingGroup);
+    });
+
+    const featuredProducts = products.filter((product) => product.discount || (typeof product.rating === "number" && product.rating >= 4.5));
+    if (featuredProducts.length) {
+      const featuredKey = "featured";
+      const featuredGroup = productGroups.get(featuredKey) ?? { id: featuredKey, name: "Featured", products: [] };
+      const seen = new Set(featuredGroup.products.map((product) => product.productId ?? product.name));
+      featuredProducts.forEach((product) => {
+        const key = product.productId ?? product.name;
+        if (!seen.has(key)) {
+          featuredGroup.products.push(product);
+          seen.add(key);
+        }
+      });
+      productGroups.set(featuredKey, featuredGroup);
+    }
+
+    const orderedGroups = [...CATEGORY_ORDER]
+      .map((categoryKey) => {
+        const match = [...productGroups.values()].find((group) => normalizeCategorySlug(group.name) === categoryKey || group.id === categoryKey);
+        return match ? { ...match, products: sortProducts(match.products, sortMode) } : null;
+      })
+      .filter((group): group is { id: string; name: string; products: typeof products } => Boolean(group));
+
+    const remainingGroups = [...productGroups.values()]
+      .filter((group) => !orderedGroups.some((orderedGroup) => orderedGroup.id === group.id))
+      .map((group) => ({ ...group, products: sortProducts(group.products, sortMode) }));
+
+    return [...orderedGroups, ...remainingGroups];
+  }, [categoryMap, products, sortMode]);
+
+  const activeCategoryLabel = activeCategory ? categories.find((category) => (category.categoryId ?? normalizeCategorySlug(category.name)) === activeCategory)?.name ?? activeCategory : "";
+
+  const activeFilters = [
+    searchTerm.trim() ? { key: "search", label: searchTerm.trim() } : null,
+    activeCategoryLabel ? { key: "category", label: activeCategoryLabel } : null,
+  ].filter(Boolean) as Array<{ key: string; label: string }>;
+
+  const hasSortChanged = sortMode !== DEFAULT_SORT;
+  const hasFilterChanged = Boolean(searchTerm.trim()) || Boolean(activeCategory) || hasSortChanged;
+
+  const displayedProducts = useMemo(() => {
+    if (searchTerm.trim()) {
+      return sortedFilteredProducts;
+    }
+
+    if (activeCategory) {
+      return groupedProducts.filter((group) => group.id === activeCategory).flatMap((group) => group.products);
+    }
+
+    return groupedProducts.flatMap((group) => group.products);
+  }, [activeCategory, groupedProducts, searchTerm, sortedFilteredProducts]);
+
+  const baseProductCount = searchTerm.trim() ? filteredProducts.length : activeCategory ? groupedProducts.filter((group) => group.id === activeCategory).flatMap((group) => group.products).length : products.length;
+
+  const featuredSections = useMemo(() => {
+    const hasRatings = products.some((product) => typeof product.rating === "number");
+    const bestSellers = [...products]
+      .sort((first, second) => (hasRatings ? Number(second.rating ?? 0) - Number(first.rating ?? 0) : 0))
+      .slice(0, 8);
+    const deals = products
+      .filter((product) => typeof product.discountPrice === "number")
+      .sort((first, second) => {
+        const firstDiscount = first.price ? ((first.price - (first.discountPrice ?? first.price)) / first.price) * 100 : 0;
+        const secondDiscount = second.price ? ((second.price - (second.discountPrice ?? second.price)) / second.price) * 100 : 0;
+        return secondDiscount - firstDiscount;
+      })
+      .slice(0, 8);
+    const newlyAdded = [...products]
+      .sort((first, second) => new Date(second.createdAt ?? 0).getTime() - new Date(first.createdAt ?? 0).getTime())
+      .slice(0, 8);
+
+    return [
+      { title: "Best Sellers", subtitle: "Most loved products from this store.", products: bestSellers },
+      { title: "Today's Deals", subtitle: "Save more on these products.", products: deals },
+      { title: "Newly Added", subtitle: "Freshly added to this store.", products: newlyAdded },
+    ];
+  }, [products]);
+
+  const focusCategory = (categoryId: string | null) => {
+    if (!categoryId) {
+      setActiveCategory(null);
+      return;
+    }
+
+    setActiveCategory(categoryId);
+    setHighlightedCategory(categoryId);
+
+    window.setTimeout(() => {
+      const node = categoryRefs.current[categoryId];
+      node?.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.setTimeout(() => setHighlightedCategory(null), 1200);
+    }, 50);
+  };
 
   return (
     <PageWrapper>
@@ -38,70 +255,399 @@ export default function StoreDetailPage() {
           </div>
 
           {storeQuery.isLoading || productsQuery.isLoading ? (
-            <div className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm dark:border-stone-800 dark:bg-stone-900">
-              <p className="text-sm text-stone-500">Loading store details …</p>
+            <div className="space-y-6" aria-label="Loading store">
+              <div className="h-60 animate-pulse rounded-[2rem] border border-stone-200 bg-stone-100 dark:border-stone-800 dark:bg-stone-900 sm:h-72 lg:h-80" />
+              <div className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm dark:border-stone-800 dark:bg-stone-900">
+                <div className="h-11 w-full animate-pulse rounded-full bg-stone-100 dark:bg-stone-950" />
+                <div className="mt-4 flex gap-2 overflow-hidden">
+                  {Array.from({ length: 6 }).map((_, index) => <div key={index} className="h-8 w-24 shrink-0 animate-pulse rounded-full bg-stone-100 dark:bg-stone-950" />)}
+                </div>
+                <div className="mt-8 grid grid-cols-2 gap-4 xl:grid-cols-4">
+                  {Array.from({ length: 8 }).map((_, index) => <ProductSkeleton key={index} />)}
+                </div>
+              </div>
             </div>
           ) : storeQuery.isError || productsQuery.isError ? (
             <ErrorState message={(storeQuery.error ?? productsQuery.error) instanceof Error ? (storeQuery.error ?? productsQuery.error)?.message ?? "Unable to load store details." : "Unable to load store details."} />
           ) : store ? (
-            <div className="grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
-              <div className="space-y-6">
-                <div className="overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900">
-                  <div className="h-48 bg-stone-100 sm:h-64 dark:bg-stone-800">{store.banner ? <img src={store.banner} alt={`${store.storeName ?? "Store"} banner`} className="h-full w-full object-cover" /> : null}</div>
-                  <div className="p-6 pt-0"><div className="-mt-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div className="flex items-end gap-4"><div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-emerald-100 text-2xl font-semibold text-emerald-700 dark:border-stone-900 dark:bg-emerald-950/60 dark:text-emerald-300">{store.logo ? <img src={store.logo} alt="" className="h-full w-full object-cover" /> : (store.storeName ?? "S").charAt(0)}</div><div><p className="text-sm font-semibold uppercase tracking-[0.28em] text-emerald-600">Store profile</p><h1 className="mt-2 text-3xl font-semibold text-stone-900 dark:text-stone-50">{store.storeName ?? store.name}</h1>{store.badges && store.badges.length ? <div className="mt-3 flex flex-wrap items-center gap-2">{store.badges.includes("verified") ? <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-300"><ShieldCheck className="h-3.5 w-3.5" />Verified Store</span> : null}{store.badges.includes("royal") ? <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-300"><Crown className="h-3.5 w-3.5" />SheoMart Royal</span> : null}</div> : null}</div></div><span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase text-emerald-700">{store.status ?? "Approved"}</span></div>
-                    <p className="mt-5 max-w-2xl text-sm leading-7 text-stone-600 dark:text-stone-300">{store.description ?? "Fresh products from this local seller, curated for your everyday needs."}</p>
-                    <div className="mt-5 flex flex-wrap gap-x-5 gap-y-3 text-sm text-stone-600 dark:text-stone-300"><span className="flex items-center gap-1.5"><Star className="h-4 w-4 fill-current text-amber-500" />{typeof store.rating === "number" ? store.rating.toFixed(1) : "New"} ({store.totalReviews ?? 0} reviews)</span><span className="flex items-center gap-1.5"><MapPin className="h-4 w-4 text-emerald-600" />{[store.address, store.city, store.state, store.pincode].filter(Boolean).join(", ") || "Address unavailable"}</span></div>
+            <div className="space-y-6">
+              <div className="overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900">
+                <div className="relative h-60 overflow-hidden bg-stone-100 sm:h-72 lg:h-80 dark:bg-stone-800">
+                  {store.banner ? (
+                    <Image src={store.banner} alt={`${store.storeName ?? "Store"} banner`} fill className="object-cover" />
+                  ) : (
+                    <div className="h-full w-full bg-gradient-to-br from-stone-200 via-stone-100 to-emerald-100 dark:from-stone-800 dark:via-stone-900 dark:to-emerald-950/40" />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-r from-stone-950/85 via-stone-900/45 to-stone-950/60" />
+
+                  <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6 lg:p-8">
+                    <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+                      <div className="flex items-end gap-4">
+                        <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-emerald-100 text-2xl font-semibold text-emerald-700 shadow-lg shadow-stone-950/20 dark:border-stone-900 dark:bg-emerald-950/60 dark:text-emerald-300">
+                          {store.logo ? (
+                            <Image src={store.logo} alt="Store logo" width={80} height={80} className="h-full w-full object-cover" />
+                          ) : (
+                            (store.storeName ?? "S").charAt(0)
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-emerald-300">Store profile</p>
+                          <h1 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">{store.storeName ?? store.name}</h1>
+                          {store.badges && store.badges.length ? (
+                            <div className="mt-3 flex flex-wrap items-center gap-2 text-white">
+                              {store.badges.includes("verified") ? (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/60 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-semibold text-emerald-100">
+                                  <ShieldCheck className="h-3.5 w-3.5" />
+                                  Verified Store
+                                </span>
+                              ) : null}
+                              {store.badges.includes("royal") ? (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/60 bg-amber-500/15 px-2.5 py-1 text-[11px] font-semibold text-amber-100">
+                                  <Crown className="h-3.5 w-3.5" />
+                                  SheoMart Royal
+                                </span>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <span className="inline-flex items-center rounded-full border border-emerald-400/50 bg-emerald-500/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-100">
+                        {store.status ?? "Approved"}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm dark:border-stone-800 dark:bg-stone-900">
+                <div className="space-y-5 p-5 sm:p-6">
+                  <p className="max-w-3xl text-sm leading-7 text-stone-600 dark:text-stone-300">
+                    {store.description ?? "Fresh products from this local seller, curated for your everyday needs."}
+                  </p>
+
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+                    {[
+                      {
+                        icon: Star,
+                        label: "Rating",
+                        value: typeof store.rating === "number" ? `${store.rating.toFixed(1)} / 5` : "New",
+                      },
+                      {
+                        icon: MessageSquareText,
+                        label: "Reviews",
+                        value: `${store.totalReviews ?? 0}`,
+                      },
+                      {
+                        icon: MapPin,
+                        label: "Address",
+                        value: [store.address, store.city, store.state, store.pincode].filter(Boolean).join(", ") || "Address unavailable",
+                      },
+                      {
+                        icon: Clock3,
+                        label: "Pickup Hours",
+                        value: `${store.pickupOpeningTime ?? "10:00"} - ${store.pickupClosingTime ?? "20:00"}`,
+                      },
+                      {
+                        icon: Phone,
+                        label: "Phone",
+                        value: store.phone ?? "N/A",
+                      },
+                      {
+                        icon: ShieldCheck,
+                        label: "Verified",
+                        value: store.isVerified ? "Verified" : "Pending",
+                      },
+                    ].map(({ icon: Icon, label, value }) => (
+                      <div key={label} className="flex items-start gap-3 rounded-2xl border border-stone-200 bg-stone-50 px-3 py-3 dark:border-stone-800 dark:bg-stone-950/50">
+                        <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-500 dark:text-stone-400">{label}</p>
+                          <p className="mt-1 break-words text-sm font-medium text-stone-700 dark:text-stone-200">{value}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    {[
+                      { label: "Products", value: String(products.length), icon: Boxes },
+                      { label: "Categories", value: String(new Set(products.map((product) => product.categoryId).filter(Boolean)).size || 0), icon: MapPin },
+                      { label: "Rating", value: typeof store.rating === "number" ? store.rating.toFixed(1) : "New", icon: Star },
+                      { label: "Pickup Hours", value: `${store.pickupOpeningTime ?? "10:00"} - ${store.pickupClosingTime ?? "20:00"}`, icon: Clock3 },
+                    ].map(({ label, value, icon: Icon }) => (
+                      <div key={label} className="rounded-2xl border border-stone-200 bg-stone-50 p-3 dark:border-stone-800 dark:bg-stone-950/50">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500 dark:text-stone-400">{label}</p>
+                          <Icon className="h-4 w-4 text-emerald-600" />
+                        </div>
+                        <p className="mt-3 text-xl font-semibold text-stone-900 dark:text-stone-50">{value}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <Button asChild className="flex-1 justify-center rounded-full bg-emerald-500 text-white hover:bg-emerald-600 dark:bg-emerald-500 dark:hover:bg-emerald-400">
+                      <Link href="/categories">Browse Categories</Link>
+                    </Button>
+                    <Button asChild variant="outline" className="flex-1 justify-center rounded-full border-stone-300 text-stone-700 hover:bg-stone-100 dark:border-stone-700 dark:text-stone-200 dark:hover:bg-stone-800">
+                      <Link href="/explore">Back to Search</Link>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm dark:border-stone-800 dark:bg-stone-900">
+                <div className="flex flex-col gap-4 pb-4">
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <p className="text-sm font-semibold uppercase tracking-[0.28em] text-emerald-600">Products</p>
                       <h2 className="mt-2 text-xl font-semibold text-stone-900 dark:text-stone-50">Available from this store</h2>
                     </div>
-                    <p className="text-sm text-stone-500 dark:text-stone-400">{products.length} items</p>
+                    <p className="text-sm text-stone-500 dark:text-stone-400">{filteredProducts.length} items</p>
                   </div>
-                  {products.length ? (
-                    <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                      {products.map((product) => (
-                        <ProductCard key={product.productId ?? product.name} product={product} />
-                      ))}
-                    </div>
-                  ) : (
-                    <EmptyState title="No products published yet" description="This store has no products available right now." />
-                  )}
-                </div>
-              </div>
 
-              <aside className="space-y-6">
-                <div className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm dark:border-stone-800 dark:bg-stone-900">
-                  <h3 className="text-sm font-semibold uppercase tracking-[0.28em] text-emerald-600">Store snapshot</h3>
-                  <div className="mt-4 space-y-3 text-sm leading-6 text-stone-600 dark:text-stone-300">
-                    <p><span className="font-semibold text-stone-900 dark:text-stone-50">Address:</span> {[store.address, store.city, store.state, store.pincode].filter(Boolean).join(", ") || "N/A"}</p>
-                    <p><span className="font-semibold text-stone-900 dark:text-stone-50">Pickup hours:</span> {store.pickupOpeningTime ?? "10:00"} - {store.pickupClosingTime ?? "20:00"}</p>
-                    <p className="flex items-center gap-2"><Phone className="h-4 w-4 text-emerald-600" /><span className="font-semibold text-stone-900 dark:text-stone-50">Phone:</span> {store.phone ?? "N/A"}</p>
-                    <p><span className="font-semibold text-stone-900 dark:text-stone-50">Verified:</span> {store.isVerified ? "Yes" : "No"}</p>
+                  <div className="sticky top-0 z-10 -mx-2 rounded-2xl border border-stone-200 bg-white/90 px-2 py-3 backdrop-blur-sm dark:border-stone-800 dark:bg-stone-900/90">
+                    <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                      <div className="flex min-w-0 flex-1 items-center gap-3 overflow-x-auto">
+                        <div className="flex min-w-[160px] items-center gap-2 rounded-full border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-600 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-200">
+                          <SortAsc className="h-4 w-4 text-emerald-600" />
+                          <span className="whitespace-nowrap">Showing {displayedProducts.length} of {baseProductCount} products</span>
+                        </div>
+
+                        {activeFilters.length ? (
+                          <div className="flex min-w-0 items-center gap-2 overflow-x-auto">
+                            {activeFilters.map((filter) => (
+                              <button
+                                key={filter.key}
+                                type="button"
+                                onClick={() => {
+                                  if (filter.key === "search") {
+                                    setSearchTerm("");
+                                  }
+                                  if (filter.key === "category") {
+                                    setActiveCategory(null);
+                                  }
+                                }}
+                                className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300"
+                              >
+                                {filter.label}
+                                <span aria-hidden="true">×</span>
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
+
+                        {hasFilterChanged ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSearchTerm("");
+                              setActiveCategory(null);
+                              setSortMode(DEFAULT_SORT);
+                            }}
+                            className="whitespace-nowrap text-xs font-semibold text-stone-500 transition hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200"
+                          >
+                            Reset filters
+                          </button>
+                        ) : null}
+                      </div>
+
+                      <div className="flex items-center gap-2 xl:justify-end">
+                        <select
+                          value={sortMode}
+                          onChange={(event) => setSortMode(event.target.value as SortMode)}
+                          className="h-11 min-w-[170px] rounded-full border border-stone-200 bg-stone-50 px-3 text-sm text-stone-700 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-200 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/20"
+                        >
+                          <option value="recommended">Recommended</option>
+                          <option value="price-low">Price: Low to High</option>
+                          <option value="price-high">Price: High to Low</option>
+                          <option value="newest">Newest</option>
+                          <option value="biggest-discount">Biggest Discount</option>
+                          <option value="az">A–Z</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="sticky top-0 z-10 -mx-2 rounded-2xl border border-stone-200 bg-white/90 px-2 py-3 backdrop-blur-sm dark:border-stone-800 dark:bg-stone-900/90">
+                    <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                      <label className="relative block w-full xl:max-w-md">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                        <input
+                          value={searchTerm}
+                          onChange={(event) => setSearchTerm(event.target.value)}
+                          placeholder="Search products in this store"
+                          className="h-11 w-full rounded-full border border-stone-200 bg-stone-50 pl-10 pr-4 text-sm text-stone-700 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-200 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/20"
+                        />
+                      </label>
+
+                      <div className="flex max-w-full flex-nowrap items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (activeCategory) {
+                              setActiveCategory(null);
+                            }
+                          }}
+                          className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                            !activeCategory ? "bg-emerald-500 text-white" : "border border-stone-200 bg-stone-50 text-stone-600 hover:bg-stone-100 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-300"
+                          }`}
+                        >
+                          All
+                        </button>
+                        {categoryOptions.map((category) => {
+                          const categoryKey = category.categoryId ?? normalizeCategorySlug(category.name);
+                          const isSelected = activeCategory === categoryKey;
+
+                          return (
+                            <button
+                              key={categoryKey}
+                              type="button"
+                              onClick={() => {
+                                if (isSelected) {
+                                  setActiveCategory(null);
+                                  return;
+                                }
+                                focusCategory(categoryKey);
+                              }}
+                              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                                isSelected ? "bg-emerald-500 text-white" : "border border-stone-200 bg-stone-50 text-stone-600 hover:bg-stone-100 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-300"
+                              }`}
+                            >
+                              {category.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm dark:border-stone-800 dark:bg-stone-900">
-                  <h3 className="text-sm font-semibold uppercase tracking-[0.28em] text-emerald-600">More actions</h3>
-                  <div className="mt-4 space-y-3">
-                    <Button asChild variant="outline" className="w-full">
-                      <Link href="/categories">Browse categories</Link>
-                    </Button>
-                    <Button asChild variant="secondary" className="w-full">
-                      <Link href="/">Return home</Link>
-                    </Button>
+
+                {products.length === 0 ? (
+                  <div className="mt-6">
+                    <StoreEmptyState title="This store has no products yet" description="Check back soon for fresh grocery picks from this seller." actionLabel="Browse other stores" onAction={() => window.location.assign("/explore")} />
                   </div>
-                </div>
-              </aside>
+                ) : null}
+
+                {products.length > 0 && !searchTerm.trim() && !activeCategory ? (
+                  <div className="mt-2 space-y-8">
+                    {featuredSections.map((section) => {
+                      if (section.title === "Today's Deals" && !section.products.length) {
+                        return null;
+                      }
+
+                      return (
+                        <section key={section.title} aria-labelledby={`${section.title.toLowerCase().replace(/[^a-z]+/g, "-")}-heading`}>
+                          <div className="mb-4 flex items-end justify-between gap-4">
+                            <div>
+                              <h3 id={`${section.title.toLowerCase().replace(/[^a-z]+/g, "-")}-heading`} className="text-lg font-semibold text-stone-900 dark:text-stone-50">
+                                {section.title}
+                              </h3>
+                              <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">{section.subtitle}</p>
+                            </div>
+                            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-600">{section.products.length} items</span>
+                          </div>
+
+                          <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                            {section.products.map((product) => (
+                              <div key={product.productId ?? product.name} className="min-w-[240px] max-w-[240px] shrink-0 snap-start sm:min-w-[260px] sm:max-w-[260px]">
+                                <ProductCard product={product} />
+                              </div>
+                            ))}
+                          </div>
+                        </section>
+                      );
+                    })}
+                  </div>
+                ) : null}
+
+                {searchTerm.trim() ? (
+                  <div className="mt-6">
+                    <div className="mb-4 flex items-center justify-between gap-4">
+                      <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-50">Search Results</h3>
+                      <p className="text-sm text-stone-500 dark:text-stone-400">{filteredProducts.length} found</p>
+                    </div>
+                    {filteredProducts.length ? (
+                      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+                        {filteredProducts.map((product, index) => (
+                          <div key={product.productId ?? product.name} className="animate-[store-fade-in_500ms_ease-out_both]" style={{ animationDelay: `${Math.min(index * 45, 300)}ms` }}>
+                            <ProductCard product={product} />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <StoreEmptyState title="No products match your search" description="Try another keyword or clear the search to browse the full store." actionLabel="Clear search" onAction={() => setSearchTerm("")} />
+                    )}
+                  </div>
+                ) : products.length > 0 ? (
+                  <div className="mt-6 space-y-8">
+                    {(activeCategory ? groupedProducts.filter((group) => group.id === activeCategory) : groupedProducts).map((group, index) => {
+                      const sectionId = group.id;
+                      const isExpanded = Boolean(expandedCategories[sectionId]);
+                      const visibleProducts = isExpanded ? group.products : group.products.slice(0, 8);
+                      const isHighlighted = highlightedCategory === sectionId;
+
+                      return (
+                        <section
+                          key={sectionId}
+                          ref={(node) => {
+                            categoryRefs.current[sectionId] = node;
+                          }}
+                          style={{ animationDelay: `${Math.min(index * 70, 350)}ms` }}
+                          className={`scroll-mt-32 animate-[store-fade-in_500ms_ease-out_both] rounded-2xl border border-stone-200 bg-stone-50/60 p-4 transition-all dark:border-stone-800 dark:bg-stone-950/50 ${
+                            isHighlighted ? "ring-2 ring-emerald-300 shadow-lg shadow-emerald-500/10" : ""
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                              <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-50">{group.name}</h3>
+                              <span className="text-sm text-stone-500 dark:text-stone-400">{group.products.length} products</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => focusCategory(sectionId)}
+                              className="text-sm font-medium text-emerald-600 transition hover:text-emerald-500"
+                            >
+                              View All →
+                            </button>
+                          </div>
+
+                          <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+                            {visibleProducts.map((product, productIndex) => (
+                              <div key={product.productId ?? product.name} className="animate-[store-fade-in_500ms_ease-out_both]" style={{ animationDelay: `${Math.min(productIndex * 45, 300)}ms` }}>
+                                <ProductCard product={product} />
+                              </div>
+                            ))}
+                          </div>
+
+                          {group.products.length > 8 ? (
+                            <div className="mt-4 flex justify-center">
+                              <button
+                                type="button"
+                                onClick={() => setExpandedCategories((current) => ({ ...current, [sectionId]: !current[sectionId] }))}
+                                className="text-sm font-semibold text-emerald-600 transition hover:text-emerald-500"
+                              >
+                                {isExpanded ? "Show Less" : "Show More"}
+                              </button>
+                            </div>
+                          ) : null}
+                        </section>
+                      );
+                    })}
+                    {activeCategory && !groupedProducts.some((group) => group.id === activeCategory) ? (
+                      <StoreEmptyState title="This category is empty" description="There are no products in this category right now. Browse every product from the store instead." actionLabel="Show all products" onAction={() => setActiveCategory(null)} />
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
             </div>
           ) : (
             <EmptyState title="Store not found" description="We could not locate this store. Verify the URL or search for another seller." />
           )}
         </Container>
       </Section>
+      <style jsx global>{`@keyframes store-fade-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }`}</style>
     </PageWrapper>
   );
 }
