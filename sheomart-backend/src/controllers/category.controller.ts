@@ -36,7 +36,8 @@ export const createCategory = async (
   req: AuthRequest,
   res: Response
 ): Promise<void> => {
-  const payload = (req.body && typeof req.body === "object" ? req.body : {}) as Record<string, unknown>;
+  const payload = { ...((req.body && typeof req.body === "object" ? req.body : {}) as Record<string, unknown>) };
+  delete payload.image;
   const result = createCategorySchema.safeParse(payload);
 
   if (!result.success) {
@@ -44,7 +45,7 @@ export const createCategory = async (
     throw new AppError(message, 400);
   }
 
-  const category = await CategoryService.createCategory(result.data, req.user?.userId);
+  const category = await CategoryService.createCategory(result.data, req.user?.userId, req.file?.buffer);
 
   res.status(201).json(
     new ApiResponse(true, "Category created successfully", { category })
@@ -79,7 +80,8 @@ export const updateCategory = async (
   req: AuthRequest,
   res: Response
 ): Promise<void> => {
-  const payload = (req.body && typeof req.body === "object" ? req.body : {}) as Record<string, unknown>;
+  const payload = { ...((req.body && typeof req.body === "object" ? req.body : {}) as Record<string, unknown>) };
+  delete payload.image;
   const result = updateCategorySchema.safeParse(payload);
 
   if (!result.success) {
@@ -91,7 +93,8 @@ export const updateCategory = async (
   const category = await CategoryService.updateCategory(
     categoryId,
     result.data,
-    req.user?.userId
+    req.user?.userId,
+    req.file?.buffer
   );
 
   res.status(200).json(

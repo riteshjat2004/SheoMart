@@ -1,5 +1,8 @@
 import { AppError } from "../errors/AppError";
-import { Category } from "../models/category.model";
+import { Category, CategoryImage } from "../models/category.model";
+import { CLOUDINARY_FOLDERS } from "../constants/cloudinary";
+import { deleteImageFromCloudinary, uploadBufferToCloudinary } from "../utils/cloudinary";
+import { processProductImage } from "../utils/imageProcessor";
 import { CreateCategoryInput, UpdateCategoryInput } from "../validators/category.validator";
 
 export class CategoryService {
@@ -38,7 +41,7 @@ export class CategoryService {
     return category;
   }
 
-  static async createCategory(data: CreateCategoryInput, userId?: string) {
+  static async createCategory(data: CreateCategoryInput, userId?: string, imageBuffer?: Buffer) {
     const existingCategory = await Category.findOne({ name: data.name });
 
     if (existingCategory) {
@@ -46,12 +49,19 @@ export class CategoryService {
     }
 
     const slug = await this.buildUniqueSlug(data.name);
+    let image: string | CategoryImage = data.imageUrl || "";
+
+    if (imageBuffer) {
+      const processedImage = await processProductImage(imageBuffer);
+      const uploadedImage = await uploadBufferToCloudinary(processedImage, CLOUDINARY_FOLDERS.CATEGORIES);
+      image = { url: uploadedImage.secure_url, publicId: uploadedImage.public_id };
+    }
 
     const category = await Category.create({
       name: data.name,
       slug,
       description: data.description || "",
-      image: data.image || "",
+      image,
       parentCategory: data.parentCategory || null,
       sortOrder: data.sortOrder ?? 0,
       isActive: typeof data.isActive === "boolean" ? data.isActive : true,
@@ -81,7 +91,7 @@ export class CategoryService {
         name: category.name,
         slug: "",
         description: category.description || "",
-        image: category.image || "",
+        image: category.imageUrl || "",
         parentCategory: category.parentCategory || null,
         sortOrder: category.sortOrder ?? 0,
         isActive: typeof category.isActive === "boolean" ? category.isActive : true,
@@ -113,7 +123,7 @@ export class CategoryService {
     };
   }
 
-  static async updateCategory(categoryId: string, data: UpdateCategoryInput, userId?: string) {
+  static async updateCategory(categoryId: string, data: UpdateCategoryInput, userId?: string, imageBuffer?: Buffer) {
     const category = await Category.findOne({ categoryId, isActive: true });
 
     if (!category) {
@@ -135,8 +145,20 @@ export class CategoryService {
       category.description = data.description;
     }
 
-    if (typeof data.image === "string") {
-      category.image = data.image;
+    if (imageBuffer) {
+      const processedImage = await processProductImage(imageBuffer);
+      const uploadedImage = await uploadBufferToCloudinary(processedImage, CLOUDINARY_FOLDERS.CATEGORIES);
+      const previousImage = category.image;
+      category.image = { url: uploadedImage.secure_url, publicId: uploadedImage.public_id };
+      if (typeof previousImage === "object" && previousImage?.publicId) {
+        await deleteImageFromCloudinary(previousImage.publicId);
+      }
+    } else if (typeof data.imageUrl === "string") {
+      const previousImage = category.image;
+      category.image = { url: data.imageUrl, publicId: "" };
+      if (typeof previousImage === "object" && previousImage?.publicId) {
+        await deleteImageFromCloudinary(previousImage.publicId);
+      }
     }
 
     if (typeof data.parentCategory === "object" && data.parentCategory === null) {

@@ -6,7 +6,7 @@ export interface ICategory extends Document {
   name: string;
   slug: string;
   description: string;
-  image: string;
+  image: string | CategoryImage;
   parentCategory: string | null;
   isActive: boolean;
   sortOrder: number;
@@ -14,6 +14,11 @@ export interface ICategory extends Document {
   updatedBy: string | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface CategoryImage {
+  url: string;
+  publicId: string;
 }
 
 const categorySchema = new Schema<ICategory>(
@@ -49,7 +54,7 @@ const categorySchema = new Schema<ICategory>(
     },
 
     image: {
-      type: String,
+      type: Schema.Types.Mixed,
       default: "",
     },
 

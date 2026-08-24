@@ -18,6 +18,22 @@ import api from "@/services/api";
 import type { ApiResponse } from "@/types/api";
 import type { CategoryItem } from "@/types/marketplace";
 
+function toCategoryRequest(payload: CategoryFormValues): FormData | Omit<CategoryFormValues, "imageFile" | "image"> {
+  if (payload.imageFile) {
+    const formData = new FormData();
+    formData.append("name", payload.name);
+    formData.append("description", payload.description);
+    formData.append("sortOrder", String(payload.sortOrder));
+    formData.append("isActive", String(payload.isActive));
+    if (payload.imageUrl) formData.append("imageUrl", payload.imageUrl);
+    formData.append("image", payload.imageFile);
+    return formData;
+  }
+
+  const { imageFile: _imageFile, image: _image, ...request } = payload;
+  return request;
+}
+
 export default function AdminCategoriesPage() {
   const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
@@ -49,7 +65,7 @@ export default function AdminCategoriesPage() {
 
   const createMutation = useMutation({
     mutationFn: async (payload: CategoryFormValues) => {
-      const response = await api.post<ApiResponse<{ category: CategoryItem }>>("/api/v1/categories", payload);
+      const response = await api.post<ApiResponse<{ category: CategoryItem }>>("/api/v1/categories", toCategoryRequest(payload));
       return response.data.data?.category;
     },
     onSuccess: (createdCategory) => {
@@ -73,7 +89,7 @@ export default function AdminCategoriesPage() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ categoryId, payload }: { categoryId: string; payload: CategoryFormValues }) => {
-      const response = await api.patch<ApiResponse<{ category: CategoryItem }>>(`/api/v1/categories/${categoryId}`, payload);
+      const response = await api.patch<ApiResponse<{ category: CategoryItem }>>(`/api/v1/categories/${categoryId}`, toCategoryRequest(payload));
       return response.data.data?.category;
     },
     onSuccess: (updatedCategory) => {
