@@ -10,6 +10,8 @@ export interface AuthRequest extends Request {
     role: string;
     sessionId: string;
   };
+  file?: Express.Multer.File;
+  files?: Express.Multer.File[] | { [fieldname: string]: Express.Multer.File[] };
 }
 
 export const authenticate = (

@@ -1,14 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, ChevronDown, LogOut, Moon, Sun, UserCircle2 } from "lucide-react";
+import { Bell, ChevronDown, LogOut, UserCircle2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useTheme } from "@/providers/theme-provider";
 import { useAuthStore } from "@/store/auth-store";
 
 export function Topbar() {
-  const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuthStore();
   const [open, setOpen] = useState(false);
 
@@ -21,9 +19,6 @@ export function Topbar() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" aria-label="Toggle theme" onClick={toggleTheme}>
-            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </Button>
           <Button variant="ghost" size="icon" aria-label="Notifications">
             <Bell className="h-4 w-4" />
           </Button>

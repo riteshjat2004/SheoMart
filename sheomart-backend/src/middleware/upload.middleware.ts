@@ -5,7 +5,7 @@ import { AppError } from "../errors/AppError";
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
-  fileFilter: (_req, file, callback) => {
+  fileFilter: (_req: Request, file: Express.Multer.File, callback: multer.FileFilterCallback) => {
     if (!(["image/jpeg", "image/jpg", "image/png"] as string[]).includes(file.mimetype)) {
       callback(new AppError("Only JPG, JPEG, and PNG images are allowed", 400));
       return;

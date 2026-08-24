@@ -1,10 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { LogOut, Menu, Moon, ShoppingCart, Sparkles, Sun, UserCircle2, X } from "lucide-react";
+import { LogOut, Menu, ShoppingCart, Sparkles, UserCircle2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/layout/container";
-import { useTheme } from "@/providers/theme-provider";
 import { useAuthStore } from "@/store/auth-store";
 import { usePathname, useRouter } from "next/navigation";
 import { useCart } from "@/hooks/use-cart";
@@ -12,7 +11,6 @@ import { NavbarSearch } from "@/components/layout/NavbarSearch";
 import { useState } from "react";
 
 export function Navbar() {
-  const { theme, toggleTheme } = useTheme();
   const router = useRouter();
   const pathname = usePathname();
   const { isAuthenticated, user, logout } = useAuthStore();
@@ -61,9 +59,6 @@ export function Navbar() {
               </Link>
             </Button>
           ) : null}
-          <Button variant="ghost" size="icon" aria-label="Toggle theme" onClick={toggleTheme}>
-            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </Button>
           {isAuthenticated ? (
             <>
               <Button asChild variant="ghost" size="sm">
