@@ -128,7 +128,7 @@ export function ProductDetailContent({ productId, storeId }: { productId?: strin
                       <div className="grid gap-3 sm:grid-cols-2">
                         <div className="overflow-hidden rounded-[1.5rem] border border-stone-200 bg-stone-100">
                           <img
-                            src={product.thumbnail || product.images?.[0] || "/placeholder.png"}
+                            src={product.image?.url || product.thumbnail || product.images?.[0] || "/placeholder.png"}
                             alt={product.name}
                             className="h-full w-full object-cover"
                           />

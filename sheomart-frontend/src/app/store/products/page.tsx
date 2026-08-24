@@ -32,6 +32,28 @@ function getMutationError(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
 }
 
+function toProductRequest(payload: ProductFormValues): FormData | Record<string, unknown> {
+  if (!payload.imageFile) {
+    const jsonPayload = { ...payload } as Record<string, unknown>;
+    delete jsonPayload.imageFile;
+    return jsonPayload;
+  }
+
+  const formData = new FormData();
+  formData.append("name", payload.name);
+  formData.append("description", payload.description);
+  formData.append("brand", payload.brand);
+  formData.append("sku", payload.sku);
+  formData.append("price", String(payload.price));
+  formData.append("discountPrice", String(payload.discountPrice));
+  formData.append("quantity", String(payload.quantity ?? 0));
+  formData.append("categoryId", payload.categoryId);
+  formData.append("isPublished", String(payload.isPublished));
+  if (payload.imageUrl) formData.append("imageUrl", payload.imageUrl);
+  if (payload.imageFile) formData.append("image", payload.imageFile);
+  return formData;
+}
+
 export default function StoreProductsPage() {
   const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
@@ -80,7 +102,10 @@ export default function StoreProductsPage() {
 
   const createMutation = useMutation({
     mutationFn: async (payload: ProductFormValues) => {
-      const createPayload = Object.fromEntries(Object.entries(payload).filter(([key]) => key !== "isActive"));
+      const createPayload = toProductRequest(payload);
+      if (!(createPayload instanceof FormData)) {
+        delete createPayload.isActive;
+      }
       const response = await api.post<ApiResponse<{ product: ProductItem }>>("/api/v1/products", createPayload);
       return response.data.data?.product;
     },
@@ -100,7 +125,7 @@ export default function StoreProductsPage() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ productId, payload }: { productId: string; payload: ProductFormValues }) => {
-      const response = await api.patch<ApiResponse<{ product: ProductItem }>>(`/api/v1/products/${productId}`, payload);
+      const response = await api.patch<ApiResponse<{ product: ProductItem }>>(`/api/v1/products/${productId}`, toProductRequest(payload));
       return response.data.data?.product;
     },
     onSuccess: async () => {
@@ -278,6 +303,7 @@ export default function StoreProductsPage() {
               discountPrice: editingProduct.discountPrice ?? 0,
               categoryId: editingProduct.categoryId ?? "",
               images: editingProduct.images ?? [],
+              imageUrl: editingProduct.image?.url,
               isPublished: editingProduct.isPublished ?? false,
               isActive: editingProduct.isActive ?? true,
             }}

@@ -23,6 +23,10 @@ export interface ProductItem {
   discountPrice?: number;
   thumbnail?: string;
   images?: string[];
+  image?: {
+    url: string;
+    publicId: string;
+  };
   rating?: number;
   unit?: string;
   sku?: string;

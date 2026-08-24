@@ -14,6 +14,10 @@ export interface IProduct extends Document {
   discountPrice: number;
   quantity: number;
   images: string[];
+  image?: {
+    url: string;
+    publicId: string;
+  } | null;
   thumbnail: string;
   isPublished: boolean;
   isActive: boolean;
@@ -108,6 +112,11 @@ const productSchema = new Schema<IProduct>(
         validator: (value: string[]) => value.length <= 10,
         message: "Maximum 10 images allowed per product",
       },
+    },
+
+    image: {
+      url: { type: String, trim: true },
+      publicId: { type: String, trim: true },
     },
 
     thumbnail: {

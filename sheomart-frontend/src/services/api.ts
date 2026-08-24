@@ -4,12 +4,14 @@ import { useAuthStore } from "@/store/auth-store";
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000",
   timeout: 10000,
-  headers: {
-    "Content-Type": "application/json",
-  },
 });
 
 api.interceptors.request.use((config) => {
+  if (typeof FormData !== "undefined" && config.data instanceof FormData && config.headers) {
+    delete config.headers["Content-Type"];
+    delete config.headers["content-type"];
+  }
+
   if (typeof window === "undefined") {
     return config;
   }

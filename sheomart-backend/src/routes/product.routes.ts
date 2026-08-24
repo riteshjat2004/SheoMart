@@ -17,6 +17,7 @@ import { authenticate } from "../middleware/auth.middleware";
 import { authorize } from "../middleware/role.middleware";
 import { asyncHandler } from "../utils/asyncHandler";
 import { USER_ROLES } from "../constants/roles";
+import { uploadProductImage } from "../middleware/upload.middleware";
 
 const router = Router();
 
@@ -45,12 +46,14 @@ router.post(
   "/",
   authenticate,
   authorize(USER_ROLES.STORE_OWNER),
+  uploadProductImage,
   asyncHandler(createProduct)
 );
 router.patch(
   "/:productId",
   authenticate,
   authorize(USER_ROLES.STORE_OWNER),
+  uploadProductImage,
   asyncHandler(updateProduct)
 );
 router.delete(

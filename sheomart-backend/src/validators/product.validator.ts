@@ -3,6 +3,14 @@ import { z } from "zod";
 import { INVENTORY_STATUS } from "../models/inventory.model";
 
 const booleanQueryParam = z.enum(["true", "false"]).transform((value) => value === "true");
+const multipartBoolean = z.preprocess(
+  (value) => (value === "true" ? true : value === "false" ? false : value),
+  z.boolean(),
+);
+const optionalImageUrl = z.preprocess(
+  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+  z.string().trim().url("Image URL must be valid").optional(),
+);
 
 export const adminProductListQuerySchema = z.object({
   search: z.string().trim().max(100).optional(),
@@ -30,12 +38,13 @@ export const createProductSchema = z.object({
   description: z.string().trim().max(2000).optional().default(""),
   brand: z.string().trim().max(100).optional().default(""),
   sku: z.string().trim().min(1, "SKU is required").max(100),
-  price: z.number().min(0, "Price cannot be negative"),
-  discountPrice: z.number().min(0, "Discount price cannot be negative").optional().default(0),
-  quantity: z.number().int().min(0, "Quantity cannot be negative").optional().default(0),
+  price: z.coerce.number().min(0, "Price cannot be negative"),
+  discountPrice: z.coerce.number().min(0, "Discount price cannot be negative").optional().default(0),
+  quantity: z.coerce.number().int().min(0, "Quantity cannot be negative").optional().default(0),
   categoryId: z.string().trim().min(1, "Category is required"),
   images: z.array(z.string().trim().min(1)).optional().default([]),
-  isPublished: z.boolean().optional().default(false),
+  imageUrl: optionalImageUrl,
+  isPublished: multipartBoolean.optional().default(false),
 }).strict();
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;
@@ -50,13 +59,14 @@ export const updateProductSchema = z.object({
   description: z.string().trim().max(2000).optional(),
   brand: z.string().trim().max(100).optional(),
   sku: z.string().trim().min(1, "SKU is required").max(100).optional(),
-  price: z.number().min(0, "Price cannot be negative").optional(),
-  discountPrice: z.number().min(0, "Discount price cannot be negative").optional(),
-  quantity: z.number().int().min(0, "Quantity cannot be negative").optional(),
+  price: z.coerce.number().min(0, "Price cannot be negative").optional(),
+  discountPrice: z.coerce.number().min(0, "Discount price cannot be negative").optional(),
+  quantity: z.coerce.number().int().min(0, "Quantity cannot be negative").optional(),
   categoryId: z.string().trim().min(1, "Category is required").optional(),
   images: z.array(z.string().trim().min(1)).optional(),
-  isPublished: z.boolean().optional(),
-  isActive: z.boolean().optional(),
+  imageUrl: optionalImageUrl,
+  isPublished: multipartBoolean.optional(),
+  isActive: multipartBoolean.optional(),
 }).strict();
 
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;

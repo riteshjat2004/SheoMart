@@ -64,7 +64,8 @@ export const createProduct = async (
   req: AuthRequest,
   res: Response
 ): Promise<void> => {
-  const payload = (req.body && typeof req.body === "object" ? req.body : {}) as Record<string, unknown>;
+  const payload = { ...((req.body && typeof req.body === "object" ? req.body : {}) as Record<string, unknown>) };
+  delete payload.image;
   const result = createProductSchema.safeParse(payload);
 
   if (!result.success) {
@@ -72,7 +73,7 @@ export const createProduct = async (
     throw new AppError(message, 400);
   }
 
-  const product = await ProductService.createProduct(result.data, req.user?.userId as string);
+  const product = await ProductService.createProduct(result.data, req.user?.userId as string, req.file?.buffer);
 
   res.status(201).json(
     new ApiResponse(true, "Product created successfully", { product })
@@ -107,7 +108,8 @@ export const updateProduct = async (
   req: AuthRequest,
   res: Response
 ): Promise<void> => {
-  const payload = (req.body && typeof req.body === "object" ? req.body : {}) as Record<string, unknown>;
+  const payload = { ...((req.body && typeof req.body === "object" ? req.body : {}) as Record<string, unknown>) };
+  delete payload.image;
   const result = updateProductSchema.safeParse(payload);
 
   if (!result.success) {
@@ -116,7 +118,7 @@ export const updateProduct = async (
   }
 
   const productId = Array.isArray(req.params.productId) ? req.params.productId[0] : req.params.productId;
-  const product = await ProductService.updateProduct(productId, result.data, req.user?.userId as string);
+  const product = await ProductService.updateProduct(productId, result.data, req.user?.userId as string, req.file?.buffer);
 
   res.status(200).json(
     new ApiResponse(true, "Product updated successfully", { product })

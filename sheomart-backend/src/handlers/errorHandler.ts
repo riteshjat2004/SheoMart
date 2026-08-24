@@ -9,6 +9,9 @@ export const errorHandler = (
   res: Response,
   _next: NextFunction
 ) => {
+  console.error("[Global Error Handler] Complete error:", err);
+  console.error("[Global Error Handler] Stack trace:", err.stack);
+
   if (err instanceof AppError) {
     return res.status(err.statusCode).json({
       success: false,

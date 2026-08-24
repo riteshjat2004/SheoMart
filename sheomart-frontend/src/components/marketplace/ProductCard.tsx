@@ -25,7 +25,7 @@ export function ProductCard({ product }: ProductCardProps) {
   const [message, setMessage] = useState<string | null>(null);
   const discountPercent = product.discount ?? (product.discountPrice && product.price ? Math.round(((product.price - product.discountPrice) / product.price) * 100) : 0);
   const displayPrice = product.discountPrice ?? product.price;
-  const imageSrc = product.thumbnail || product.images?.[0] || "";
+  const imageSrc = product.image?.url || product.thumbnail || product.images?.[0] || "";
 
   const handleAddToCart = () => {
     if (!product.productId) return;

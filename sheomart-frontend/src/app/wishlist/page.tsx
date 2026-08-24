@@ -66,7 +66,7 @@ export default function WishlistPage() {
               {wishlistItems.map((item) => (
                 <div key={item.wishlistItemId} className="grid gap-4 rounded-[1.5rem] border border-stone-200 bg-white p-4 sm:grid-cols-[120px_minmax(0,1fr)_auto] dark:border-stone-800 dark:bg-stone-950/60">
                   <div className="overflow-hidden rounded-[1.25rem] bg-stone-100">
-                    <img src={item.product.thumbnail || item.product.images?.[0] || "/placeholder.png"} alt={item.product.name} className="h-full w-full object-cover" />
+                    <img src={item.product.image?.url || item.product.thumbnail || item.product.images?.[0] || "/placeholder.png"} alt={item.product.name} className="h-full w-full object-cover" />
                   </div>
                   <div className="space-y-2">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

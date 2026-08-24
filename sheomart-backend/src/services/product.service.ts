@@ -13,6 +13,14 @@ import {
   AdminProductListQuery,
 } from "../validators/product.validator";
 import { InventoryService } from "./inventory.service";
+import { CLOUDINARY_FOLDERS } from "../constants/cloudinary";
+import { deleteImageFromCloudinary, uploadBufferToCloudinary } from "../utils/cloudinary";
+import { processProductImage } from "../utils/imageProcessor";
+
+interface ProductImage {
+  url: string;
+  publicId: string;
+}
 
 export interface AdminProductListItem {
   productId: string;
@@ -233,7 +241,7 @@ export class ProductService {
     return product;
   }
 
-  static async createProduct(data: CreateProductInput, userId: string) {
+  static async createProduct(data: CreateProductInput, userId: string, imageBuffer?: Buffer) {
     const store = await Store.findOne({ ownerId: userId, status: STORE_STATUS.APPROVED });
 
     if (!store) {
@@ -258,6 +266,25 @@ export class ProductService {
 
     const slug = await this.buildUniqueSlug(data.name);
 
+    let image: ProductImage | undefined;
+    if (imageBuffer) {
+      const processedImage = await processProductImage(imageBuffer);
+      console.log("Uploading to Cloudinary...", {
+        hasFile: !!imageBuffer,
+        bufferSize: imageBuffer?.length,
+        folder: CLOUDINARY_FOLDERS.PRODUCTS,
+      });
+      const uploadedImage = await uploadBufferToCloudinary(processedImage, CLOUDINARY_FOLDERS.PRODUCTS);
+      console.log("Cloudinary Success:", {
+        url: uploadedImage.secure_url,
+        publicId: uploadedImage.public_id,
+      });
+      image = { url: uploadedImage.secure_url, publicId: uploadedImage.public_id };
+    } else if (data.imageUrl) {
+      image = { url: data.imageUrl, publicId: "" };
+    }
+
+    const imageUrls = data.imageUrl ? [data.imageUrl, ...data.images.filter((url) => url !== data.imageUrl)] : data.images;
     const product = await Product.create({
       storeId: store.storeId,
       categoryId: data.categoryId,
@@ -269,8 +296,9 @@ export class ProductService {
       price: data.price,
       discountPrice: data.discountPrice ?? 0,
       quantity: data.quantity ?? 0,
-      images: data.images || [],
-      thumbnail: data.images?.[0] || "",
+      image,
+      images: image ? [image.url, ...imageUrls.filter((url) => url !== image?.url)] : imageUrls,
+      thumbnail: image?.url || imageUrls[0] || "",
       isPublished: data.isPublished ?? false,
       createdBy: userId,
       updatedBy: userId,
@@ -385,7 +413,7 @@ export class ProductService {
     };
   }
 
-  static async updateProduct(productId: string, data: UpdateProductInput, userId: string) {
+  static async updateProduct(productId: string, data: UpdateProductInput, userId: string, imageBuffer?: Buffer) {
     const product = await Product.findOne({ productId, isActive: true });
 
     if (!product) {
@@ -451,9 +479,38 @@ export class ProductService {
       product.categoryId = data.categoryId;
     }
 
-    if (Array.isArray(data.images)) {
+    if (Array.isArray(data.images) && data.images.length > 0) {
       product.images = data.images;
       product.thumbnail = data.images[0] || "";
+    }
+
+    if (imageBuffer) {
+      if (product.image?.publicId) {
+        await deleteImageFromCloudinary(product.image.publicId);
+      }
+
+      const processedImage = await processProductImage(imageBuffer);
+      console.log("Uploading to Cloudinary...", {
+        hasFile: !!imageBuffer,
+        bufferSize: imageBuffer?.length,
+        folder: CLOUDINARY_FOLDERS.PRODUCTS,
+      });
+      const uploadedImage = await uploadBufferToCloudinary(processedImage, CLOUDINARY_FOLDERS.PRODUCTS);
+      console.log("Cloudinary Success:", {
+        url: uploadedImage.secure_url,
+        publicId: uploadedImage.public_id,
+      });
+      product.image = { url: uploadedImage.secure_url, publicId: uploadedImage.public_id };
+      product.images = [uploadedImage.secure_url];
+      product.thumbnail = uploadedImage.secure_url;
+    } else if (data.imageUrl) {
+      if (product.image?.publicId) {
+        await deleteImageFromCloudinary(product.image.publicId);
+      }
+
+      product.image = { url: data.imageUrl, publicId: "" };
+      product.images = [data.imageUrl];
+      product.thumbnail = data.imageUrl;
     }
 
     if (typeof data.isPublished === "boolean") {
@@ -490,6 +547,10 @@ export class ProductService {
 
     if (!store) {
       throw new AppError("Only approved store owners can delete products", 403);
+    }
+
+    if (product.image?.publicId) {
+      await deleteImageFromCloudinary(product.image.publicId);
     }
 
     product.isActive = false;
