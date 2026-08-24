@@ -6,6 +6,15 @@ export interface InventoryResponse {
   inventory: InventoryItem;
 }
 
+export interface InventorySyncResponse {
+  inventories: InventoryItem[];
+}
+
+export async function syncStoreInventory() {
+  const response = await api.get<ApiResponse<InventorySyncResponse>>("/api/v1/inventory/sync");
+  return response.data.data?.inventories ?? [];
+}
+
 export interface InventoryLedgerEntry {
   ledgerId?: string;
   createdAt?: string;

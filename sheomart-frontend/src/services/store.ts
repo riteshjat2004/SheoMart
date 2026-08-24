@@ -42,6 +42,10 @@ function normalizeStore(store: Record<string, unknown>): StoreItem {
         ? store.name
         : "Store";
 
+  const badges = Array.isArray(store.badges)
+    ? store.badges.filter((badge): badge is "verified" | "royal" => badge === "verified" || badge === "royal")
+    : [];
+
   return {
     ...(store as StoreItem),
     storeId: typeof store.storeId === "string" ? store.storeId : typeof store._id === "string" ? store._id : undefined,
@@ -53,6 +57,7 @@ function normalizeStore(store: Record<string, unknown>): StoreItem {
     totalReviews: typeof store.totalReviews === "number" ? store.totalReviews : undefined,
     pickupOpeningTime: typeof store.pickupOpeningTime === "string" ? store.pickupOpeningTime : "10:00",
     pickupClosingTime: typeof store.pickupClosingTime === "string" ? store.pickupClosingTime : "20:00",
+    badges,
     status: typeof store.status === "string" ? store.status : undefined,
   };
 }
@@ -103,6 +108,13 @@ export async function fetchMyStore() {
 
 export async function updateMyStore(payload: UpdateMyStorePayload) {
   const response = await api.patch<ApiResponse<{ store: StoreItem }>>("/api/v1/stores/me", payload);
+  const store = response.data.data?.store;
+
+  return store ? normalizeStore(store as Record<string, unknown>) : null;
+}
+
+export async function updateStoreBadges(storeId: string, badges: Array<"verified" | "royal">) {
+  const response = await api.patch<ApiResponse<{ store: StoreItem }>>(`/api/v1/stores/${storeId}/badges`, { badges });
   const store = response.data.data?.store;
 
   return store ? normalizeStore(store as Record<string, unknown>) : null;

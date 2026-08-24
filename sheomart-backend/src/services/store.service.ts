@@ -1,7 +1,7 @@
 import { AppError } from "../errors/AppError";
 import { STORE_STATUS, StoreStatus } from "../constants/store";
 import { USER_ROLES } from "../constants/roles";
-import { Store } from "../models/store.model";
+import { Store, STORE_BADGE } from "../models/store.model";
 import { User } from "../models/user.model";
 import { allowedStoreUpdateFields } from "../validators/store.validator";
 
@@ -148,6 +148,19 @@ export class StoreService {
 
   static async getAdminStores() {
     return Store.find({}).sort({ createdAt: -1 });
+  }
+
+  static async updateStoreBadges(storeId: string, badges: STORE_BADGE[]) {
+    const store = await Store.findOne({ storeId });
+
+    if (!store) {
+      throw new AppError("Store not found", 404);
+    }
+
+    store.badges = [...new Set(badges)].slice(0, 2);
+    await store.save();
+
+    return store;
   }
 
   static async updateStoreStatus(storeId: string, status: string, adminUserId?: string) {

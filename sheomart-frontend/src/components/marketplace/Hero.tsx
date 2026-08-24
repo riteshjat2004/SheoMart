@@ -5,7 +5,7 @@ import { HeroCarousel } from "@/components/home/HeroCarousel";
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden rounded-[2rem] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-amber-50 p-6 shadow-[0_24px_80px_-40px_rgba(16,185,129,0.35)] sm:p-8 lg:p-10 dark:border-emerald-950/60 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950">
+    <section className="relative overflow-visible rounded-[2rem] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-amber-50 p-6 shadow-[0_24px_80px_-40px_rgba(16,185,129,0.35)] sm:p-8 lg:p-10 dark:border-emerald-950/60 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950">
       <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-emerald-400/20 blur-3xl" />
       <div className="relative grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
         <div>

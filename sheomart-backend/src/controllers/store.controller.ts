@@ -6,6 +6,7 @@ import { StoreService } from "../services/store.service";
 import {
   createStoreSchema,
   protectedStoreUpdateFields,
+  updateStoreBadgesSchema,
   updateStoreSchema,
 } from "../validators/store.validator";
 
@@ -94,6 +95,26 @@ export const getAdminStores = async (
 
   res.status(200).json(
     new ApiResponse(true, "Stores fetched successfully", { stores })
+  );
+};
+
+export const updateStoreBadges = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const storeId = Array.isArray(req.params.storeId) ? req.params.storeId[0] : req.params.storeId;
+  const payload = (req.body && typeof req.body === "object" ? req.body : {}) as Record<string, unknown>;
+  const result = updateStoreBadgesSchema.safeParse(payload);
+
+  if (!result.success) {
+    const message = result.error.issues[0]?.message || "Invalid store badges payload";
+    throw new AppError(message, 400);
+  }
+
+  const store = await StoreService.updateStoreBadges(storeId, result.data.badges);
+
+  res.status(200).json(
+    new ApiResponse(true, "Store badges updated successfully", { store })
   );
 };
 

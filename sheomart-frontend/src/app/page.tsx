@@ -11,7 +11,7 @@ import { Hero } from "@/components/marketplace/Hero";
 import { SearchBar } from "@/components/marketplace/SearchBar";
 import { CategoryCard } from "@/components/marketplace/CategoryCard";
 import { TrendingProducts } from "@/components/home/TrendingProducts";
-import { StoreCard } from "@/components/marketplace/StoreCard";
+import { StoreCard } from "@/components/store/StoreCard";
 import { OfferCard } from "@/components/marketplace/OfferCard";
 import { SectionHeading } from "@/components/marketplace/SectionHeading";
 import { ErrorState } from "@/components/common/error-state";
@@ -55,7 +55,7 @@ export default function Home() {
         <Container className="space-y-6 sm:space-y-8">
           <Hero />
 
-          <div className="rounded-[2rem] border border-stone-200 bg-white/90 p-4 shadow-sm backdrop-blur dark:border-stone-800 dark:bg-zinc-900/85">
+          <div className="relative z-50 overflow-visible rounded-[2rem] border border-stone-200 bg-white/90 p-4 shadow-sm backdrop-blur dark:border-stone-800 dark:bg-zinc-900/85">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="max-w-2xl">
                 <p className="text-sm font-semibold uppercase tracking-[0.28em] text-emerald-600">Discover what you need</p>

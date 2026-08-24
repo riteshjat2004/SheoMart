@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   getInventory,
+  syncStoreInventory,
   updateInventory,
   updateInventoryStatus,
 } from "../controllers/inventory.controller";
@@ -10,6 +11,13 @@ import { asyncHandler } from "../utils/asyncHandler";
 import { USER_ROLES } from "../constants/roles";
 
 const router = Router();
+
+router.get(
+  "/sync",
+  authenticate,
+  authorize(USER_ROLES.STORE_OWNER),
+  asyncHandler(syncStoreInventory)
+);
 
 router.get(
   "/:productId",

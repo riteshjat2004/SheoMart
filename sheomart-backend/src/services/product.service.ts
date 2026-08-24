@@ -270,6 +270,7 @@ export class ProductService {
       discountPrice: data.discountPrice ?? 0,
       quantity: data.quantity ?? 0,
       images: data.images || [],
+      thumbnail: data.images?.[0] || "",
       isPublished: data.isPublished ?? false,
       createdBy: userId,
       updatedBy: userId,
@@ -443,14 +444,6 @@ export class ProductService {
     }
 
     if (typeof data.quantity === "number") {
-      const inventory = await Inventory.findOne({ productId: product.productId });
-
-      if (inventory) {
-        inventory.availableQuantity = data.quantity;
-        inventory.updatedBy = userId;
-        await inventory.save();
-      }
-
       product.quantity = data.quantity;
     }
 
@@ -460,6 +453,7 @@ export class ProductService {
 
     if (Array.isArray(data.images)) {
       product.images = data.images;
+      product.thumbnail = data.images[0] || "";
     }
 
     if (typeof data.isPublished === "boolean") {
@@ -472,6 +466,15 @@ export class ProductService {
 
     product.updatedBy = userId;
     await product.save();
+
+    if (typeof data.quantity === "number") {
+      await InventoryService.syncProductQuantity(
+        product.productId,
+        product.quantity,
+        product.createdBy ?? userId,
+        userId,
+      );
+    }
 
     return product;
   }

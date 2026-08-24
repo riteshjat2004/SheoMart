@@ -17,8 +17,9 @@ import { ProductModal } from "@/components/dashboard/store/ProductModal";
 import { InventoryForm, type InventoryFormValues } from "@/components/dashboard/store/InventoryForm";
 import { InventoryManagementTable } from "@/components/dashboard/store/InventoryManagementTable";
 import { fetchStoreProducts } from "@/services/product";
-import { fetchInventory, updateInventory } from "@/services/inventory";
-import type { ProductItem } from "@/types/marketplace";
+import { fetchCategories } from "@/services/category";
+import { syncStoreInventory, updateInventory } from "@/services/inventory";
+import type { CategoryItem, ProductItem } from "@/types/marketplace";
 import type { InventoryItem } from "@/types/inventory";
 
 const PAGE_SIZE = 6;
@@ -49,14 +50,24 @@ export default function StoreInventoryPage() {
     staleTime: 1000 * 60 * 5,
   });
   const products = useMemo(() => productsQuery.data ?? [], [productsQuery.data]);
+  const { data: categories = [] } = useQuery<CategoryItem[], Error>({
+    queryKey: ["categories"],
+    queryFn: fetchCategories,
+    staleTime: 1000 * 60 * 5,
+  });
+  const categoryNames = useMemo(
+    () => new Map(categories.flatMap((category) => (category.categoryId ? [[category.categoryId, category.name] as const] : []))),
+    [categories],
+  );
 
   const inventoryQuery = useQuery<Record<string, InventoryItem | null>>({
-    queryKey: ["inventory-map"],
+    queryKey: ["inventory-map", products.map((product) => product.productId).filter(Boolean)],
     queryFn: async () => {
       const results: Record<string, InventoryItem | null> = {};
-      for (const product of products) {
-        if (product.productId) {
-          results[product.productId] = await fetchInventory(product.productId);
+      const inventories = await syncStoreInventory();
+      for (const inventory of inventories) {
+        if (inventory.productId) {
+          results[inventory.productId] = inventory;
         }
       }
       return results;
@@ -83,11 +94,12 @@ export default function StoreInventoryPage() {
   const filteredRows = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     return inventoryRows.filter(({ product, inventory }) => {
-      const matchesSearch = !normalized || `${product.name ?? ""} ${product.sku ?? ""} ${product.category ?? ""}`.toLowerCase().includes(normalized);
+      const categoryName = product.categoryId ? categoryNames.get(product.categoryId) ?? "" : "";
+      const matchesSearch = !normalized || [product.name, product.sku, product.brand, categoryName].filter(Boolean).some((value) => value?.toLowerCase().includes(normalized));
       const matchesFilter = statusFilter === "all" || getInventoryStatus(inventory) === statusFilter;
       return matchesSearch && matchesFilter;
     });
-  }, [inventoryRows, query, statusFilter]);
+  }, [inventoryRows, query, statusFilter, categoryNames]);
 
   const pagedRows = useMemo(() => filteredRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [filteredRows, page]);
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / PAGE_SIZE));
@@ -155,7 +167,7 @@ export default function StoreInventoryPage() {
         {isLoading ? <div className="mt-4"><LoadingSkeleton rows={6} /></div> : null}
         {isError ? <div className="mt-4 space-y-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700"><p>{error?.message ?? "Unable to load inventory"}</p><Button variant="outline" onClick={refreshInventory}>Retry</Button></div> : null}
 
-        {!isLoading && !isError ? <div className="mt-4 space-y-4">{filteredRows.length === 0 ? <EmptyState title={inventoryRows.length === 0 ? "No inventory yet" : "No inventory matches your filters"} description={inventoryRows.length === 0 ? "Create products to start tracking stock." : "Try a different search term or status filter."} /> : <><InventoryManagementTable rows={pagedRows} onEdit={setEditingProduct} /><Pagination page={page} totalPages={totalPages} onPageChange={setPage} /></>}</div> : null}
+        {!isLoading && !isError ? <div className="mt-4 space-y-4">{filteredRows.length === 0 ? <EmptyState title={inventoryRows.length === 0 ? "No inventory yet" : "No inventory matches your filters"} description={inventoryRows.length === 0 ? "Create products to start tracking stock." : "Try a different search term or status filter."} /> : <><InventoryManagementTable rows={pagedRows} categoryNames={categoryNames} onEdit={setEditingProduct} /><Pagination page={page} totalPages={totalPages} onPageChange={setPage} /></>}</div> : null}
       </DashboardCard>
 
       <ProductModal open={Boolean(editingProduct)} title="Update inventory" description="Adjust available stock, reserve levels, and low-stock thresholds." onClose={() => setEditingProduct(null)}>

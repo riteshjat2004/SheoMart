@@ -13,6 +13,7 @@ import { useRestockInventory } from "@/hooks/use-restock-inventory";
 
 interface InventoryManagementTableProps {
   rows: Array<{ product: ProductItem; inventory: InventoryItem | null }>;
+  categoryNames: Map<string, string>;
   onEdit: (product: ProductItem) => void;
 }
 
@@ -39,7 +40,7 @@ function formatUpdatedAt(value?: string) {
   return new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(value));
 }
 
-export function InventoryManagementTable({ rows, onEdit }: InventoryManagementTableProps) {
+export function InventoryManagementTable({ rows, categoryNames, onEdit }: InventoryManagementTableProps) {
   const [historyProduct, setHistoryProduct] = useState<ProductItem | null>(null);
   const [restockProduct, setRestockProduct] = useState<{ product: ProductItem; quantity: number } | null>(null);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -51,6 +52,7 @@ export function InventoryManagementTable({ rows, onEdit }: InventoryManagementTa
         { key: "sku", label: "SKU" },
         { key: "category", label: "Category" },
         { key: "available", label: "Available quantity" },
+        { key: "reserved", label: "Reserved quantity" },
         { key: "threshold", label: "Threshold" },
         { key: "status", label: "Status" },
         { key: "updated", label: "Last updated" },
@@ -61,15 +63,16 @@ export function InventoryManagementTable({ rows, onEdit }: InventoryManagementTa
         <>
           <td className="px-4 py-3">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-stone-200 bg-stone-100 text-stone-600 dark:border-stone-800 dark:bg-stone-900">
-                <Package className="h-5 w-5" />
+              <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl border border-stone-200 bg-stone-100 text-stone-600 dark:border-stone-800 dark:bg-stone-900">
+                {product.thumbnail ? <img src={product.thumbnail} alt={product.name} className="h-full w-full object-cover" /> : <Package className="h-5 w-5" />}
               </div>
               <p className="font-semibold text-stone-900 dark:text-stone-50">{product.name}</p>
             </div>
           </td>
           <td className="px-4 py-3 text-sm text-stone-600 dark:text-stone-300">{product.sku ?? "-"}</td>
-          <td className="px-4 py-3 text-sm text-stone-600 dark:text-stone-300">{product.category ?? "Uncategorized"}</td>
+          <td className="px-4 py-3 text-sm text-stone-600 dark:text-stone-300">{(product.categoryId ? categoryNames.get(product.categoryId) : undefined) ?? "Uncategorized"}</td>
           <td className="px-4 py-3 text-sm font-semibold text-stone-700 dark:text-stone-200">{inventory?.availableQuantity ?? 0}</td>
+          <td className="px-4 py-3 text-sm text-stone-600 dark:text-stone-300">{inventory?.reservedQuantity ?? 0}</td>
           <td className="px-4 py-3 text-sm text-stone-600 dark:text-stone-300">{inventory?.lowStockThreshold ?? 0}</td>
           <td className="px-4 py-3"><StatusBadge status={getStatus(inventory)} /></td>
           <td className="px-4 py-3 text-sm text-stone-600 dark:text-stone-300">{formatUpdatedAt(inventory?.updatedAt)}</td>

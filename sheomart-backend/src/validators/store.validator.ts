@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { STORE_BADGE } from "../models/store.model";
 
 export const allowedStoreUpdateFields = [
   "description",
@@ -61,3 +62,16 @@ export const updateStoreSchema = z
   .strict();
 
 export type UpdateStoreInput = z.infer<typeof updateStoreSchema>;
+
+export const updateStoreBadgesSchema = z
+  .object({
+    badges: z
+      .array(z.nativeEnum(STORE_BADGE))
+      .max(2)
+      .refine((items) => new Set(items).size === items.length, {
+        message: "Badges must be unique",
+      }),
+  })
+  .strict();
+
+export type UpdateStoreBadgesInput = z.infer<typeof updateStoreBadgesSchema>;

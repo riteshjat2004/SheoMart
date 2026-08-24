@@ -130,6 +130,83 @@ export class InventoryService {
     return inventory;
   }
 
+  static async syncProductQuantity(
+    productId: string,
+    availableQuantity: number,
+    createdBy: string,
+    updatedBy: string,
+  ) {
+    const normalizedQuantity = Math.max(0, availableQuantity);
+    const inventory = await Inventory.findOne({ productId });
+
+    if (!inventory) {
+      return Inventory.create({
+        productId,
+        availableQuantity: normalizedQuantity,
+        reservedQuantity: 0,
+        soldQuantity: 0,
+        lowStockThreshold: 5,
+        status: normalizedQuantity > 5
+          ? INVENTORY_STATUS.IN_STOCK
+          : normalizedQuantity > 0
+            ? INVENTORY_STATUS.LOW_STOCK
+            : INVENTORY_STATUS.OUT_OF_STOCK,
+        createdBy,
+        updatedBy,
+      });
+    }
+
+    inventory.availableQuantity = normalizedQuantity;
+    inventory.status = normalizedQuantity === 0
+      ? INVENTORY_STATUS.OUT_OF_STOCK
+      : normalizedQuantity <= inventory.lowStockThreshold
+        ? INVENTORY_STATUS.LOW_STOCK
+        : INVENTORY_STATUS.IN_STOCK;
+    inventory.updatedBy = updatedBy;
+    await inventory.save();
+    return inventory;
+  }
+
+  static async syncStoreInventory(userId: string) {
+    const store = await Store.findOne({ ownerId: userId, status: STORE_STATUS.APPROVED });
+
+    if (!store) {
+      throw new AppError("Only approved store owners can view inventory", 403);
+    }
+
+    const products = await Product.find({ storeId: store.storeId });
+    const productIds = products.map((product) => product.productId);
+    const existingInventories = await Inventory.find({ productId: { $in: productIds } });
+    const existingProductIds = new Set(existingInventories.map((inventory) => inventory.productId));
+    const missingProducts = products.filter((product) => !existingProductIds.has(product.productId));
+
+    if (missingProducts.length > 0) {
+      await Inventory.insertMany(
+        missingProducts.map((product) => {
+          const availableQuantity = Math.max(0, product.quantity ?? 0);
+
+          return {
+            productId: product.productId,
+            availableQuantity,
+            reservedQuantity: 0,
+            soldQuantity: 0,
+            lowStockThreshold: 5,
+            status: availableQuantity > 5
+              ? INVENTORY_STATUS.IN_STOCK
+              : availableQuantity > 0
+                ? INVENTORY_STATUS.LOW_STOCK
+                : INVENTORY_STATUS.OUT_OF_STOCK,
+            createdBy: product.createdBy,
+            updatedBy: product.createdBy,
+          };
+        }),
+        { ordered: false },
+      );
+    }
+
+    return Inventory.find({ productId: { $in: productIds } });
+  }
+
   static async getInventory(
     productId: string,
     userId: string,

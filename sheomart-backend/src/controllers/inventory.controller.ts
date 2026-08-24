@@ -5,6 +5,17 @@ import { ApiResponse } from "../utils/apiResponse";
 import { InventoryService } from "../services/inventory.service";
 import { updateInventorySchema, updateInventoryStatusSchema } from "../validators/inventory.validator";
 
+export const syncStoreInventory = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const inventories = await InventoryService.syncStoreInventory(req.user?.userId as string);
+
+  res.status(200).json(
+    new ApiResponse(true, "Inventory synchronized successfully", { inventories })
+  );
+};
+
 export const getInventory = async (
   req: AuthRequest,
   res: Response

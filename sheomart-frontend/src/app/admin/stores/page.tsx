@@ -60,6 +60,20 @@ export default function AdminStoresPage() {
     },
   });
 
+  const badgeMutation = useMutation({
+    mutationFn: async ({ storeId, badges }: { storeId: string; badges: Array<"verified" | "royal"> }) => {
+      const response = await api.patch<ApiResponse<{ store: StoreItem }>>(`/api/v1/stores/${storeId}/badges`, { badges });
+      return response.data.data?.store;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["stores", "admin"] });
+      setFeedback({ type: "success", message: "Store badges updated successfully." });
+    },
+    onError: (mutationError: unknown) => {
+      setFeedback({ type: "error", message: mutationError instanceof Error ? mutationError.message : "Unable to update store badges." });
+    },
+  });
+
   const handleAction = (store: StoreItem, status: "approved" | "rejected" | "suspended") => {
     if (!store.storeId && !store._id) {
       return;
@@ -140,6 +154,12 @@ export default function AdminStoresPage() {
                 onApprove={(item) => handleAction(item, "approved")}
                 onReject={(item) => handleAction(item, "rejected")}
                 onSuspend={(item) => handleAction(item, "suspended")}
+                onUpdateBadges={(item, badges) => {
+                  const storeId = item.storeId ?? item._id;
+                  if (!storeId) return;
+                  badgeMutation.mutate({ storeId, badges });
+                }}
+                isSavingBadges={badgeMutation.isPending}
               />
             ))}
           </div>

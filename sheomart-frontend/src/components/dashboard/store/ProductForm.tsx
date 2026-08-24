@@ -41,12 +41,18 @@ function toNumber(value: string) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function parseImageUrls(value: string) {
+  return Array.from(new Set(value.split(/[,\n]+/).map((image) => image.trim()).filter(Boolean)));
+}
+
 export function ProductForm({ initialValues, categories, onSubmit, formId }: ProductFormProps) {
+  const initialImages = initialValues?.images ?? [];
   const [values, setValues] = useState<ProductFormValues>({
     ...emptyValues,
     ...initialValues,
-    images: initialValues?.images ?? [],
+    images: initialImages,
   });
+  const [imageInput, setImageInput] = useState(initialImages.join("\n"));
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -54,7 +60,7 @@ export function ProductForm({ initialValues, categories, onSubmit, formId }: Pro
       ...values,
       price: toNumber(String(values.price)),
       discountPrice: toNumber(String(values.discountPrice)),
-      images: values.images.filter(Boolean),
+      images: parseImageUrls(imageInput),
     });
   };
 
@@ -154,8 +160,8 @@ export function ProductForm({ initialValues, categories, onSubmit, formId }: Pro
       <label className="block space-y-2 text-sm text-stone-700 dark:text-stone-300">
         <span className="font-medium">Image URLs</span>
         <textarea
-          value={values.images.join("\n")}
-          onChange={(event) => setValues((current) => ({ ...current, images: event.target.value.split(/\n|,/).map((image) => image.trim()).filter(Boolean) }))}
+          value={imageInput}
+          onChange={(event) => setImageInput(event.target.value)}
           rows={4}
           className="w-full rounded-2xl border border-stone-200 bg-white px-3 py-2 outline-none ring-0 focus:border-emerald-500 dark:border-stone-800 dark:bg-stone-950"
           placeholder="Paste one URL per line"

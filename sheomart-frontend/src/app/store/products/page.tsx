@@ -55,15 +55,21 @@ export default function StoreProductsPage() {
     staleTime: 1000 * 60 * 5,
   });
 
+  const categoryNames = useMemo(
+    () => new Map(categories.flatMap((category) => (category.categoryId ? [[category.categoryId, category.name] as const] : []))),
+    [categories],
+  );
+
   const filteredProducts = useMemo(() => {
     const normalized = query.trim().toLowerCase();
 
     return products.filter((product) => {
-      const matchesSearch = !normalized || `${product.name ?? ""} ${product.sku ?? ""} ${product.category ?? ""}`.toLowerCase().includes(normalized);
+      const categoryName = product.categoryId ? categoryNames.get(product.categoryId) ?? "" : "";
+      const matchesSearch = !normalized || [product.name, product.sku, product.brand, categoryName].filter(Boolean).some((value) => value?.toLowerCase().includes(normalized));
       const matchesStatus = statusFilter === "all" || (statusFilter === "published" && product.isPublished) || (statusFilter === "draft" && !product.isPublished) || (statusFilter === "hidden" && product.isActive === false);
       return matchesSearch && matchesStatus;
     });
-  }, [products, query, statusFilter]);
+  }, [products, query, statusFilter, categoryNames]);
 
   const pagedProducts = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE;
@@ -222,6 +228,7 @@ export default function StoreProductsPage() {
               <>
                 <ProductManagementTable
                   products={pagedProducts}
+                  categoryNames={categoryNames}
                   onEdit={(product) => setEditingProduct(product)}
                   onDelete={(product) => setPendingDelete(product)}
                   onToggleStatus={(product) => setPendingStatus(product)}

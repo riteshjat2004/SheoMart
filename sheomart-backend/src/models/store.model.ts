@@ -2,6 +2,11 @@ import { Document, Schema, model } from "mongoose";
 import { v4 as uuidv4 } from "uuid";
 import { STORE_STATUS, StoreStatus } from "../constants/store";
 
+export enum STORE_BADGE {
+  VERIFIED = "verified",
+  ROYAL = "royal",
+}
+
 export interface IStore extends Document {
   storeId: string;
   ownerId: string;
@@ -16,6 +21,7 @@ export interface IStore extends Document {
   city: string;
   state: string;
   pincode: string;
+  badges: STORE_BADGE[];
   isVerified: boolean;
   status: StoreStatus;
   approvedAt: Date | null;
@@ -111,6 +117,12 @@ const storeSchema = new Schema<IStore>(
       type: String,
       default: "",
       trim: true,
+    },
+
+    badges: {
+      type: [String],
+      enum: Object.values(STORE_BADGE),
+      default: [],
     },
 
     isVerified: {

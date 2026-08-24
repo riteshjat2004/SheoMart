@@ -8,12 +8,13 @@ import type { ProductItem } from "@/types/marketplace";
 
 interface ProductManagementTableProps {
   products: ProductItem[];
+  categoryNames: Map<string, string>;
   onEdit: (product: ProductItem) => void;
   onDelete: (product: ProductItem) => void;
   onToggleStatus: (product: ProductItem) => void;
 }
 
-export function ProductManagementTable({ products, onEdit, onDelete, onToggleStatus }: ProductManagementTableProps) {
+export function ProductManagementTable({ products, categoryNames, onEdit, onDelete, onToggleStatus }: ProductManagementTableProps) {
   return (
     <DataTable
       columns={[
@@ -39,7 +40,7 @@ export function ProductManagementTable({ products, onEdit, onDelete, onToggleSta
               </div>
             </div>
           </td>
-          <td className="px-4 py-3 text-sm text-stone-600 dark:text-stone-300">{product.category ?? "Uncategorized"}</td>
+          <td className="px-4 py-3 text-sm text-stone-600 dark:text-stone-300">{(product.categoryId ? categoryNames.get(product.categoryId) : undefined) ?? "Uncategorized"}</td>
           <td className="px-4 py-3 text-sm text-stone-600 dark:text-stone-300">{product.discountPrice ?? product.price}</td>
           <td className="px-4 py-3">
             <StatusBadge

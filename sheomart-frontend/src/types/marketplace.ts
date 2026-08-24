@@ -50,6 +50,8 @@ export interface WishlistItem {
   product: ProductItem;
 }
 
+export type StoreBadgeType = "verified" | "royal";
+
 export interface StoreItem {
   _id?: string;
   storeId?: string;
@@ -69,6 +71,7 @@ export interface StoreItem {
   city?: string;
   state?: string;
   pincode?: string;
+  badges?: StoreBadgeType[];
   status?: string;
   isVerified?: boolean;
   isActive?: boolean;

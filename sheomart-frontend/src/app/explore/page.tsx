@@ -9,7 +9,7 @@ import { Section } from "@/components/layout/section";
 import { SearchBar } from "@/components/marketplace/SearchBar";
 import { CategoryCard } from "@/components/marketplace/CategoryCard";
 import { ProductCard } from "@/components/marketplace/ProductCard";
-import { StoreCard } from "@/components/marketplace/StoreCard";
+import { StoreCard } from "@/components/store/StoreCard";
 import { SectionHeading } from "@/components/marketplace/SectionHeading";
 import { ErrorState } from "@/components/common/error-state";
 import { EmptyState } from "@/components/common/empty-state";

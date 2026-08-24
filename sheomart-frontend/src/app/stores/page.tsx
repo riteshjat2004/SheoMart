@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Container } from "@/components/layout/container";
 import { PageWrapper } from "@/components/layout/page-wrapper";
 import { Section } from "@/components/layout/section";
-import { StoreCard } from "@/components/marketplace/StoreCard";
+import { StoreCard } from "@/components/store/StoreCard";
 import { SectionHeading } from "@/components/marketplace/SectionHeading";
 import { ErrorState } from "@/components/common/error-state";
 import { EmptyState } from "@/components/common/empty-state";
