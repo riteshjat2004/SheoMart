@@ -13,7 +13,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isStoreRoute = pathname === "/store" || pathname.startsWith("/store/");
 
   if (isAdminRoute || isStoreRoute) {
-    return <RouteGuard>{children}</RouteGuard>;
+    return <><RouteGuard>{children}</RouteGuard><FloatingCartButton /></>;
   }
 
   return (

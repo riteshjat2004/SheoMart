@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CheckCircle2, KeyRound, LogOut, Mail, Phone, UserCircle2 } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -18,7 +18,8 @@ import { useUpdateProfile } from "@/hooks/useUpdateProfile";
 import { changePassword } from "@/services/profile";
 import { useAuthStore } from "@/store/auth-store";
 import type { ProfileUpdatePayload, ProfileUser } from "@/types/profile";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { fetchPlatformFeeConfig, updatePlatformFeeConfig, type PlatformFeeConfig } from "@/services/platform-fee";
 
 const profileSchema = z.object({
   name: z.string().trim().min(2, "Name must be at least 2 characters").max(100, "Name must be at most 100 characters"),
@@ -173,6 +174,16 @@ function SecuritySection() {
   );
 }
 
+function PlatformFeeSettings() {
+  const queryClient = useQueryClient();
+  const query = useQuery({ queryKey: ["platform-fee"], queryFn: fetchPlatformFeeConfig });
+  const [form, setForm] = useState<PlatformFeeConfig>({ amount: 10, feeType: "FIXED", minimumOrderAmount: 0, maximumPlatformFee: undefined, enabled: true });
+  const [initialized, setInitialized] = useState(false);
+  useEffect(() => { if (query.data && !initialized) { setForm(query.data); setInitialized(true); } }, [initialized, query.data]);
+  const mutation = useMutation({ mutationFn: updatePlatformFeeConfig, onSuccess: (config) => { if (config) setForm(config); void queryClient.invalidateQueries({ queryKey: ["platform-fee"] }); } });
+  return <DashboardCard title="Platform Fee Settings" description="Configure the platform fee applied to every pickup and delivery checkout."><div className="grid gap-4 md:grid-cols-2"><label className="space-y-1.5 text-sm font-medium"><span>Fee amount</span><input type="number" min="0" value={form.amount} onChange={(event) => setForm({ ...form, amount: Number(event.target.value) })} className="min-h-11 w-full rounded-lg border border-stone-200 bg-white px-3 dark:border-stone-800 dark:bg-stone-950" /></label><label className="space-y-1.5 text-sm font-medium"><span>Fee type</span><select value={form.feeType} onChange={(event) => setForm({ ...form, feeType: event.target.value as PlatformFeeConfig["feeType"] })} className="min-h-11 w-full rounded-lg border border-stone-200 bg-white px-3 dark:border-stone-800 dark:bg-stone-950"><option value="FIXED">Fixed amount</option><option value="PERCENTAGE">Percentage of order total</option></select></label><label className="space-y-1.5 text-sm font-medium"><span>Minimum order amount</span><input type="number" min="0" value={form.minimumOrderAmount ?? 0} onChange={(event) => setForm({ ...form, minimumOrderAmount: Number(event.target.value) })} className="min-h-11 w-full rounded-lg border border-stone-200 bg-white px-3 dark:border-stone-800 dark:bg-stone-950" /></label><label className="space-y-1.5 text-sm font-medium"><span>Maximum platform fee</span><input type="number" min="0" value={form.maximumPlatformFee ?? ""} onChange={(event) => setForm({ ...form, maximumPlatformFee: event.target.value ? Number(event.target.value) : undefined })} className="min-h-11 w-full rounded-lg border border-stone-200 bg-white px-3 dark:border-stone-800 dark:bg-stone-950" /></label></div><label className="mt-4 flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={form.enabled} onChange={(event) => setForm({ ...form, enabled: event.target.checked })} />Enable platform fee</label><div className="mt-5 flex justify-end"><Button type="button" disabled={mutation.isPending || query.isLoading} onClick={() => mutation.mutate(form)}>{mutation.isPending ? "Saving..." : "Save platform fee"}</Button></div></DashboardCard>;
+}
+
 export default function AdminSettingsPage() {
   const profileQuery = useProfile();
 
@@ -192,6 +203,7 @@ export default function AdminSettingsPage() {
             <div className="mt-5 border-t border-stone-200 pt-5 dark:border-stone-800"><AccountDetails profile={profileQuery.data} /></div>
           </DashboardCard>
           <DashboardCard title="Security" description="Change your password or sign out using the existing account security flow."><SecuritySection /></DashboardCard>
+          <PlatformFeeSettings />
           <p className="text-center text-xs text-stone-500 dark:text-stone-400">Platform configuration remains managed through deployment and environment configuration.</p>
         </>
       ) : null}

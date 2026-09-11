@@ -1,4 +1,4 @@
-import { Check, CircleCheck, Clock3, PackageCheck, Store, X } from "lucide-react";
+import { Check, CircleCheck, Clock3, PackageCheck, Store, Truck, X } from "lucide-react";
 
 interface OrderStatusTimelineProps {
   pickupStatus?: string;
@@ -6,14 +6,23 @@ interface OrderStatusTimelineProps {
   statusUpdatedAt?: string;
   paymentStatus?: string;
   createdAt?: string;
+  fulfillmentType?: string;
+  acceptedAt?: string;
+  preparingAt?: string;
+  readyForDispatchAt?: string;
+  readyForPickupAt?: string;
+  outForDeliveryAt?: string;
+  deliveredAt?: string;
+  pickedUpAt?: string;
 }
 
-const steps = [
+const pickupSteps = [
   { label: "Order Placed", icon: CircleCheck },
   { label: "Preparing", icon: Clock3 },
   { label: "Ready for Pickup", icon: Store },
   { label: "Picked Up", icon: PackageCheck },
 ];
+const deliverySteps = [{ label: "Order Placed", icon: CircleCheck }, { label: "Seller Accepted", icon: Check }, { label: "Preparing", icon: Clock3 }, { label: "Ready for Dispatch", icon: Store }, { label: "Out for Delivery", icon: Truck }, { label: "Delivered", icon: PackageCheck }];
 
 const getCurrentStep = (status?: string): number => {
   const stepsByStatus: Record<string, number> = {
@@ -25,10 +34,11 @@ const getCurrentStep = (status?: string): number => {
   return stepsByStatus[status ?? ""] ?? 0;
 };
 
-export function OrderStatusTimeline({ pickupStatus, status, statusUpdatedAt, paymentStatus, createdAt }: OrderStatusTimelineProps) {
+export function OrderStatusTimeline({ pickupStatus, status, statusUpdatedAt, paymentStatus, createdAt, fulfillmentType, acceptedAt, preparingAt, readyForDispatchAt, readyForPickupAt, outForDeliveryAt, deliveredAt, pickedUpAt }: OrderStatusTimelineProps) {
+  const steps = fulfillmentType === "delivery" ? deliverySteps : pickupSteps;
   const currentStatus = pickupStatus ?? status;
   const isCancelled = currentStatus === "CANCELLED";
-  const currentStep = getCurrentStep(currentStatus);
+  const currentStep = fulfillmentType === "delivery" ? ({ ORDER_PLACED: 0, ACCEPTED: 1, PREPARING: 2, READY_FOR_DISPATCH: 3, OUT_FOR_DELIVERY: 4, DELIVERED: 5 }[currentStatus ?? ""] ?? 0) : getCurrentStep(currentStatus);
   const activityLabels = steps.slice(0, currentStep + 1).map((step) => step.label);
   if (isCancelled) {
     activityLabels.push("Cancelled");
@@ -51,6 +61,7 @@ export function OrderStatusTimeline({ pickupStatus, status, statusUpdatedAt, pay
             <span className={`pt-0.5 text-sm ${isCurrent ? "font-semibold text-emerald-700 dark:text-emerald-300" : isCompleted ? "font-medium text-stone-700 dark:text-stone-200" : "text-stone-500 dark:text-stone-400"}`}>
               {step.label}
               {isCurrent ? <span className="ml-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">Current</span> : null}
+              {([acceptedAt, preparingAt, readyForDispatchAt, readyForPickupAt, outForDeliveryAt, deliveredAt, pickedUpAt][index] ?? (index === 0 ? createdAt : undefined)) ? <time className="ml-2 text-xs text-stone-500">{new Date(([acceptedAt, preparingAt, readyForDispatchAt, readyForPickupAt, outForDeliveryAt, deliveredAt, pickedUpAt][index] ?? createdAt) as string).toLocaleString()}</time> : null}
             </span>
           </div>
         );

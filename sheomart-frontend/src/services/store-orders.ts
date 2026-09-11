@@ -13,7 +13,7 @@ export async function fetchStoreOrders(filters: StoreOrderFilters): Promise<Stor
   return { orders: data?.orders ?? [], pagination: data && "pagination" in data ? data.pagination : undefined };
 }
 
-export async function updateOrderStatus(orderId: string, status: "PREPARING" | "READY_FOR_PICKUP" | "PICKED_UP" | "CANCELLED"): Promise<StoreOrder | null> {
+export async function updateOrderStatus(orderId: string, status: "ACCEPTED" | "PREPARING" | "READY_FOR_PICKUP" | "READY_FOR_DISPATCH" | "OUT_FOR_DELIVERY" | "PICKED_UP" | "DELIVERED" | "CANCELLED"): Promise<StoreOrder | null> {
   const response = await api.patch<ApiResponse<{ order?: StoreOrder }>>(`/api/v1/orders/${orderId}/status`, { status });
   return response.data.data?.order ?? null;
 }
@@ -27,5 +27,10 @@ export type PickupPaymentMethod = "CASH" | "UPI" | "CARD";
 
 export async function collectPickupPayment(orderId: string, paymentMethod: PickupPaymentMethod): Promise<StoreOrder | null> {
   const response = await api.patch<ApiResponse<{ order?: StoreOrder }>>(`/api/v1/orders/${encodeURIComponent(orderId)}/payment`, { paymentMethod });
+  return response.data.data?.order ?? null;
+}
+
+export async function updateDeliveryEta(orderId: string, estimatedDeliveryAt: string): Promise<StoreOrder | null> {
+  const response = await api.patch<ApiResponse<{ order?: StoreOrder }>>(`/api/v1/orders/${encodeURIComponent(orderId)}/delivery-eta`, { estimatedDeliveryAt });
   return response.data.data?.order ?? null;
 }

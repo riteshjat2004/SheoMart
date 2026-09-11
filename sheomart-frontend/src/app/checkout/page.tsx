@@ -2,7 +2,7 @@
 
 import { createPaymentOrder, verifyPayment } from "@/services/payment";
 import { loadRazorpay } from "@/lib/loadRazorpay";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { FulfillmentSelector } from "@/components/checkout/FulfillmentSelector";
@@ -36,6 +36,7 @@ import { useStoreCustomer } from "@/hooks/use-store-customer";
 import { useAuthStore } from "@/store/auth-store";
 import { createDraftOrder } from "@/services/orders";
 import { fetchActiveOffers, validateCoupon, type CouponValidation } from "@/services/promotions";
+import { fetchPlatformFeeConfig } from "@/services/platform-fee";
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -53,6 +54,7 @@ export default function CheckoutPage() {
   const [editingAddress, setEditingAddress] = useState<AddressItem | null>(null);
   const [deliverySlotId, setDeliverySlotId] = useState("");
   const [deliverySlotLabel, setDeliverySlotLabel] = useState("");
+  const [deliverySlotDay, setDeliverySlotDay] = useState<"Today" | "Tomorrow">("Today");
   const [pickupSlot, setPickupSlot] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<CheckoutPaymentMethod>("ONLINE");
   const [deliveryMethod, setDeliveryMethod] = useState<"pickup" | "delivery">(
@@ -94,6 +96,7 @@ export default function CheckoutPage() {
   const storeId = storeIds[0];
   const storeQuery = useStore(storeId);
   const activeOffersQuery = useQuery({ queryKey: ["active-offers"], queryFn: fetchActiveOffers, staleTime: 60000 });
+  const platformFeeQuery = useQuery({ queryKey: ["platform-fee"], queryFn: fetchPlatformFeeConfig, staleTime: 0 });
   const customerQuery = useStoreCustomer(user?.userId ?? null, null, storeId);
   const store = storeQuery.data;
   const addresses = useMemo(
@@ -114,8 +117,12 @@ export default function CheckoutPage() {
   const paymentLabel = paymentMethod === "ONLINE" ? "Razorpay" : paymentMethod === "PAY_AT_PICKUP" ? "Pay During Pickup" : "Pay During Delivery";
   const paymentStatusPreview = paymentMethod === "ONLINE" ? "Pending Payment" : paymentMethod === "PAY_AT_PICKUP" ? "Pay on Pickup" : "Pay on Delivery";
   const paymentValid = isPlusCustomer || paymentMethod === "ONLINE";
-  const pickupEnabled = store?.pickupEnabled !== false;
-  const deliveryEnabled = store?.deliveryEnabled === true;
+  const supportsPickup = store?.supportsPickup === true;
+  const supportsDelivery = store?.supportsDelivery === true;
+  useEffect(() => {
+    if (supportsDelivery && !supportsPickup) setDeliveryMethod("delivery");
+    if (supportsPickup && !supportsDelivery) setDeliveryMethod("pickup");
+  }, [supportsDelivery, supportsPickup]);
   const loading =
     cartQuery.isLoading ||
     addressesQuery.isLoading ||
@@ -130,8 +137,9 @@ export default function CheckoutPage() {
     return total + Math.min(price * item.quantity, raw);
   }, 0), [activeOffersQuery.data, cartItems]);
   const configuredDeliveryFee = store?.deliveryFee ?? 0;
-  const freeDeliveryAbove = store?.freeDeliveryAbove ?? 0;
-  const preparationTimeMinutes = store?.preparationTimeMinutes ?? 30;
+  const freeDeliveryAbove = store?.freeDeliveryThreshold ?? store?.freeDeliveryAbove ?? 0;
+  const preparationTimeMinutes = store?.preparationTimeMinutes ?? 0;
+  const freeDeliveryApplied = deliveryMethod === "delivery" && Boolean(freeDeliveryAbove && totals.subtotal >= freeDeliveryAbove);
   const addressDistance = selectedAddress && store ? (() => {
     if (selectedAddress.latitude === undefined || selectedAddress.longitude === undefined || store.latitude === undefined || store.longitude === undefined) return null;
     const toRadians = (value: number) => value * Math.PI / 180;
@@ -142,9 +150,12 @@ export default function CheckoutPage() {
   })() : null;
   const deliveryUnavailable = deliveryMethod === "delivery" && addressDistance !== null && (store?.deliveryRadiusKm ?? 0) > 0 && addressDistance > (store?.deliveryRadiusKm ?? 0);
   const deliveryFee = deliveryMethod === "delivery" && !(freeDeliveryAbove > 0 && totals.subtotal >= freeDeliveryAbove) ? configuredDeliveryFee : 0;
-  const platformFee = deliveryMethod === "delivery" ? 10 : 0;
-  const deliverySavings = deliveryMethod === "pickup" ? 50 : 0;
-  const finalPayable = Math.max(0, totals.subtotal - totals.estimatedSavings - festivalSavings - (appliedCoupon?.discount ?? 0) + deliveryFee + platformFee);
+  const platformConfig = platformFeeQuery.data;
+  const platformFee = platformConfig?.enabled && totals.subtotal >= (platformConfig.minimumOrderAmount ?? 0)
+    ? Math.min(platformConfig.feeType === "PERCENTAGE" ? totals.subtotal * platformConfig.amount / 100 : platformConfig.amount, platformConfig.maximumPlatformFee ?? Number.POSITIVE_INFINITY)
+    : 0;
+  const deliverySavings = freeDeliveryApplied ? configuredDeliveryFee : 0;
+  const finalPayable = Math.max(0, totals.subtotal - festivalSavings - (appliedCoupon?.discount ?? 0) + deliveryFee + platformFee);
 
   const applyCoupon = async () => {
     if (!couponCode.trim()) return;
@@ -196,7 +207,7 @@ export default function CheckoutPage() {
       const payload = {
         addressId: effectiveAddressId,
         selectedAddressId: effectiveAddressId,
-        deliveryDate: new Date(Date.now() + 86400000)
+        deliveryDate: new Date(Date.now() + (deliverySlotDay === "Tomorrow" ? 86400000 : 0))
           .toISOString()
           .slice(0, 10),
         deliverySlot: deliveryMethod === "delivery" ? deliverySlotLabel : pickupSlot,
@@ -205,7 +216,15 @@ export default function CheckoutPage() {
         deliveryMethod,
         fulfillmentType: deliveryMethod,
         deliverySlotId: deliveryMethod === "delivery" ? deliverySlotId : undefined,
+        deliverySlotLabel: deliveryMethod === "delivery" ? deliverySlotLabel.split(" (")[0] : undefined,
+        deliveryWindowStart: deliveryMethod === "delivery" ? store?.deliverySlots?.find((slot) => slot.slotId === deliverySlotId)?.startTime : undefined,
+        deliveryWindowEnd: deliveryMethod === "delivery" ? store?.deliverySlots?.find((slot) => slot.slotId === deliverySlotId)?.endTime : undefined,
+        deliveryFee: deliveryMethod === "delivery" ? deliveryFee : 0,
+        deliveryFeeCharged: deliveryMethod === "delivery" ? deliveryFee : 0,
+        freeDeliveryApplied,
         pickupSlot: deliveryMethod === "pickup" ? pickupSlot : undefined,
+        pickupSlotId: deliveryMethod === "pickup" ? pickupSlot : undefined,
+        pickupSlotLabel: deliveryMethod === "pickup" ? pickupSlot : undefined,
         estimatedReadyTime: new Date(Date.now() + preparationTimeMinutes * 60000).toISOString(),
         estimatedDeliveryWindow: deliveryMethod === "delivery" ? deliverySlotLabel : undefined,
         storeId: storeId || "",
@@ -319,7 +338,7 @@ export default function CheckoutPage() {
             <ErrorState message="Please resolve unavailable items before continuing." />
           ) : (
             <div className="space-y-6">
-              <FulfillmentSelector value={deliveryMethod} onChange={(value) => { setDeliveryMethod(value); setStage(1); }} pickupEnabled={pickupEnabled} deliveryEnabled={deliveryEnabled} deliveryFee={configuredDeliveryFee} freeDeliveryAbove={freeDeliveryAbove} preparationTimeMinutes={preparationTimeMinutes} subtotal={totals.subtotal} />
+              <FulfillmentSelector value={deliveryMethod} onChange={(value) => { setDeliveryMethod(value); setStage(1); }} supportsPickup={supportsPickup} supportsDelivery={supportsDelivery} deliveryFee={configuredDeliveryFee} freeDeliveryAbove={freeDeliveryAbove} preparationTimeMinutes={preparationTimeMinutes} subtotal={totals.subtotal} />
               {deliveryMethod === "delivery" ? <AddressSelector addresses={addresses} selectedAddressId={effectiveAddressId} onSelect={(address) => setSelectedAddressId(address.addressId ?? "")} onEdit={(address) => { setEditingAddress(address); setAddressSheetOpen(true); }} onDelete={(address) => address.addressId && removeAddressMutation.mutate(address.addressId)} onAdd={() => { setEditingAddress(null); setAddressSheetOpen(true); }} /> : <PickupStoreCard store={store ?? null} />}
               {deliveryMethod === "delivery" && deliveryUnavailable ? <DeliveryUnavailableCard onChangeAddress={() => document.querySelector("[aria-labelledby='fulfillment-heading']")?.scrollIntoView({ behavior: "smooth" })} onSwitchToPickup={() => setDeliveryMethod("pickup")} /> : null}
               {draftError ? <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{draftError}</div> : null}
@@ -332,7 +351,7 @@ export default function CheckoutPage() {
                 >
                   <div className="space-y-6">
                     <FulfillmentInfoCard type={deliveryMethod} store={store ?? null} address={[selectedAddress?.house, selectedAddress?.street, selectedAddress?.city, selectedAddress?.state, selectedAddress?.pincode].filter(Boolean).join(", ")} preparationTimeMinutes={preparationTimeMinutes} deliveryFee={configuredDeliveryFee} freeDeliveryAbove={freeDeliveryAbove} subtotal={totals.subtotal} />
-                    {deliveryMethod === "delivery" ? <DeliverySlotPicker slots={store?.deliverySlots ?? []} value={deliverySlotId} onChange={(slot) => { setDeliverySlotId(slot.slotId); setDeliverySlotLabel(`${slot.label} (${slot.startTime} - ${slot.endTime})`); }} /> : <PickupSlotPicker openingTime={store?.pickupOpeningTime ?? "10:00"} closingTime={store?.pickupClosingTime ?? "20:00"} preparationTimeMinutes={preparationTimeMinutes} value={pickupSlot} onChange={setPickupSlot} />}
+                    {deliveryMethod === "delivery" ? <DeliverySlotPicker slots={store?.deliverySlots ?? []} value={deliverySlotId} preparationTimeMinutes={preparationTimeMinutes} onChange={(slot, day) => { setDeliverySlotDay(day); setDeliverySlotId(slot.slotId); setDeliverySlotLabel(`${slot.label} (${slot.startTime} - ${slot.endTime})`); }} /> : <PickupSlotPicker openingTime={store?.pickupOpeningTime ?? ""} closingTime={store?.pickupClosingTime ?? ""} preparationTimeMinutes={preparationTimeMinutes} value={pickupSlot} onChange={setPickupSlot} />}
                     <EstimatedArrivalCard type={deliveryMethod} text={deliveryMethod === "delivery" ? (deliverySlotLabel || "Choose a delivery window") : (pickupSlot ? `Today • ${pickupSlot}` : `Ready in ${preparationTimeMinutes} minutes`)} />
                     <MembershipBanner isPlusCustomer={isPlusCustomer} />
                     <PaymentSelector value={paymentMethod} onChange={setPaymentMethod} isPlusCustomer={isPlusCustomer} fulfillmentType={deliveryMethod} />
@@ -349,7 +368,7 @@ export default function CheckoutPage() {
                     </section>
                     <OrderSummaryCard
                       totalItems={totals.totalItems}
-                      estimatedPickup="30 - 45 minutes"
+                      estimatedPickup={deliveryMethod === "delivery" ? deliverySlotLabel || "Select a delivery window" : pickupSlot || `Ready in ${preparationTimeMinutes} minutes`}
                       paymentMethod={paymentLabel}
                       paymentStatusPreview={paymentStatusPreview}
                       deliveryMethod={

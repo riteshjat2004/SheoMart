@@ -73,12 +73,25 @@ export interface IOrder extends Document {
   deliverySlotId?: string;
   pickupSlot?: string;
   estimatedDeliveryWindow?: string;
+  deliverySlotLabel?: string;
+  deliveryWindowStart?: string;
+  deliveryWindowEnd?: string;
+  freeDeliveryApplied: boolean;
   paymentMethod: string;
   paymentRequiredBeforeConfirmation: boolean;
   paymentStatus: string;
   amountPaid?: number;
   remainingAmount?: number;
   pickupStatus: string;
+  estimatedDeliveryAt?: Date;
+  updatedBySellerAt?: Date;
+  acceptedAt?: Date;
+  preparingAt?: Date;
+  readyForDispatchAt?: Date;
+  readyForPickupAt?: Date;
+  outForDeliveryAt?: Date;
+  deliveredAt?: Date;
+  pickedUpAt?: Date;
 
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
@@ -92,6 +105,11 @@ export interface IOrder extends Document {
   couponCode?: string;
   deliveryCharge: number;
   platformFee: number;
+  platformFeeCharged: number;
+  deliveryFeeCharged: number;
+  couponDiscountApplied: number;
+  festivalDiscountApplied: number;
+  productSavingsShown: number;
   grandTotal: number;
   orderItems: IOrderItem[];
   status: string;
@@ -229,6 +247,10 @@ const orderSchema = new Schema<IOrder>(
     deliverySlotId: { type: String, default: "" },
     pickupSlot: { type: String, default: "" },
     estimatedDeliveryWindow: { type: String, default: "" },
+    deliverySlotLabel: { type: String, default: "" },
+    deliveryWindowStart: { type: String, default: "" },
+    deliveryWindowEnd: { type: String, default: "" },
+    freeDeliveryApplied: { type: Boolean, default: false },
     paymentMethod: {
       type: String,
       required: true,
@@ -250,6 +272,15 @@ const orderSchema = new Schema<IOrder>(
       required: true,
       default: "ORDER_PLACED",
     },
+    estimatedDeliveryAt: { type: Date, default: null },
+    updatedBySellerAt: { type: Date, default: null },
+    acceptedAt: { type: Date, default: null },
+    preparingAt: { type: Date, default: null },
+    readyForDispatchAt: { type: Date, default: null },
+    readyForPickupAt: { type: Date, default: null },
+    outForDeliveryAt: { type: Date, default: null },
+    deliveredAt: { type: Date, default: null },
+    pickedUpAt: { type: Date, default: null },
     razorpayOrderId: {
       type: String,
       default: null,
@@ -292,6 +323,11 @@ const orderSchema = new Schema<IOrder>(
       required: true,
       min: 0,
     },
+    platformFeeCharged: { type: Number, min: 0, default: 0 },
+    deliveryFeeCharged: { type: Number, min: 0, default: 0 },
+    couponDiscountApplied: { type: Number, min: 0, default: 0 },
+    festivalDiscountApplied: { type: Number, min: 0, default: 0 },
+    productSavingsShown: { type: Number, min: 0, default: 0 },
     grandTotal: {
       type: Number,
       required: true,

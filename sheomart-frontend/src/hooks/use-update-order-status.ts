@@ -5,7 +5,7 @@ import { updateOrderStatus } from "@/services/store-orders";
 
 interface UpdateOrderStatusVariables {
   orderId: string;
-  status: "PREPARING" | "READY_FOR_PICKUP" | "PICKED_UP" | "CANCELLED";
+  status: "ACCEPTED" | "PREPARING" | "READY_FOR_PICKUP" | "READY_FOR_DISPATCH" | "OUT_FOR_DELIVERY" | "PICKED_UP" | "DELIVERED" | "CANCELLED";
 }
 
 export function useUpdateOrderStatus(options?: {

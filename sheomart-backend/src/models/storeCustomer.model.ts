@@ -17,8 +17,13 @@ const storeCustomerSchema = new Schema<IStoreCustomer>(
       immutable: true,
     },
     storeId: { type: String, required: true },
-    customerId: { type: String, required: true },
+    customerId: { type: String, default: null },
+    pendingEmail: { type: String, default: null, lowercase: true, trim: true },
+    pendingPhone: { type: String, default: null, trim: true },
     isPlusCustomer: { type: Boolean, required: true, default: false },
+    grantedBySeller: { type: String, default: "" },
+    grantedAt: { type: Date, default: Date.now },
+    linkedAt: { type: Date, default: null },
     joinedAt: { type: Date, required: true, default: Date.now },
     totalOfflinePurchases: { type: Number, required: true, min: 0, default: 0 },
     totalOnlinePurchases: { type: Number, required: true, min: 0, default: 0 },
@@ -27,7 +32,9 @@ const storeCustomerSchema = new Schema<IStoreCustomer>(
   { timestamps: true }
 );
 
-storeCustomerSchema.index({ storeId: 1, customerId: 1 }, { unique: true });
+storeCustomerSchema.index({ storeId: 1, customerId: 1 }, { unique: true, partialFilterExpression: { customerId: { $type: "string" } } });
+storeCustomerSchema.index({ storeId: 1, pendingEmail: 1 }, { unique: true, partialFilterExpression: { pendingEmail: { $type: "string" } } });
+storeCustomerSchema.index({ storeId: 1, pendingPhone: 1 }, { unique: true, partialFilterExpression: { pendingPhone: { $type: "string" } } });
 storeCustomerSchema.index({ storeId: 1, isPlusCustomer: 1 });
 
 export const StoreCustomer = model<IStoreCustomer>("StoreCustomer", storeCustomerSchema);

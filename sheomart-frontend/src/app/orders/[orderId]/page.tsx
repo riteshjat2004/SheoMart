@@ -11,6 +11,7 @@ import { SectionHeading } from "@/components/marketplace/SectionHeading";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { OrderItemsList } from "@/components/profile/OrderItemsList";
 import { PaymentSummaryCard } from "@/components/profile/PaymentSummaryCard";
+import { LiveDeliveryEtaCard } from "@/components/profile/LiveDeliveryEtaCard";
 import { PickupInfoCard } from "@/components/profile/PickupInfoCard";
 import { OrderStatusTimeline } from "@/components/profile/OrderStatusTimeline";
 import { ErrorState } from "@/components/common/error-state";
@@ -19,7 +20,7 @@ import { LoadingSkeleton } from "@/components/dashboard/LoadingSkeleton";
 import { useOrders } from "@/hooks/use-orders";
 import type { OrderRecord } from "@/services/orders";
 
-const statusLabel = (status?: string) => status === "PICKED_UP" ? "Picked Up" : status === "READY_FOR_PICKUP" ? "Ready for Pickup" : status === "PREPARING" ? "Preparing" : status === "CANCELLED" ? "Cancelled" : "Order Placed";
+const statusLabel = (status?: string) => ({ ACCEPTED: "Seller Accepted", PREPARING: "Preparing", READY_FOR_PICKUP: "Ready for Pickup", READY_FOR_DISPATCH: "Ready for Dispatch", OUT_FOR_DELIVERY: "Out for Delivery", PICKED_UP: "Picked Up", DELIVERED: "Delivered", CANCELLED: "Cancelled" }[status ?? ""] ?? "Order Placed");
 const paymentLabel = (status?: string) => status === "PAID" ? "Paid" : "Pending";
 type LiveOrder = OrderRecord & { invoiceNumber?: string; storeName?: string; paymentMethod?: string };
 
@@ -40,7 +41,7 @@ export default function OrderDetailsPage() {
             <Link href="/orders"><ArrowLeft className="mr-2 h-4 w-4" />Back to orders</Link>
           </Button>
 
-          <SectionHeading eyebrow="Order Details" title={`Order ${order.orderId}`} description="Review your pickup order, payment summary, and store information." />
+          <SectionHeading eyebrow="Order Details" title={`Order ${order.orderId}`} description={order.fulfillmentType === "delivery" || order.deliveryMethod === "delivery" ? "Review your delivery order, payment summary, and live fulfillment updates." : "Review your pickup order, payment summary, and store information."} />
 
           <section className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm dark:border-stone-800 dark:bg-stone-900">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -60,6 +61,7 @@ export default function OrderDetailsPage() {
           <div className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200">
             {order.pickupStatus === "PICKED_UP" ? "Your order has been completed." : order.pickupStatus === "READY_FOR_PICKUP" ? "Your order is ready for pickup. Bring your order ID when collecting it." : "Your order status is being updated."}
           </div>
+          {order.fulfillmentType === "delivery" || order.deliveryMethod === "delivery" ? <LiveDeliveryEtaCard estimatedDeliveryAt={order.estimatedDeliveryAt} /> : null}
 
           <OrderItemsList items={(order.orderItems ?? []).map((item) => ({ name: item.name ?? "Product", quantity: item.quantity ?? 0, price: `₹${item.discountPrice ?? item.price ?? 0}`, total: `₹${item.totalPrice ?? 0}` }))} />
 
@@ -67,8 +69,9 @@ export default function OrderDetailsPage() {
             <div><PaymentSummaryCard subtotal={order.subtotal} discount={order.discount} deliveryCharge={order.deliveryCharge} platformFee={order.platformFee} grandTotal={order.grandTotal} amountPaid={order.amountPaid} remainingAmount={order.remainingAmount} paymentMethod={order.paymentMethod} paymentStatus={order.paymentStatus === "PAID" ? "Paid" : "Pending"} />{order.paymentStatus === "PAID" && order.razorpayPaymentId ? <div className="mt-3 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200"><p className="font-semibold">Paid online</p><p className="mt-1 break-all">Payment ID: {order.razorpayPaymentId}</p>{order.paidAt ? <p className="mt-1">Paid at: {new Date(order.paidAt).toLocaleString()}</p> : null}</div> : null}</div>
             <PickupInfoCard order={order} />
           </div>
+          {order.fulfillmentType === "delivery" || order.deliveryMethod === "delivery" ? <section className="rounded-[2rem] border border-blue-200 bg-blue-50 p-6 dark:border-blue-900/60 dark:bg-blue-950/30"><h2 className="text-lg font-semibold text-blue-950 dark:text-blue-100">Delivery summary</h2><dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2"><div><dt className="text-blue-700 dark:text-blue-300">Delivery address</dt><dd className="mt-1 font-semibold text-blue-950 dark:text-blue-100">{[order.shippingAddress?.house, order.shippingAddress?.street, order.shippingAddress?.city, order.shippingAddress?.state, order.shippingAddress?.pincode].filter(Boolean).join(", ") || "Not available"}</dd></div><div><dt className="text-blue-700 dark:text-blue-300">Delivery slot</dt><dd className="mt-1 font-semibold text-blue-950 dark:text-blue-100">{order.deliverySlotLabel ?? order.deliverySlot ?? "Not selected"}{order.deliveryWindowStart ? ` (${order.deliveryWindowStart} - ${order.deliveryWindowEnd})` : ""}</dd></div><div><dt className="text-blue-700 dark:text-blue-300">Expected delivery window</dt><dd className="mt-1 font-semibold text-blue-950 dark:text-blue-100">{order.estimatedDeliveryWindow ?? order.deliverySlotLabel ?? "Not available"}</dd></div><div><dt className="text-blue-700 dark:text-blue-300">Delivery fee</dt><dd className="mt-1 font-semibold text-blue-950 dark:text-blue-100">₹{(order.deliveryFeeCharged ?? order.deliveryCharge ?? 0).toLocaleString("en-IN")}</dd></div><div><dt className="text-blue-700 dark:text-blue-300">Live ETA</dt><dd className="mt-1 font-semibold text-blue-950 dark:text-blue-100">{order.estimatedDeliveryAt ? new Date(order.estimatedDeliveryAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "Seller will update soon"}</dd></div><div><dt className="text-blue-700 dark:text-blue-300">Delivery status</dt><dd className="mt-1 font-semibold text-blue-950 dark:text-blue-100">{statusLabel(order.pickupStatus ?? order.status)}</dd></div></dl></section> : null}
 
-          <div className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm dark:border-stone-800 dark:bg-stone-900"><p className="text-sm font-semibold uppercase tracking-[0.28em] text-emerald-600">Order timeline</p><div className="mt-5"><OrderStatusTimeline pickupStatus={order.pickupStatus} statusUpdatedAt={order.statusUpdatedAt} paymentStatus={order.paymentStatus} createdAt={order.createdAt} /></div></div>
+          <div className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm dark:border-stone-800 dark:bg-stone-900"><p className="text-sm font-semibold uppercase tracking-[0.28em] text-emerald-600">Order timeline</p><div className="mt-5"><OrderStatusTimeline pickupStatus={order.pickupStatus} statusUpdatedAt={order.statusUpdatedAt} paymentStatus={order.paymentStatus} createdAt={order.createdAt} fulfillmentType={order.fulfillmentType} acceptedAt={order.acceptedAt} preparingAt={order.preparingAt} readyForDispatchAt={order.readyForDispatchAt} readyForPickupAt={order.readyForPickupAt} outForDeliveryAt={order.outForDeliveryAt} deliveredAt={order.deliveredAt} pickedUpAt={order.pickedUpAt} /></div></div>
 
           <section className="flex flex-col gap-4 rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-stone-800 dark:bg-stone-900">
             <div className="flex items-start gap-3">

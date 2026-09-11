@@ -4,6 +4,7 @@ import { AuthRequest } from "../middleware/auth.middleware";
 import { ApiResponse } from "../utils/apiResponse";
 import { OrderService } from "../services/order.service";
 import { createOrderSchema, orderIdParamSchema } from "../validators/checkout.validator";
+import { z } from "zod";
 
 export const createOrder = async (req: AuthRequest, res: Response): Promise<void> => {
   const payload = (req.body && typeof req.body === "object" ? req.body : {}) as Record<
@@ -43,13 +44,21 @@ export const getOrder = async (req: AuthRequest, res: Response): Promise<void> =
 export const updateSellerOrderStatus = async (req: AuthRequest, res: Response): Promise<void> => {
   const orderId = Array.isArray(req.params.orderId) ? req.params.orderId[0] : req.params.orderId;
   const status = req.body?.status;
-  const allowedStatuses = ["PREPARING", "READY_FOR_PICKUP", "PICKED_UP", "CANCELLED"];
+  const allowedStatuses = ["ACCEPTED", "PREPARING", "READY_FOR_PICKUP", "READY_FOR_DISPATCH", "OUT_FOR_DELIVERY", "PICKED_UP", "DELIVERED", "CANCELLED"];
   if (typeof status !== "string" || !allowedStatuses.includes(status)) {
     throw new AppError("Invalid order status", 400);
   }
 
   const order = await OrderService.updateSellerOrderStatus(req.user!.userId, orderId, status);
   res.status(200).json(new ApiResponse(true, "Order status updated successfully", { order }));
+};
+
+export const updateDeliveryEta = async (req: AuthRequest, res: Response): Promise<void> => {
+  const orderId = Array.isArray(req.params.orderId) ? req.params.orderId[0] : req.params.orderId;
+  const result = z.object({ estimatedDeliveryAt: z.string().datetime() }).safeParse(req.body);
+  if (!result.success) throw new AppError(result.error.issues[0]?.message || "Invalid delivery ETA", 400);
+  const order = await OrderService.updateDeliveryEta(req.user!.userId, orderId, new Date(result.data.estimatedDeliveryAt));
+  res.status(200).json(new ApiResponse(true, "Delivery ETA updated successfully", { order }));
 };
 
 export const markPaymentReceived = async (req: AuthRequest, res: Response): Promise<void> => {

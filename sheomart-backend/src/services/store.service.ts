@@ -17,6 +17,27 @@ interface StoreCreateInput {
 }
 
 export class StoreService {
+  static toFulfillmentResponse(source: object, activeSlotsOnly = false): Record<string, unknown> {
+    const store = source as Record<string, unknown>;
+    const supportsPickup = typeof store.supportsPickup === "boolean" ? store.supportsPickup : store.pickupEnabled !== false;
+    const supportsDelivery = typeof store.supportsDelivery === "boolean" ? store.supportsDelivery : store.deliveryEnabled === true;
+    const rawSlots = Array.isArray(store.deliverySlots) ? store.deliverySlots : [];
+    return {
+      ...store,
+      supportsPickup,
+      supportsDelivery,
+      pickupEnabled: supportsPickup,
+      deliveryEnabled: supportsDelivery,
+      deliveryFee: typeof store.deliveryFee === "number" ? store.deliveryFee : 0,
+      freeDeliveryAbove: typeof store.freeDeliveryAbove === "number" ? store.freeDeliveryAbove : typeof store.freeDeliveryThreshold === "number" ? store.freeDeliveryThreshold : 0,
+      freeDeliveryThreshold: typeof store.freeDeliveryThreshold === "number" ? store.freeDeliveryThreshold : typeof store.freeDeliveryAbove === "number" ? store.freeDeliveryAbove : 0,
+      deliveryRadiusKm: typeof store.deliveryRadiusKm === "number" ? store.deliveryRadiusKm : 0,
+      preparationTimeMinutes: typeof store.preparationTimeMinutes === "number" ? store.preparationTimeMinutes : 30,
+      pickupInstructions: typeof store.pickupInstructions === "string" ? store.pickupInstructions : "",
+      pickupAddress: typeof store.pickupAddress === "string" ? store.pickupAddress : "",
+      deliverySlots: rawSlots.map((slot) => { const value = slot as Record<string, unknown>; const id = typeof value.id === "string" ? value.id : value.slotId; const active = typeof value.active === "boolean" ? value.active : value.isActive === true; return { ...value, id, slotId: id, active, isActive: active }; }).filter((slot) => !activeSlotsOnly || slot.active === true),
+    };
+  }
   private static generateSlug(storeName: string) {
     const baseSlug = storeName
       .toLowerCase()
@@ -84,7 +105,7 @@ export class StoreService {
       totalReviews: 0,
     });
 
-    return store;
+    return StoreService.toFulfillmentResponse(store.toObject()) as unknown as typeof store;
   }
 
   static async getMyStore(userId: string) {
@@ -98,7 +119,7 @@ export class StoreService {
       throw new AppError("Store not found", 404);
     }
 
-    return store;
+    return StoreService.toFulfillmentResponse(store.toObject()) as unknown as typeof store;
   }
 
   static async updateMyStore(userId: string, data: Record<string, unknown>) {
@@ -120,9 +141,26 @@ export class StoreService {
       (store as unknown as Record<string, unknown>)[key] = data[key];
     }
 
+    const pickupEnabled = data.supportsPickup ?? data.pickupEnabled ?? store.pickupEnabled;
+    const deliveryEnabled = data.supportsDelivery ?? data.deliveryEnabled ?? store.deliveryEnabled;
+    if (pickupEnabled === false && deliveryEnabled === false) {
+      throw new AppError("Enable pickup or delivery before saving store settings", 400);
+    }
+    const slots = Array.isArray(data.deliverySlots) ? data.deliverySlots as Array<{ startTime: string; endTime: string }> : store.deliverySlots;
+    for (let index = 0; index < slots.length; index += 1) {
+      if (slots[index].startTime >= slots[index].endTime) throw new AppError("Delivery slot end time must be after start time", 400);
+      for (let otherIndex = index + 1; otherIndex < slots.length; otherIndex += 1) {
+        if (slots[index].startTime < slots[otherIndex].endTime && slots[otherIndex].startTime < slots[index].endTime) throw new AppError("Delivery slots cannot overlap", 400);
+      }
+    }
+    store.pickupEnabled = Boolean(pickupEnabled);
+    store.deliveryEnabled = Boolean(deliveryEnabled);
+    store.supportsPickup = Boolean(pickupEnabled);
+    store.supportsDelivery = Boolean(deliveryEnabled);
+
     await store.save();
 
-    return store;
+    return StoreService.toFulfillmentResponse(store.toObject()) as unknown as typeof store;
   }
 
   static async getStoreById(storeId: string) {
@@ -132,7 +170,7 @@ export class StoreService {
       throw new AppError("Store not found", 404);
     }
 
-    return store;
+    return StoreService.toFulfillmentResponse(store.toObject(), true) as unknown as typeof store;
   }
 
   static async getAllStores(location?: { pincode?: string; city?: string; state?: string }) {
@@ -141,13 +179,15 @@ export class StoreService {
       .lean();
     const pincode = location?.pincode?.trim().toLowerCase();
 
-    if (!pincode) return stores;
+    const normalizedStores = stores.map((store) => StoreService.toFulfillmentResponse(store, true));
+    if (!pincode) return normalizedStores;
 
-    return stores.filter((store) => store.pincode?.trim().toLowerCase() === pincode);
+    return normalizedStores.filter((store) => typeof store.pincode === "string" && store.pincode.trim().toLowerCase() === pincode);
   }
 
   static async getAdminStores() {
-    return Store.find({}).sort({ createdAt: -1 });
+    const stores = await Store.find({}).sort({ createdAt: -1 }).lean();
+    return stores.map((store) => StoreService.toFulfillmentResponse(store, true));
   }
 
   static async updateStoreBadge(storeId: string, badge: STORE_BADGE) {

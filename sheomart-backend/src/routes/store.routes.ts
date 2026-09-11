@@ -8,6 +8,9 @@ import {
   updateMyStore,
   updateStoreBadge,
   updateStoreStatus,
+  getPlusMembers,
+  createPlusMember,
+  deletePlusMember,
 } from "../controllers/store.controller";
 import { authenticate } from "../middleware/auth.middleware";
 import { authorize } from "../middleware/role.middleware";
@@ -48,6 +51,9 @@ router.patch(
   asyncHandler(updateStoreBadge)
 );
 router.get("/:storeId", asyncHandler(getStoreById));
+router.get("/:storeId/plus-members", authenticate, authorize(USER_ROLES.STORE_OWNER), asyncHandler(getPlusMembers));
+router.post("/:storeId/plus-members", authenticate, authorize(USER_ROLES.STORE_OWNER), asyncHandler(createPlusMember));
+router.delete("/:storeId/plus-members/:memberId", authenticate, authorize(USER_ROLES.STORE_OWNER), asyncHandler(deletePlusMember));
 router.patch(
   "/:storeId/status",
   authenticate,

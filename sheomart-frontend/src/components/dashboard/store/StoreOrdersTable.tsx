@@ -20,9 +20,13 @@ interface StoreOrdersTableProps {
 
 const statusLabels: Record<string, string> = {
   ORDER_PLACED: "Order Placed",
+  ACCEPTED: "Accepted",
   PREPARING: "Preparing",
   READY_FOR_PICKUP: "Ready for Pickup",
+  READY_FOR_DISPATCH: "Ready for Dispatch",
+  OUT_FOR_DELIVERY: "Out for Delivery",
   PICKED_UP: "Picked Up",
+  DELIVERED: "Delivered",
   CANCELLED: "Cancelled",
 };
 const paymentLabels: Record<string, string> = {
@@ -35,7 +39,10 @@ const statusClasses: Record<string, string> = {
   ORDER_PLACED: "bg-blue-100 text-blue-700",
   PREPARING: "bg-orange-100 text-orange-700",
   READY_FOR_PICKUP: "bg-green-100 text-green-700",
+  READY_FOR_DISPATCH: "bg-blue-100 text-blue-700",
+  OUT_FOR_DELIVERY: "bg-purple-100 text-purple-700",
   PICKED_UP: "bg-emerald-100 text-emerald-700",
+  DELIVERED: "bg-green-100 text-green-700",
   CANCELLED: "bg-red-100 text-red-700",
 };
 const paymentClasses: Record<string, string> = {
@@ -50,12 +57,18 @@ const getStatus = (order: StoreOrder) => (order as StoreOrder & { pickupStatus?:
 const getCustomerName = (order: StoreOrder) => order.customerName ?? order.customer?.name ?? order.customer?.fullName ?? "Customer";
 const getCustomerPhone = (order: StoreOrder) => order.customerMobile ?? order.customerPhone ?? order.customer?.mobile ?? order.customer?.phone ?? "-";
 const isPickupOrder = (order: StoreOrder) => (!order.fulfillmentType && !order.deliveryMethod) || [order.fulfillmentType, order.deliveryMethod].some((value) => value?.toLowerCase().includes("pickup"));
-const getNextOrderStatus = (status: string) => {
+const getNextOrderStatus = (status: string, isPickup: boolean) => {
   switch (status) {
     case "ORDER_PLACED":
+      return "ACCEPTED";
+    case "ACCEPTED":
       return "PREPARING";
     case "PREPARING":
-      return "READY_FOR_PICKUP";
+      return isPickup ? "READY_FOR_PICKUP" : "READY_FOR_DISPATCH";
+    case "READY_FOR_DISPATCH":
+      return "OUT_FOR_DELIVERY";
+    case "OUT_FOR_DELIVERY":
+      return "DELIVERED";
     case "READY_FOR_PICKUP":
       return "PICKED_UP";
     default:
@@ -96,10 +109,10 @@ export function StoreOrdersTable({ filters, onFiltersChange }: StoreOrdersTableP
 
   const handleStatusAction = (order: StoreOrder) => {
     const status = getStatus(order);
-    const nextStatus = getNextOrderStatus(status);
+    const nextStatus = getNextOrderStatus(status, isPickupOrder(order));
     if (!nextStatus) return;
 
-    const messages: Record<string, string> = { PREPARING: "Start preparing this order?", READY_FOR_PICKUP: "Mark order ready for pickup?", PICKED_UP: "Confirm customer picked up this order?" };
+    const messages: Record<string, string> = { ACCEPTED: "Accept this order?", PREPARING: "Start preparing this order?", READY_FOR_PICKUP: "Mark order ready for pickup?", READY_FOR_DISPATCH: "Mark order ready for dispatch?", OUT_FOR_DELIVERY: "Mark order out for delivery?", PICKED_UP: "Confirm customer picked up this order?", DELIVERED: "Mark this order delivered?" };
     const confirmed = window.confirm(messages[nextStatus]);
     if (!confirmed) return;
 
@@ -230,7 +243,7 @@ export function StoreOrdersTable({ filters, onFiltersChange }: StoreOrdersTableP
                 {orders.map((order) => {
                   const status = getStatus(order);
                   const paymentStatus = order.paymentStatus ?? "PENDING";
-                  const nextStatus = getNextOrderStatus(status);
+                  const nextStatus = getNextOrderStatus(status, isPickupOrder(order));
                   const pendingMutation = updateOrderStatusMutation.isPending && updateOrderStatusMutation.variables?.orderId === order.orderId;
 
                   return (

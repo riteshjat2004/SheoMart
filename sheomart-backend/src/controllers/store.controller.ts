@@ -3,6 +3,7 @@ import { AppError } from "../errors/AppError";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { ApiResponse } from "../utils/apiResponse";
 import { StoreService } from "../services/store.service";
+import { addPlusMember, listPlusMembers, removePlusMember } from "../services/billing.service";
 import {
   createStoreSchema,
   protectedStoreUpdateFields,
@@ -132,4 +133,25 @@ export const updateStoreStatus = async (
   res.status(200).json(
     new ApiResponse(true, "Store status updated successfully", { store })
   );
+};
+
+export const getPlusMembers = async (req: AuthRequest, res: Response): Promise<void> => {
+  const members = await listPlusMembers(req.user!.userId, typeof req.query.search === "string" ? req.query.search : undefined);
+  res.status(200).json(new ApiResponse(true, "Plus members fetched successfully", { members }));
+};
+
+export const createPlusMember = async (req: AuthRequest, res: Response): Promise<void> => {
+  const identifier = typeof req.body?.identifier === "string" ? req.body.identifier : "";
+  const normalizedPhone = identifier.replace(/\D/g, "");
+  const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier.trim());
+  const validPhone = normalizedPhone.length === 10;
+  if (!validEmail && !validPhone) throw new AppError("Enter a valid email or 10-digit phone number", 400);
+  const member = await addPlusMember(req.user!.userId, identifier);
+  res.status(201).json(new ApiResponse(true, "Plus membership granted", { member }));
+};
+
+export const deletePlusMember = async (req: AuthRequest, res: Response): Promise<void> => {
+  const memberId = Array.isArray(req.params.memberId) ? req.params.memberId[0] : req.params.memberId;
+  const member = await removePlusMember(req.user!.userId, memberId);
+  res.status(200).json(new ApiResponse(true, "Plus membership removed", { member }));
 };

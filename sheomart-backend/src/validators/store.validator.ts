@@ -14,10 +14,15 @@ export const allowedStoreUpdateFields = [
   "pickupClosingTime",
   "pickupEnabled",
   "deliveryEnabled",
+  "supportsPickup",
+  "supportsDelivery",
   "deliveryFee",
   "freeDeliveryAbove",
+  "freeDeliveryThreshold",
   "deliveryRadiusKm",
   "preparationTimeMinutes",
+  "pickupInstructions",
+  "pickupAddress",
   "latitude",
   "longitude",
   "deliverySlots",
@@ -69,10 +74,15 @@ export const updateStoreSchema = z
     pickupClosingTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
     pickupEnabled: z.boolean().optional(),
     deliveryEnabled: z.boolean().optional(),
+    supportsPickup: z.boolean().optional(),
+    supportsDelivery: z.boolean().optional(),
     deliveryFee: z.number().min(0).optional(),
     freeDeliveryAbove: z.number().min(0).optional(),
+    freeDeliveryThreshold: z.number().min(0).optional(),
     deliveryRadiusKm: z.number().min(0).optional(),
     preparationTimeMinutes: z.number().int().min(0).optional(),
+    pickupInstructions: z.string().trim().max(500).optional(),
+    pickupAddress: z.string().trim().max(300).optional(),
     latitude: z.number().min(-90).max(90).optional(),
     longitude: z.number().min(-180).max(180).optional(),
     deliverySlots: z.array(z.object({
@@ -84,7 +94,27 @@ export const updateStoreSchema = z
       isActive: z.boolean(),
     })).optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    if (value.pickupEnabled === false && value.deliveryEnabled === false) {
+      context.addIssue({ code: "custom", path: ["pickupEnabled"], message: "Enable pickup or delivery." });
+    }
+    if (value.supportsPickup === false && value.supportsDelivery === false) {
+      context.addIssue({ code: "custom", path: ["supportsPickup"], message: "Enable pickup or delivery." });
+    }
+    if (value.pickupOpeningTime && value.pickupClosingTime && value.pickupOpeningTime >= value.pickupClosingTime) {
+      context.addIssue({ code: "custom", path: ["pickupClosingTime"], message: "Closing time must be after opening time." });
+    }
+    for (let index = 0; index < (value.deliverySlots ?? []).length; index += 1) {
+      const slot = value.deliverySlots?.[index];
+      if (!slot) continue;
+      if (slot.startTime >= slot.endTime) context.addIssue({ code: "custom", path: ["deliverySlots", index, "endTime"], message: "End time must be after start time." });
+      for (let otherIndex = index + 1; otherIndex < (value.deliverySlots ?? []).length; otherIndex += 1) {
+        const other = value.deliverySlots?.[otherIndex];
+        if (other && slot.startTime < other.endTime && other.startTime < slot.endTime) context.addIssue({ code: "custom", path: ["deliverySlots", index], message: "Delivery slots cannot overlap." });
+      }
+    }
+  });
 
 export type UpdateStoreInput = z.infer<typeof updateStoreSchema>;
 

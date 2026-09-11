@@ -90,8 +90,13 @@ export interface InventoryLedgerData {
 
 export interface StoreCustomerData {
   storeId: string;
-  customerId: string;
+  customerId: string | null;
+  pendingEmail?: string | null;
+  pendingPhone?: string | null;
   isPlusCustomer: boolean;
+  grantedBySeller: string;
+  grantedAt: Date;
+  linkedAt?: Date | null;
   joinedAt: Date;
   totalOfflinePurchases: number;
   totalOnlinePurchases: number;

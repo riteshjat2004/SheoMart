@@ -67,11 +67,11 @@ export function OrderSummaryCard({
         </div>
         <div className="flex justify-between text-stone-600 dark:text-stone-300">
           <span>Product Savings</span>
-          <span className="text-emerald-700">-{money(discount)}</span>
+          <span className="text-emerald-700">-{money(discount)} saved</span>
         </div>
-        <div className="flex justify-between text-stone-600 dark:text-stone-300"><span>Festival Savings</span><span className="text-emerald-700">-{money(festivalSavings)}</span></div>
-        <div className="flex justify-between text-stone-600 dark:text-stone-300"><span>Coupon Savings</span><span className="text-emerald-700">-{money(couponSavings)}</span></div>
-        <div className="flex justify-between text-stone-600 dark:text-stone-300"><span>Delivery Savings</span><span className="text-emerald-700">-{money(deliverySavings)}</span></div>
+        <div className="flex justify-between text-stone-600 dark:text-stone-300"><span>Festival Savings</span><span className="text-emerald-700">-{money(festivalSavings)} saved</span></div>
+        <div className="flex justify-between text-stone-600 dark:text-stone-300"><span>Coupon Savings</span><span className="text-emerald-700">-{money(couponSavings)} saved</span></div>
+        {deliverySavings > 0 ? <div className="flex justify-between text-stone-600 dark:text-stone-300"><span>FREE Delivery</span><span className="text-emerald-700">-{money(deliverySavings)} saved</span></div> : null}
         <div className="flex justify-between text-stone-600 dark:text-stone-300"><span>Delivery Fee</span><span>{money(deliveryFee)}</span></div>
         <div className="flex justify-between text-stone-600 dark:text-stone-300">
           <span>Platform Fee</span>

@@ -72,10 +72,15 @@ export interface StoreItem {
   pickupClosingTime?: string;
   pickupEnabled?: boolean;
   deliveryEnabled?: boolean;
+  supportsPickup?: boolean;
+  supportsDelivery?: boolean;
   deliveryFee?: number;
   freeDeliveryAbove?: number;
+  freeDeliveryThreshold?: number;
   deliveryRadiusKm?: number;
   preparationTimeMinutes?: number;
+  pickupInstructions?: string;
+  pickupAddress?: string;
   latitude?: number;
   longitude?: number;
   deliverySlots?: import("@/services/store").DeliverySlot[];

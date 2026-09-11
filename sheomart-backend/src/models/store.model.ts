@@ -10,11 +10,13 @@ export enum STORE_BADGE {
 
 export interface IDeliverySlot {
   slotId: string;
+  id?: string;
   label: string;
   startTime: string;
   endTime: string;
   capacity?: number;
   isActive: boolean;
+  active?: boolean;
 }
 
 export interface IStore extends Document {
@@ -42,10 +44,15 @@ export interface IStore extends Document {
   pickupClosingTime: string;
   pickupEnabled: boolean;
   deliveryEnabled: boolean;
+  supportsPickup: boolean;
+  supportsDelivery: boolean;
   deliveryFee: number;
   freeDeliveryAbove: number;
+  freeDeliveryThreshold?: number;
   deliveryRadiusKm: number;
   preparationTimeMinutes: number;
+  pickupInstructions: string;
+  pickupAddress: string;
     latitude?: number;
     longitude?: number;
     deliverySlots: IDeliverySlot[];
@@ -195,6 +202,16 @@ const storeSchema = new Schema<IStore>(
       default: false,
     },
 
+    supportsPickup: {
+      type: Boolean,
+      default: true,
+    },
+
+    supportsDelivery: {
+      type: Boolean,
+      default: false,
+    },
+
     deliveryFee: {
       type: Number,
       min: 0,
@@ -205,6 +222,10 @@ const storeSchema = new Schema<IStore>(
       type: Number,
       min: 0,
       default: 0,
+    },
+    freeDeliveryThreshold: {
+      type: Number,
+      min: 0,
     },
 
     deliveryRadiusKm: {
@@ -217,6 +238,18 @@ const storeSchema = new Schema<IStore>(
       type: Number,
       min: 0,
       default: 30,
+    },
+    pickupInstructions: {
+      type: String,
+      default: "Bring your order ID when collecting your order.",
+      trim: true,
+      maxlength: 500,
+    },
+    pickupAddress: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 300,
     },
     latitude: { type: Number, min: -90, max: 90 },
     longitude: { type: Number, min: -180, max: 180 },

@@ -580,13 +580,13 @@ export const listStoreCustomers = async (
     .lean();
   const userMap = new Map(users.map((user) => [user.userId, user]));
   const filteredCustomers = search
-    ? customers.filter((customer) => userMap.has(customer.customerId))
+    ? customers.filter((customer) => customer.customerId ? userMap.has(customer.customerId) : false)
     : customers;
 
   return {
     customers: filteredCustomers.map((customer) => ({
       ...customer,
-      ...(userMap.get(customer.customerId) ?? {}),
+      ...(customer.customerId ? userMap.get(customer.customerId) ?? {} : {}),
     })),
     pagination: {
       page: filters.page,
@@ -630,6 +630,8 @@ export const getStoreCustomerForUser = async (
     throw new AppError("Store not found", 404);
   }
 
+  await linkPendingPlusMember(storeId, customerId);
+
   const customer = await StoreCustomer.findOne({ storeId, customerId }).lean();
   if (!customer) {
     throw new AppError("Store customer not found", 404);
@@ -655,4 +657,59 @@ export const updatePlusCustomer = async (
   }
 
   return customer;
+};
+
+const normalizeMemberIdentifier = (value: string) => value.includes("@") ? value.trim().toLowerCase() : value.replace(/\s+/g, "");
+
+export const linkPendingPlusMember = async (storeId: string, customerId: string) => {
+  const user = await User.findOne({ userId: customerId }).select("userId email mobile").lean();
+  if (!user) return null;
+  const member = await StoreCustomer.findOne({ storeId, customerId: null, isPlusCustomer: true, $or: [{ pendingEmail: user.email.toLowerCase() }, { pendingPhone: user.mobile.replace(/\s+/g, "") }] });
+  if (!member) return null;
+  member.customerId = user.userId;
+  member.pendingEmail = null;
+  member.pendingPhone = null;
+  member.linkedAt = new Date();
+  await member.save();
+  return member;
+};
+
+export const addPlusMember = async (ownerId: string, identifier: string) => {
+  const store = await getStoreForOwner(ownerId);
+  const normalized = normalizeMemberIdentifier(identifier);
+  const isEmail = normalized.includes("@");
+  const user = await User.findOne(isEmail ? { email: normalized } : { mobile: normalized }).select("userId name email mobile").lean();
+  const existing = await StoreCustomer.findOne({ storeId: store.storeId, ...(user ? { customerId: user.userId } : isEmail ? { pendingEmail: normalized } : { pendingPhone: normalized }) });
+  if (existing) {
+    if (existing.isPlusCustomer) throw new AppError("This customer is already a Plus member", 409);
+    existing.isPlusCustomer = true;
+    existing.grantedBySeller = ownerId;
+    existing.grantedAt = new Date();
+    await existing.save();
+    return existing.toObject();
+  }
+  const member = await StoreCustomer.create({ storeId: store.storeId, customerId: user?.userId ?? null, pendingEmail: user ? null : isEmail ? normalized : null, pendingPhone: user ? null : isEmail ? null : normalized, isPlusCustomer: true, grantedBySeller: ownerId, grantedAt: new Date(), linkedAt: user ? new Date() : null });
+  return { ...member.toObject(), user };
+};
+
+export const listPlusMembers = async (ownerId: string, search?: string) => {
+  const store = await getStoreForOwner(ownerId);
+  const query: Record<string, unknown> = { storeId: store.storeId, isPlusCustomer: true };
+  if (search?.trim()) {
+    const value = escapeRegex(search.trim());
+    const regex = new RegExp(value, "i");
+    const users = await User.find({ $or: [{ email: regex }, { mobile: regex }, { name: regex }] }).select("userId").lean();
+    query.$or = [{ customerId: { $in: users.map((user) => user.userId) } }, { pendingEmail: regex }, { pendingPhone: regex }];
+  }
+  const members = await StoreCustomer.find(query).sort({ grantedAt: -1 }).lean();
+  const users = await User.find({ userId: { $in: members.flatMap((member) => member.customerId ? [member.customerId] : []) } }).select("userId name email mobile").lean();
+  const userMap = new Map(users.map((user) => [user.userId, user]));
+  return members.map((member) => ({ ...member, user: member.customerId ? userMap.get(member.customerId) ?? null : null }));
+};
+
+export const removePlusMember = async (ownerId: string, storeCustomerId: string) => {
+  const store = await getStoreForOwner(ownerId);
+  const member = await StoreCustomer.findOneAndUpdate({ storeId: store.storeId, storeCustomerId }, { $set: { isPlusCustomer: false } }, { new: true }).lean();
+  if (!member) throw new AppError("Plus member not found", 404);
+  return member;
 };

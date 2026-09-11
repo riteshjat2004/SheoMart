@@ -11,6 +11,7 @@ import { Hero } from "@/components/marketplace/Hero";
 import { SearchBar } from "@/components/marketplace/SearchBar";
 import { CategoryCard } from "@/components/marketplace/CategoryCard";
 import { TrendingProducts } from "@/components/home/TrendingProducts";
+import { HomepagePromotions } from "@/components/home/HomepagePromotions";
 import { StoreCard } from "@/components/store/StoreCard";
 import { SectionHeading } from "@/components/marketplace/SectionHeading";
 import { ErrorState } from "@/components/common/error-state";
@@ -49,8 +50,10 @@ export default function Home() {
   const nearbyStores = stores.slice(0, 8);
   const featuredCategories = categories.slice(0, 4);
   const featuredProducts = products.slice(0, 8);
-  const offers = offersQuery.data ?? [];
-  const coupons = couponsQuery.data ?? [];
+  const allOffers = offersQuery.data ?? [];
+  const allCoupons = couponsQuery.data ?? [];
+  const offers: typeof allOffers = [];
+  const coupons: typeof allCoupons = [];
   const categoryLookup = useMemo(() => new Map(categories.flatMap((category) => {
     const categoryId = category.categoryId ?? category._id;
     return categoryId ? [[categoryId, { categoryId, name: category.name, slug: category.slug ?? categoryId }] as const] : [];
@@ -114,6 +117,8 @@ export default function Home() {
               <EmptyState title="Categories will appear soon." description="We are fetching the latest categories from SheoMart." />
             )}
           </section>
+
+          <HomepagePromotions offers={allOffers} coupons={allCoupons} categoryLookup={categoryLookup} />
 
           {offers.length ? <section className="space-y-5"><SectionHeading eyebrow="Festival offers" title="Fresh savings from our stores" description="Live offers curated by the SheoMart team." /><div className="grid gap-4 lg:grid-cols-2">{offers.map((offer) => { const categoryIds = offer.categoryIds ?? []; return <article key={offer.offerId} className="overflow-hidden rounded-[1.75rem] border border-stone-200 bg-white shadow-sm dark:border-stone-800 dark:bg-zinc-900"><div className="h-48 bg-stone-100 dark:bg-stone-800">{offer.bannerImage ? <img src={offer.bannerImage} alt={offer.title} className="h-full w-full object-cover" /> : null}</div><div className="p-5"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600">{offer.festivalName}</p><h3 className="mt-2 text-xl font-semibold text-stone-900 dark:text-stone-50">{offer.title}</h3></div><span className="rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">{offer.discountType === "percentage" ? `${offer.discountValue}% off` : `${money(offer.discountValue)} off`}</span></div><div className="mt-4 flex flex-wrap gap-2">{categoryIds.length ? categoryIds.map((categoryId) => { const category = categoryLookup.get(categoryId); return <Link key={categoryId} href={category ? `/category/${category.categoryId ?? category.slug}` : "/categories"} className="cursor-pointer rounded-full bg-stone-100 px-2.5 py-1 text-xs text-stone-600 transition hover:scale-105 hover:bg-emerald-100 hover:text-emerald-700 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-emerald-950/60 dark:hover:text-emerald-300">{category?.name ?? "Unknown Category"}</Link>; }) : <span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs text-stone-600 dark:bg-stone-800 dark:text-stone-300">All categories</span>}</div><p className="mt-4 text-xs text-stone-500 dark:text-stone-400">Valid until {expiry(offer.endsAt)}</p></div></article>; })}</div></section> : null}
 

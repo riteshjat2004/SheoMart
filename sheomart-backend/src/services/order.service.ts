@@ -11,6 +11,8 @@ import { StoreCustomer } from "../models/storeCustomer.model";
 import { User } from "../models/user.model";
 import { PromotionService } from "./promotion.service";
 import { CreateOrderInput } from "../validators/checkout.validator";
+import { PlatformFeeService } from "./platformFee.service";
+import { linkPendingPlusMember } from "./billing.service";
 
 const createInvoiceNumber = async (storeId: string, date: Date) => {
   const datePart = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}${String(date.getDate()).padStart(2, "0")}`;
@@ -29,6 +31,19 @@ const distanceInKm = (from: { latitude?: number; longitude?: number }, to: { lat
 };
 
 export class OrderService {
+  static async updateDeliveryEta(ownerId: string, orderId: string, estimatedDeliveryAt: Date) {
+    const store = await Store.findOne({ ownerId }).select("storeId").lean();
+    if (!store) throw new AppError("Store not found for seller", 403);
+    const order = await Order.findOne({ orderId, storeId: store.storeId });
+    if (!order) throw new AppError("Order not found", 404);
+    if (order.fulfillmentType !== "delivery" && order.deliveryMethod !== "delivery") throw new AppError("ETA is only available for delivery orders", 400);
+    if (estimatedDeliveryAt.getTime() <= Date.now()) throw new AppError("Delivery ETA must be in the future", 400);
+    order.estimatedDeliveryAt = estimatedDeliveryAt;
+    order.updatedBySellerAt = new Date();
+    await order.save();
+    return order;
+  }
+
   static async calculateCheckoutAmount(userId: string, data: CreateOrderInput) {
     const cartItems = await CartItem.find({ userId });
     if (!cartItems.length) throw new AppError("Cart is empty", 400);
@@ -37,15 +52,26 @@ export class OrderService {
     const store = await Store.findOne({ storeId: data.storeId }).lean();
     if (!store) throw new AppError("Store not found", 404);
     const fulfillmentType = data.fulfillmentType ?? data.deliveryMethod;
-    if (fulfillmentType === "pickup" && store.pickupEnabled === false) throw new AppError("Pickup is not available for this store", 400);
-    if (fulfillmentType === "delivery" && store.deliveryEnabled !== true) throw new AppError("Delivery is not available for this store", 400);
+    if (fulfillmentType === "pickup" && store.supportsPickup !== true) throw new AppError("Pickup is not available for this store", 400);
+    if (fulfillmentType === "delivery" && store.supportsDelivery !== true) throw new AppError("Delivery is not available for this store", 400);
+    await linkPendingPlusMember(data.storeId, userId);
     const plusCustomer = await StoreCustomer.findOne({ storeId: data.storeId, customerId: userId }).select("isPlusCustomer").lean();
     if (!plusCustomer?.isPlusCustomer && data.paymentMethod !== "ONLINE") throw new AppError("Online payment is required for non-Plus customers", 403);
     if (data.paymentMethod === "PAY_AT_PICKUP" && fulfillmentType !== "pickup") throw new AppError("Pay During Pickup requires pickup fulfillment", 400);
     if (data.paymentMethod === "PAY_AT_DELIVERY" && fulfillmentType !== "delivery") throw new AppError("Pay During Delivery requires delivery fulfillment", 400);
     const distance = fulfillmentType === "delivery" ? distanceInKm(store, address) : null;
     if (distance !== null && store.deliveryRadiusKm > 0 && distance > store.deliveryRadiusKm) throw new AppError("Delivery unavailable for this address", 400);
-    if (fulfillmentType === "delivery" && data.deliverySlotId && !(store.deliverySlots ?? []).some((slot) => slot.slotId === data.deliverySlotId && slot.isActive)) throw new AppError("Selected delivery slot is unavailable", 400);
+    const selectedSlot = fulfillmentType === "delivery" ? (store.deliverySlots ?? []).find((slot) => (slot.slotId === data.deliverySlotId || slot.id === data.deliverySlotId) && (slot.isActive || slot.active)) : undefined;
+    if (fulfillmentType === "delivery" && !selectedSlot) throw new AppError("Select an active delivery slot", 400);
+    if (selectedSlot && data.deliveryDate === new Date().toISOString().slice(0, 10)) {
+      const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+      const endMinutes = Number(selectedSlot.endTime.slice(0, 2)) * 60 + Number(selectedSlot.endTime.slice(3));
+      if (endMinutes <= nowMinutes) throw new AppError("Selected delivery slot has expired", 400);
+    }
+    if (selectedSlot?.capacity) {
+      const usedCapacity = await Order.countDocuments({ storeId: data.storeId, deliverySlotId: selectedSlot.slotId, deliveryDate: data.deliveryDate, status: { $nin: [ORDER_STATUS.CANCELLED, ORDER_STATUS.FAILED] } });
+      if (usedCapacity >= selectedSlot.capacity) throw new AppError("Selected delivery slot is full", 400);
+    }
     const products = await Product.find({ productId: { $in: cartItems.map((item) => item.productId) }, isActive: true, isPublished: true });
     const productMap = new Map(products.map((product) => [product.productId, product]));
     let originalTotal = 0;
@@ -66,9 +92,11 @@ export class OrderService {
     const festivalDiscount = Math.min(discountedTotal, festivalSavings);
     const couponDiscount = Math.min(Math.max(0, discountedTotal - festivalDiscount), couponValidation?.discount ?? 0);
     const discount = Math.max(0, originalTotal - discountedTotal);
-    const deliveryCharge = fulfillmentType === "pickup" ? 0 : store.freeDeliveryAbove > 0 && originalTotal >= store.freeDeliveryAbove ? 0 : store.deliveryFee ?? 0;
-    const platformFee = fulfillmentType === "pickup" ? 0 : 10;
-    return { amount: Math.max(0, originalTotal - discount - festivalDiscount - couponDiscount + deliveryCharge + platformFee) };
+    const freeDeliveryThreshold = store.freeDeliveryThreshold ?? store.freeDeliveryAbove;
+    const freeDeliveryApplied = fulfillmentType === "delivery" && freeDeliveryThreshold > 0 && discountedTotal >= freeDeliveryThreshold;
+    const deliveryCharge = fulfillmentType === "pickup" ? 0 : freeDeliveryApplied ? 0 : store.deliveryFee;
+    const platformFee = PlatformFeeService.calculate(await PlatformFeeService.getConfig(), discountedTotal);
+    return { amount: Math.max(0, discountedTotal - festivalDiscount - couponDiscount + deliveryCharge + platformFee) };
   }
 
   static async markPaymentReceived(
@@ -106,11 +134,6 @@ export class OrderService {
   }
 
   static async updateSellerOrderStatus(ownerId: string, orderId: string, nextStatus: string) {
-    const transitions: Record<string, string[]> = {
-      ORDER_PLACED: ["PREPARING", "CANCELLED"],
-      PREPARING: ["READY_FOR_PICKUP", "CANCELLED"],
-      READY_FOR_PICKUP: ["PICKED_UP", "CANCELLED"],
-    };
     const store = await Store.findOne({ ownerId }).select("storeId").lean();
     if (!store) {
       throw new AppError("Store not found for seller", 403);
@@ -118,8 +141,12 @@ export class OrderService {
 
     const statusMap: Record<string, string> = {
       ORDER_PLACED: "CONFIRMED",
+      ACCEPTED: "CONFIRMED",
       PREPARING: "PROCESSING",
       READY_FOR_PICKUP: "PACKED",
+      READY_FOR_DISPATCH: "PACKED",
+      OUT_FOR_DELIVERY: "OUT_FOR_DELIVERY",
+      DELIVERED: "DELIVERED",
       PICKED_UP: "DELIVERED",
       CANCELLED: "CANCELLED",
     };
@@ -135,11 +162,15 @@ export class OrderService {
         }
 
         const currentStatus = order.pickupStatus || "ORDER_PLACED";
+        const isDelivery = order.fulfillmentType === "delivery" || order.deliveryMethod === "delivery";
+        const transitions: Record<string, string[]> = isDelivery
+          ? { ORDER_PLACED: ["ACCEPTED", "CANCELLED"], ACCEPTED: ["PREPARING", "CANCELLED"], PREPARING: ["READY_FOR_DISPATCH", "CANCELLED"], READY_FOR_DISPATCH: ["OUT_FOR_DELIVERY", "CANCELLED"], OUT_FOR_DELIVERY: ["DELIVERED"] }
+          : { ORDER_PLACED: ["ACCEPTED", "CANCELLED"], ACCEPTED: ["PREPARING", "CANCELLED"], PREPARING: ["READY_FOR_PICKUP", "CANCELLED"], READY_FOR_PICKUP: ["PICKED_UP", "CANCELLED"] };
         if (!transitions[currentStatus]?.includes(nextStatus)) {
           throw new AppError(`Cannot change order from ${currentStatus} to ${nextStatus}`, 409);
         }
 
-        if (currentStatus === "ORDER_PLACED" && nextStatus === "PREPARING") {
+        if ((currentStatus === "ORDER_PLACED" || currentStatus === "ACCEPTED") && nextStatus === "PREPARING") {
           for (const item of order.orderItems) {
             const inventory = await Inventory.findOneAndUpdate(
               {
@@ -258,13 +289,19 @@ export class OrderService {
           }
         }
 
+        const timestampField: Record<string, string> = { ACCEPTED: "acceptedAt", PREPARING: "preparingAt", READY_FOR_DISPATCH: "readyForDispatchAt", READY_FOR_PICKUP: "readyForPickupAt", OUT_FOR_DELIVERY: "outForDeliveryAt", DELIVERED: "deliveredAt", PICKED_UP: "pickedUpAt" };
+        const now = new Date();
+        const timestampUpdate = timestampField[nextStatus] ? { [timestampField[nextStatus]]: now } : {};
         updatedOrder = await Order.findOneAndUpdate(
           { orderId, storeId: store.storeId, pickupStatus: currentStatus },
           {
             $set: {
               pickupStatus: nextStatus,
               status: statusMap[nextStatus],
-              statusUpdatedAt: new Date(),
+              statusUpdatedAt: now,
+              updatedBySellerAt: now,
+              ...timestampUpdate,
+              ...(nextStatus === "DELIVERED" || nextStatus === "PICKED_UP" ? { deliveredAt: nextStatus === "DELIVERED" ? now : order.deliveredAt, pickedUpAt: nextStatus === "PICKED_UP" ? now : order.pickedUpAt } : {}),
             },
           },
           { new: true, runValidators: false, strict: false, session }
@@ -335,12 +372,13 @@ export class OrderService {
     }
 
     const fulfillmentType = data.fulfillmentType ?? data.deliveryMethod;
-    if (fulfillmentType === "pickup" && store.pickupEnabled === false) {
+    if (fulfillmentType === "pickup" && store.supportsPickup !== true) {
       throw new AppError("Pickup is not available for this store", 400);
     }
-    if (fulfillmentType === "delivery" && store.deliveryEnabled !== true) {
+    if (fulfillmentType === "delivery" && store.supportsDelivery !== true) {
       throw new AppError("Delivery is not available for this store", 400);
     }
+    await linkPendingPlusMember(data.storeId, userId);
     const plusCustomer = await StoreCustomer.findOne({ storeId: data.storeId, customerId: userId }).select("isPlusCustomer").lean();
     const isPlusCustomer = plusCustomer?.isPlusCustomer === true;
     if (!isPlusCustomer && data.paymentMethod !== "ONLINE") {
@@ -359,9 +397,16 @@ export class OrderService {
     if (distance !== null && store.deliveryRadiusKm > 0 && distance > store.deliveryRadiusKm) {
       throw new AppError("Delivery unavailable for this address", 400);
     }
-    if (fulfillmentType === "delivery" && data.deliverySlotId) {
-      const slot = (store.deliverySlots ?? []).find((candidate) => candidate.slotId === data.deliverySlotId && candidate.isActive);
-      if (!slot) throw new AppError("Selected delivery slot is unavailable", 400);
+    const selectedSlot = fulfillmentType === "delivery" ? (store.deliverySlots ?? []).find((slot) => (slot.slotId === data.deliverySlotId || slot.id === data.deliverySlotId) && (slot.isActive || slot.active)) : undefined;
+    if (fulfillmentType === "delivery" && !selectedSlot) throw new AppError("Select an active delivery slot", 400);
+    if (selectedSlot && data.deliveryDate === new Date().toISOString().slice(0, 10)) {
+      const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+      const endMinutes = Number(selectedSlot.endTime.slice(0, 2)) * 60 + Number(selectedSlot.endTime.slice(3));
+      if (endMinutes <= nowMinutes) throw new AppError("Selected delivery slot has expired", 400);
+    }
+    if (selectedSlot?.capacity) {
+      const usedCapacity = await Order.countDocuments({ storeId: data.storeId, deliverySlotId: selectedSlot.slotId, deliveryDate: data.deliveryDate, status: { $nin: [ORDER_STATUS.CANCELLED, ORDER_STATUS.FAILED] } });
+      if (usedCapacity >= selectedSlot.capacity) throw new AppError("Selected delivery slot is full", 400);
     }
 
     const existingDraft = await Order.findOne({
@@ -441,14 +486,14 @@ export class OrderService {
     const festivalDiscount = Math.min(discountedTotal, festivalSavings);
     const couponDiscount = Math.min(Math.max(0, discountedTotal - festivalDiscount), couponValidation?.discount ?? 0);
     const discount = Math.max(0, originalTotal - discountedTotal);
-    const subtotal = originalTotal;
+    const subtotal = discountedTotal;
+    const freeDeliveryThreshold = store.freeDeliveryThreshold ?? store.freeDeliveryAbove;
+    const freeDeliveryApplied = fulfillmentType === "delivery" && freeDeliveryThreshold > 0 && discountedTotal >= freeDeliveryThreshold;
     const deliveryCharge = fulfillmentType === "pickup"
       ? 0
-      : store.freeDeliveryAbove > 0 && subtotal >= store.freeDeliveryAbove
-        ? 0
-        : store.deliveryFee ?? 0;
-    const platformFee = data.deliveryMethod === "pickup" ? 0 : 10;
-    const grandTotal = Math.max(0, subtotal - discount - festivalDiscount - couponDiscount + deliveryCharge + platformFee);
+      : freeDeliveryApplied ? 0 : store.deliveryFee;
+    const platformFee = PlatformFeeService.calculate(await PlatformFeeService.getConfig(), discountedTotal);
+    const grandTotal = Math.max(0, discountedTotal - festivalDiscount - couponDiscount + deliveryCharge + platformFee);
     const estimatedReadyTime = new Date(Date.now() + (store.preparationTimeMinutes ?? 30) * 60 * 1000);
     const estimatedDeliveryTime = fulfillmentType === "delivery"
       ? new Date(estimatedReadyTime.getTime() + 60 * 60 * 1000)
@@ -479,6 +524,10 @@ export class OrderService {
       existingDraft.estimatedDeliveryTime = estimatedDeliveryTime;
       existingDraft.selectedAddressId = data.selectedAddressId ?? address.addressId;
       existingDraft.deliverySlotId = data.deliverySlotId;
+      existingDraft.deliverySlotLabel = selectedSlot?.label ?? data.deliverySlotLabel;
+      existingDraft.deliveryWindowStart = selectedSlot?.startTime ?? data.deliveryWindowStart;
+      existingDraft.deliveryWindowEnd = selectedSlot?.endTime ?? data.deliveryWindowEnd;
+      existingDraft.freeDeliveryApplied = freeDeliveryApplied;
       existingDraft.pickupSlot = data.pickupSlot;
       existingDraft.estimatedDeliveryWindow = data.estimatedDeliveryWindow;
       existingDraft.paymentMethod = data.paymentMethod;
@@ -496,6 +545,11 @@ export class OrderService {
       existingDraft.couponCode = couponValidation?.code ?? "";
       existingDraft.deliveryCharge = deliveryCharge;
       existingDraft.platformFee = platformFee;
+      existingDraft.platformFeeCharged = platformFee;
+      existingDraft.deliveryFeeCharged = deliveryCharge;
+      existingDraft.couponDiscountApplied = couponDiscount;
+      existingDraft.festivalDiscountApplied = festivalDiscount;
+      existingDraft.productSavingsShown = discount;
       existingDraft.grandTotal = grandTotal;
       if (!existingDraft.invoiceNumber) {
         existingDraft.invoiceNumber = await createInvoiceNumber(existingDraft.storeId, new Date());
@@ -533,6 +587,10 @@ export class OrderService {
       estimatedDeliveryTime,
       selectedAddressId: data.selectedAddressId ?? address.addressId,
       deliverySlotId: data.deliverySlotId,
+      deliverySlotLabel: selectedSlot?.label ?? data.deliverySlotLabel,
+      deliveryWindowStart: selectedSlot?.startTime ?? data.deliveryWindowStart,
+      deliveryWindowEnd: selectedSlot?.endTime ?? data.deliveryWindowEnd,
+      freeDeliveryApplied,
       pickupSlot: data.pickupSlot,
       estimatedDeliveryWindow: data.estimatedDeliveryWindow,
       paymentMethod: data.paymentMethod,
@@ -546,6 +604,11 @@ export class OrderService {
       couponCode: couponValidation?.code ?? "",
       deliveryCharge,
       platformFee,
+      platformFeeCharged: platformFee,
+      deliveryFeeCharged: deliveryCharge,
+      couponDiscountApplied: couponDiscount,
+      festivalDiscountApplied: festivalDiscount,
+      productSavingsShown: discount,
       grandTotal,
       orderItems,
       status: nextOrderStatus,
@@ -570,7 +633,7 @@ export class OrderService {
 
     const [customer, store] = await Promise.all([
       User.findOne({ userId: order.userId }).select("userId name mobile email").lean(),
-      Store.findOne({ storeId: order.storeId }).select("storeId storeName address city state pincode").lean(),
+      Store.findOne({ storeId: order.storeId }).select("storeId storeName address city state pincode preparationTimeMinutes").lean(),
     ]);
 
     if (!order.invoiceNumber && order.status !== ORDER_STATUS.DRAFT) {
@@ -586,7 +649,8 @@ export class OrderService {
       customerEmail: customer?.email,
       storeName: store?.storeName,
       pickupAddress: [store?.address, store?.city, store?.state, store?.pincode].filter(Boolean).join(", "),
-      store: store ? { storeId: store.storeId, storeName: store.storeName, address: store.address } : null,
+      preparationTimeMinutes: store?.preparationTimeMinutes,
+      store: store ? { storeId: store.storeId, storeName: store.storeName, address: store.address, preparationTimeMinutes: store.preparationTimeMinutes } : null,
     };
   }
 
@@ -596,7 +660,7 @@ export class OrderService {
     }).lean();
     const storeIds = [...new Set(orders.map((order) => order.storeId))];
     const stores = await Store.find({ storeId: { $in: storeIds } })
-      .select("storeId storeName phone address city state pincode")
+      .select("storeId storeName phone address city state pincode preparationTimeMinutes")
       .lean();
     const storeMap = new Map(stores.map((store) => [store.storeId, store]));
 
@@ -611,7 +675,8 @@ export class OrderService {
         storePhone: store?.phone,
         pickupAddress: [store?.address, store?.city, store?.state, store?.pincode].filter(Boolean).join(", "),
         pickupHours: "10:00 AM - 8:00 PM",
-        store: store ? { storeId: store.storeId, storeName: store.storeName, phone: store.phone, address: store.address } : null,
+        preparationTimeMinutes: store?.preparationTimeMinutes,
+        store: store ? { storeId: store.storeId, storeName: store.storeName, phone: store.phone, address: store.address, preparationTimeMinutes: store.preparationTimeMinutes } : null,
       };
     });
   }
