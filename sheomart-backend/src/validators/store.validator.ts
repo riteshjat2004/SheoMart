@@ -63,15 +63,10 @@ export const updateStoreSchema = z
 
 export type UpdateStoreInput = z.infer<typeof updateStoreSchema>;
 
-export const updateStoreBadgesSchema = z
+export const updateStoreBadgeSchema = z
   .object({
-    badges: z
-      .array(z.nativeEnum(STORE_BADGE))
-      .max(2)
-      .refine((items) => new Set(items).size === items.length, {
-        message: "Badges must be unique",
-      }),
+    badge: z.nativeEnum(STORE_BADGE),
   })
   .strict();
 
-export type UpdateStoreBadgesInput = z.infer<typeof updateStoreBadgesSchema>;
+export type UpdateStoreBadgeInput = z.infer<typeof updateStoreBadgeSchema>;

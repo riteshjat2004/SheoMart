@@ -15,7 +15,7 @@ export const mockProducts: ProductItem[] = [
 ];
 
 export const mockStores: StoreItem[] = [
-  { name: "Verdant Fresh", rating: 4.9, deliveryTime: "15-20 min", address: "North Avenue" },
-  { name: "Home Pantry Co.", rating: 4.8, deliveryTime: "20-25 min", address: "Main Market" },
-  { name: "Daily Basket", rating: 4.7, deliveryTime: "12-18 min", address: "Green Park" },
+  { name: "Verdant Fresh", badge: "normal", rating: 4.9, deliveryTime: "15-20 min", address: "North Avenue" },
+  { name: "Home Pantry Co.", badge: "normal", rating: 4.8, deliveryTime: "20-25 min", address: "Main Market" },
+  { name: "Daily Basket", badge: "normal", rating: 4.7, deliveryTime: "12-18 min", address: "Green Park" },
 ];

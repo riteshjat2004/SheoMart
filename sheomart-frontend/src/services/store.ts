@@ -1,6 +1,6 @@
 import api from "./api";
 import type { ApiResponse } from "@/types/api";
-import type { StoreItem } from "@/types/marketplace";
+import type { StoreBadge, StoreItem } from "@/types/marketplace";
 
 export interface GetStoresResponse {
   stores: StoreItem[];
@@ -42,12 +42,10 @@ function normalizeStore(store: Record<string, unknown>): StoreItem {
         ? store.name
         : "Store";
 
-  const badges = Array.isArray(store.badges)
-    ? store.badges.filter((badge): badge is "verified" | "royal" => badge === "verified" || badge === "royal")
-    : [];
+  const badge = store.badge === "verified" || store.badge === "royal" ? store.badge : "normal";
 
   return {
-    ...(store as StoreItem),
+    ...(store as unknown as Partial<StoreItem>),
     storeId: typeof store.storeId === "string" ? store.storeId : typeof store._id === "string" ? store._id : undefined,
     storeName: rawName,
     name: rawName,
@@ -57,7 +55,7 @@ function normalizeStore(store: Record<string, unknown>): StoreItem {
     totalReviews: typeof store.totalReviews === "number" ? store.totalReviews : undefined,
     pickupOpeningTime: typeof store.pickupOpeningTime === "string" ? store.pickupOpeningTime : "10:00",
     pickupClosingTime: typeof store.pickupClosingTime === "string" ? store.pickupClosingTime : "20:00",
-    badges,
+    badge,
     status: typeof store.status === "string" ? store.status : undefined,
   };
 }
@@ -72,21 +70,21 @@ export async function fetchStores(location?: StoreLocation) {
   const response = await api.get<ApiResponse<GetStoresResponse>>("/api/v1/stores", { params: location });
   const stores = Array.isArray(response.data.data?.stores) ? response.data.data.stores : [];
 
-  return stores.map((store) => normalizeStore(store as Record<string, unknown>));
+  return stores.map((store) => normalizeStore(store as unknown as Record<string, unknown>));
 }
 
 export async function fetchStoreById(storeId: string) {
   const response = await api.get<ApiResponse<GetStoreResponse>>(`/api/v1/stores/${storeId}`);
   const store = response.data.data?.store;
 
-  return store ? normalizeStore(store as Record<string, unknown>) : null;
+  return store ? normalizeStore(store as unknown as Record<string, unknown>) : null;
 }
 
 export async function fetchAdminStores() {
   const response = await api.get<ApiResponse<GetStoresResponse>>("/api/v1/stores/admin");
   const stores = Array.isArray(response.data.data?.stores) ? response.data.data.stores : [];
 
-  return stores.map((store) => normalizeStore(store as Record<string, unknown>));
+  return stores.map((store) => normalizeStore(store as unknown as Record<string, unknown>));
 }
 
 export async function createStoreApplication(payload: CreateStoreApplicationPayload) {
@@ -110,12 +108,12 @@ export async function updateMyStore(payload: UpdateMyStorePayload) {
   const response = await api.patch<ApiResponse<{ store: StoreItem }>>("/api/v1/stores/me", payload);
   const store = response.data.data?.store;
 
-  return store ? normalizeStore(store as Record<string, unknown>) : null;
+  return store ? normalizeStore(store as unknown as Record<string, unknown>) : null;
 }
 
-export async function updateStoreBadges(storeId: string, badges: Array<"verified" | "royal">) {
-  const response = await api.patch<ApiResponse<{ store: StoreItem }>>(`/api/v1/stores/${storeId}/badges`, { badges });
+export async function updateStoreBadge(storeId: string, badge: StoreBadge) {
+  const response = await api.patch<ApiResponse<{ store: StoreItem }>>(`/api/v1/stores/${storeId}/badge`, { badge });
   const store = response.data.data?.store;
 
-  return store ? normalizeStore(store as Record<string, unknown>) : null;
+  return store ? normalizeStore(store as unknown as Record<string, unknown>) : null;
 }

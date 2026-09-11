@@ -150,14 +150,14 @@ export class StoreService {
     return Store.find({}).sort({ createdAt: -1 });
   }
 
-  static async updateStoreBadges(storeId: string, badges: STORE_BADGE[]) {
+  static async updateStoreBadge(storeId: string, badge: STORE_BADGE) {
     const store = await Store.findOne({ storeId });
 
     if (!store) {
       throw new AppError("Store not found", 404);
     }
 
-    store.badges = [...new Set(badges)].slice(0, 2);
+    store.badge = badge;
     await store.save();
 
     return store;

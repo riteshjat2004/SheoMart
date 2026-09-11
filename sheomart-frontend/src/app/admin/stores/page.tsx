@@ -61,16 +61,16 @@ export default function AdminStoresPage() {
   });
 
   const badgeMutation = useMutation({
-    mutationFn: async ({ storeId, badges }: { storeId: string; badges: Array<"verified" | "royal"> }) => {
-      const response = await api.patch<ApiResponse<{ store: StoreItem }>>(`/api/v1/stores/${storeId}/badges`, { badges });
+    mutationFn: async ({ storeId, badge }: { storeId: string; badge: "normal" | "verified" | "royal" }) => {
+      const response = await api.patch<ApiResponse<{ store: StoreItem }>>(`/api/v1/stores/${storeId}/badge`, { badge });
       return response.data.data?.store;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["stores", "admin"] });
-      setFeedback({ type: "success", message: "Store badges updated successfully." });
+      setFeedback({ type: "success", message: "Store badge updated successfully." });
     },
     onError: (mutationError: unknown) => {
-      setFeedback({ type: "error", message: mutationError instanceof Error ? mutationError.message : "Unable to update store badges." });
+      setFeedback({ type: "error", message: mutationError instanceof Error ? mutationError.message : "Unable to update store badge." });
     },
   });
 
@@ -154,12 +154,12 @@ export default function AdminStoresPage() {
                 onApprove={(item) => handleAction(item, "approved")}
                 onReject={(item) => handleAction(item, "rejected")}
                 onSuspend={(item) => handleAction(item, "suspended")}
-                onUpdateBadges={(item, badges) => {
+                onUpdateBadge={(item, badge) => {
                   const storeId = item.storeId ?? item._id;
                   if (!storeId) return;
-                  badgeMutation.mutate({ storeId, badges });
+                  badgeMutation.mutate({ storeId, badge });
                 }}
-                isSavingBadges={badgeMutation.isPending}
+                isSavingBadge={badgeMutation.isPending}
               />
             ))}
           </div>

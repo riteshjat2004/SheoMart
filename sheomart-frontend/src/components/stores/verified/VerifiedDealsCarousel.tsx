@@ -1,0 +1,10 @@
+import { BadgePercent, Clock3 } from "lucide-react";
+import { verifiedTheme } from "@/themes/verifiedTheme";
+import type { ProductItem } from "@/types/marketplace";
+import { VerifiedSectionHeader } from "./VerifiedSectionHeader";
+
+export function VerifiedDealsCarousel({ products }: { products: ProductItem[] }) {
+  const deals = products.filter((product) => product.discountPrice || product.discount).slice(0, 8);
+  if (!deals.length) return null;
+  return <section className="space-y-4" aria-labelledby="verified-deals-heading"><VerifiedSectionHeader icon={BadgePercent} title="Exclusive Deals" subtitle="Verified value on products worth stocking up on." /><h2 id="verified-deals-heading" className="sr-only">Exclusive deals</h2><div className="flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{deals.map((product) => { const image = product.image?.url || product.thumbnail || product.images?.[0]; const price = product.discountPrice ?? product.price; const savings = Math.max(0, product.price - price); return <article key={product.productId ?? product.name} className={`relative min-w-[260px] overflow-hidden rounded-3xl border p-4 ${verifiedTheme.panel}`}><span className={`absolute right-3 top-3 rounded-full px-2 py-1 text-[10px] font-bold ${verifiedTheme.badge}`}>Verified Exclusive</span>{image ? <img src={image} alt="" className="h-32 w-full rounded-2xl object-cover" /> : <div className="h-32 rounded-2xl bg-emerald-950/20" />}<h3 className={`mt-3 line-clamp-1 font-semibold ${verifiedTheme.panelText}`}>{product.name}</h3><p className={`mt-2 text-xl font-bold ${verifiedTheme.panelText}`}>₹{price} <span className={`text-sm font-normal line-through ${verifiedTheme.panelMutedText}`}>₹{product.price}</span></p><p className={`mt-1 text-xs ${verifiedTheme.icon}`}>Save ₹{savings}</p><p className={`mt-3 flex items-center gap-1 text-xs ${verifiedTheme.panelMutedText}`}><Clock3 className="h-3.5 w-3.5" />Offer timing to be announced</p></article>; })}</div></section>;
+}

@@ -6,7 +6,7 @@ import {
   getMyStore,
   getStoreById,
   updateMyStore,
-  updateStoreBadges,
+  updateStoreBadge,
   updateStoreStatus,
 } from "../controllers/store.controller";
 import { authenticate } from "../middleware/auth.middleware";
@@ -42,10 +42,10 @@ router.get(
 );
 router.get("/", asyncHandler(getAllStores));
 router.patch(
-  "/:storeId/badges",
+  "/:storeId/badge",
   authenticate,
   authorize(USER_ROLES.PLATFORM_ADMIN),
-  asyncHandler(updateStoreBadges)
+  asyncHandler(updateStoreBadge)
 );
 router.get("/:storeId", asyncHandler(getStoreById));
 router.patch(

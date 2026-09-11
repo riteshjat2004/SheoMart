@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import { STORE_STATUS, StoreStatus } from "../constants/store";
 
 export enum STORE_BADGE {
+  NORMAL = "normal",
   VERIFIED = "verified",
   ROYAL = "royal",
 }
@@ -21,7 +22,7 @@ export interface IStore extends Document {
   city: string;
   state: string;
   pincode: string;
-  badges: STORE_BADGE[];
+  badge: STORE_BADGE;
   isVerified: boolean;
   status: StoreStatus;
   approvedAt: Date | null;
@@ -119,10 +120,10 @@ const storeSchema = new Schema<IStore>(
       trim: true,
     },
 
-    badges: {
-      type: [String],
+    badge: {
+      type: String,
       enum: Object.values(STORE_BADGE),
-      default: [],
+      default: STORE_BADGE.NORMAL,
     },
 
     isVerified: {

@@ -16,6 +16,24 @@ import { EmptyState } from "@/components/common/empty-state";
 import { useCategories } from "@/hooks/use-categories";
 import { useStore } from "@/hooks/use-store";
 import { useProductsByStore } from "@/hooks/use-products-by-store";
+import type { ProductItem, StoreBadge } from "@/types/marketplace";
+import { VerifiedStoreHero } from "@/components/stores/verified/VerifiedStoreHero";
+import { VerifiedTrustScore } from "@/components/stores/verified/VerifiedTrustScore";
+import { VerifiedInfoGrid } from "@/components/stores/verified/VerifiedInfoGrid";
+import { VerifiedAchievements } from "@/components/stores/verified/VerifiedAchievements";
+import { VerifiedHighlights } from "@/components/stores/verified/VerifiedHighlights";
+import { VerifiedAboutStore } from "@/components/stores/verified/VerifiedAboutStore";
+import { VerifiedTrustBanner } from "@/components/stores/verified/VerifiedTrustBanner";
+import { VerifiedStatsGrid } from "@/components/stores/verified/VerifiedStatsGrid";
+import { VerifiedBusinessInfo } from "@/components/stores/verified/VerifiedBusinessInfo";
+import { VerifiedCollections } from "@/components/stores/verified/VerifiedCollections";
+import { VerifiedDealsCarousel } from "@/components/stores/verified/VerifiedDealsCarousel";
+import { VerifiedCouponWallet } from "@/components/stores/verified/VerifiedCouponWallet";
+import { VerifiedProductStrip } from "@/components/stores/verified/VerifiedProductStrip";
+import { VerifiedOfferBanner } from "@/components/stores/verified/VerifiedOfferBanner";
+import { VerifiedSearchSuggestions } from "@/components/stores/verified/VerifiedSearchSuggestions";
+import { VerifiedSpotlight } from "@/components/stores/verified/VerifiedSpotlight";
+import { VerifiedStickyBar } from "@/components/stores/verified/VerifiedStickyBar";
 
 const CATEGORY_ORDER = [
   "featured",
@@ -43,7 +61,7 @@ type SortMode = "recommended" | "price-low" | "price-high" | "newest" | "biggest
 
 const DEFAULT_SORT: SortMode = "recommended";
 
-const sortProducts = (items: typeof products, mode: SortMode) => {
+const sortProducts = (items: ProductItem[], mode: SortMode) => {
   const nextItems = [...items];
 
   switch (mode) {
@@ -86,6 +104,30 @@ function StoreEmptyState({ title, description, actionLabel, onAction }: { title:
   );
 }
 
+type StoreVariant = "normal" | "verified" | "royal";
+
+function resolveStoreVariant(badge: StoreBadge): StoreVariant {
+  switch (badge) {
+    case "royal":
+      return "royal";
+    case "verified":
+      return "verified";
+    default:
+      return "normal";
+  }
+}
+
+function StoreVariantResolver({ variant, children }: { variant: StoreVariant; children: React.ReactNode }) {
+  switch (variant) {
+    case "royal":
+      return <>{children}</>;
+    case "verified":
+      return <>{children}</>;
+    default:
+      return <>{children}</>;
+  }
+}
+
 export default function StoreDetailPage() {
   const params = useParams<{ storeId: string }>();
   const storeId = params?.storeId;
@@ -100,6 +142,7 @@ export default function StoreDetailPage() {
   const categoryRefs = useRef<Record<string, HTMLElement | null>>({});
 
   const store = storeQuery.data;
+  const storeVariant = resolveStoreVariant(store?.badge ?? "normal");
   const products = useMemo(() => (Array.isArray(productsQuery.data) ? productsQuery.data : []), [productsQuery.data]);
   const categories = useMemo(() => (Array.isArray(categoriesQuery.data) ? categoriesQuery.data : []), [categoriesQuery.data]);
   const categoryMap = useMemo(
@@ -270,8 +313,10 @@ export default function StoreDetailPage() {
           ) : storeQuery.isError || productsQuery.isError ? (
             <ErrorState message={(storeQuery.error ?? productsQuery.error) instanceof Error ? (storeQuery.error ?? productsQuery.error)?.message ?? "Unable to load store details." : "Unable to load store details."} />
           ) : store ? (
+            <StoreVariantResolver variant={storeVariant}>
+            {storeVariant === "verified" ? <VerifiedStickyBar store={store} /> : null}
             <div className="space-y-6">
-              <div className="overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900">
+              {storeVariant === "verified" ? <VerifiedStoreHero store={store} /> : <div className="overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900">
                 <div className="relative h-60 overflow-hidden bg-stone-100 sm:h-72 lg:h-80 dark:bg-stone-800">
                   {store.banner ? (
                     <Image src={store.banner} alt={`${store.storeName ?? "Store"} banner`} fill className="object-cover" />
@@ -293,15 +338,15 @@ export default function StoreDetailPage() {
                         <div className="min-w-0">
                           <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-emerald-300">Store profile</p>
                           <h1 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">{store.storeName ?? store.name}</h1>
-                          {store.badges && store.badges.length ? (
+                          {store.badge !== "normal" ? (
                             <div className="mt-3 flex flex-wrap items-center gap-2 text-white">
-                              {store.badges.includes("verified") ? (
+                              {store.badge === "verified" ? (
                                 <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/60 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-semibold text-emerald-100">
                                   <ShieldCheck className="h-3.5 w-3.5" />
                                   Verified Store
                                 </span>
                               ) : null}
-                              {store.badges.includes("royal") ? (
+                              {store.badge === "royal" ? (
                                 <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/60 bg-amber-500/15 px-2.5 py-1 text-[11px] font-semibold text-amber-100">
                                   <Crown className="h-3.5 w-3.5" />
                                   SheoMart Royal
@@ -395,7 +440,31 @@ export default function StoreDetailPage() {
                     </Button>
                   </div>
                 </div>
-              </div>
+              </div>}
+
+              {storeVariant === "verified" ? (
+                <div className="space-y-5">
+                  <VerifiedTrustScore />
+                  <VerifiedInfoGrid store={store} productCount={products.length} />
+                  <VerifiedAchievements />
+                  <VerifiedHighlights />
+                  <VerifiedAboutStore store={store} />
+                  <div className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr]">
+                    <VerifiedStatsGrid />
+                    <VerifiedBusinessInfo store={store} />
+                  </div>
+                  <VerifiedTrustBanner />
+                  <VerifiedCollections products={products} />
+                  <VerifiedDealsCarousel products={products} />
+                  <VerifiedCouponWallet />
+                  <VerifiedProductStrip title="Best Seller Products" subtitle="Popular picks from this verified seller." products={products} mode="best" />
+                  <VerifiedProductStrip title="New Arrivals" subtitle="The latest additions to this store." products={products} mode="new" />
+                  <VerifiedProductStrip title="Trending This Week" subtitle="A quick look at what shoppers are exploring." products={products} mode="trending" />
+                  <VerifiedOfferBanner />
+                  <VerifiedSearchSuggestions onSelect={setSearchTerm} />
+                  <VerifiedSpotlight product={products[0]} />
+                </div>
+              ) : null}
 
               <div className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm dark:border-stone-800 dark:bg-stone-900">
                 <div className="flex flex-col gap-4 pb-4">
@@ -642,6 +711,7 @@ export default function StoreDetailPage() {
                 ) : null}
               </div>
             </div>
+            </StoreVariantResolver>
           ) : (
             <EmptyState title="Store not found" description="We could not locate this store. Verify the URL or search for another seller." />
           )}
