@@ -11,6 +11,7 @@ import { PersonalInfoCard } from "@/components/profile/PersonalInfoCard";
 import { SellerApplicationCard } from "@/components/profile/SellerApplicationCard";
 import { QuickActionsCard } from "@/components/profile/QuickActionsCard";
 import { SecurityCard } from "@/components/profile/SecurityCard";
+import { CouponWallet } from "@/components/profile/CouponWallet";
 import { EditProfileDialog } from "@/components/profile/EditProfileDialog";
 import { ProfileSkeleton } from "@/components/profile/ProfileSkeleton";
 import { fetchMyStore } from "@/services/store";
@@ -139,6 +140,10 @@ export default function CustomerProfilePage() {
           </ProfileCard>
         </div>
       </div>
+
+      <ProfileCard title="Coupon wallet" description="Browse available coupons, redemption history, expired codes, and current festival offers.">
+        <CouponWallet />
+      </ProfileCard>
 
       <EditProfileDialog open={editOpen} user={profile} onClose={() => setEditOpen(false)} onSubmit={handleSubmit} isSubmitting={updateProfileMutation.isPending} />
     </div>

@@ -18,6 +18,7 @@ export const createOrderSchema = z.object({
   storeId: z.string().trim().min(1, "Store is required"),
   deliveryMethod: z.enum(["pickup", "delivery"], "Select a valid delivery method"),
   paymentMethod: z.enum(PAYMENT_METHODS, "Select a valid payment method"),
+  couponCode: z.string().trim().min(2).max(40).optional(),
 });
 
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;

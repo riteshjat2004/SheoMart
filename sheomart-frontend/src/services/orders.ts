@@ -51,6 +51,7 @@ export async function createDraftOrder(payload: {
   storeId: string;
   deliveryMethod: "pickup" | "delivery";
   paymentMethod: "cod" | "online";
+  couponCode?: string;
 }) {
   const response = await api.post<ApiResponse<{ order: OrderRecord }>>("/api/v1/orders", payload);
   return response.data.data?.order;

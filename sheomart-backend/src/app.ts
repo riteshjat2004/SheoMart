@@ -26,6 +26,7 @@ import paymentRoutes from "./routes/payment.routes";
 import analyticsRoutes from "./routes/analytics.routes";
 import searchRoutes from "./routes/search.routes";
 import homeRoutes from "./routes/home.routes";
+import promotionRoutes from "./routes/promotion.routes";
 
 const app = express();
 
@@ -74,6 +75,7 @@ app.use("/api/v1", reviewRoutes);
 app.use("/api/v1/payments", paymentRoutes);
 app.use("/api/v1/analytics", analyticsRoutes);
 app.use("/api/v1/search", searchRoutes);
+app.use("/api/v1/promotions", promotionRoutes);
 app.use("/api/home", homeRoutes);
 // Global Error Handler (Always Last)
 app.use(errorHandler);

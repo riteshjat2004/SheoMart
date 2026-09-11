@@ -18,6 +18,12 @@ body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
+@keyframes floating-cart-in {
+  0% { opacity: 0; transform: translateY(24px) scale(0.94); }
+  70% { opacity: 1; transform: translateY(-4px) scale(1.02); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 ::selection {
   background: rgba(16, 185, 129, 0.25);
   color: inherit;

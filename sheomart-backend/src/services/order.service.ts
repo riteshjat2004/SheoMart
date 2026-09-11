@@ -9,6 +9,7 @@ import { Product } from "../models/product.model";
 import { Store } from "../models/store.model";
 import { StoreCustomer } from "../models/storeCustomer.model";
 import { User } from "../models/user.model";
+import { PromotionService } from "./promotion.service";
 import { CreateOrderInput } from "../validators/checkout.validator";
 
 const createInvoiceNumber = async (storeId: string, date: Date) => {
@@ -341,11 +342,23 @@ export class OrderService {
       });
     }
 
+    const { festivalSavings } = await PromotionService.calculateFestivalDiscounts(
+      orderItems.map((item) => ({
+        categoryId: productMap.get(item.productId)?.categoryId ?? "",
+        quantity: item.quantity,
+        price: item.discountPrice,
+      })),
+    );
+    const couponValidation = data.couponCode
+      ? await PromotionService.validateCoupon(data.couponCode, userId, originalTotal)
+      : null;
+    const festivalDiscount = Math.min(discountedTotal, festivalSavings);
+    const couponDiscount = Math.min(Math.max(0, discountedTotal - festivalDiscount), couponValidation?.discount ?? 0);
     const discount = Math.max(0, originalTotal - discountedTotal);
     const subtotal = originalTotal;
     const deliveryCharge = data.deliveryMethod === "pickup" ? 0 : 50;
     const platformFee = data.deliveryMethod === "pickup" ? 0 : 10;
-    const grandTotal = subtotal - discount + deliveryCharge + platformFee;
+    const grandTotal = Math.max(0, subtotal - discount - festivalDiscount - couponDiscount + deliveryCharge + platformFee);
 
     if (existingDraft) {
       existingDraft.addressId = address.addressId;
@@ -375,6 +388,9 @@ export class OrderService {
 
       existingDraft.subtotal = subtotal;
       existingDraft.discount = discount;
+      existingDraft.festivalDiscount = festivalDiscount;
+      existingDraft.couponDiscount = couponDiscount;
+      existingDraft.couponCode = couponValidation?.code ?? "";
       existingDraft.deliveryCharge = deliveryCharge;
       existingDraft.platformFee = platformFee;
       existingDraft.grandTotal = grandTotal;
@@ -383,6 +399,7 @@ export class OrderService {
       }
 
       await existingDraft.save();
+      if (couponValidation) await PromotionService.recordCouponUsage(couponValidation.couponId, userId, existingDraft.orderId);
       await CartItem.deleteMany({ userId });
 
       return existingDraft;
@@ -412,6 +429,9 @@ export class OrderService {
       pickupStatus: "ORDER_PLACED",
       subtotal,
       discount,
+      festivalDiscount,
+      couponDiscount,
+      couponCode: couponValidation?.code ?? "",
       deliveryCharge,
       platformFee,
       grandTotal,
@@ -420,6 +440,7 @@ export class OrderService {
       statusUpdatedAt: new Date(),
     });
 
+    if (couponValidation) await PromotionService.recordCouponUsage(couponValidation.couponId, userId, order.orderId);
     await CartItem.deleteMany({ userId });
 
     return order;

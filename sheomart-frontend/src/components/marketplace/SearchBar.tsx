@@ -13,9 +13,10 @@ interface SearchBarProps {
   onChange?: (value: string) => void;
   onSubmit?: () => void;
   enableSuggestions?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function SearchBar({ className, placeholder = "Search essentials, pantry, snacks...", value, onChange, onSubmit, enableSuggestions = false }: SearchBarProps) {
+export function SearchBar({ className, placeholder = "Search essentials, pantry, snacks...", value, onChange, onSubmit, enableSuggestions = false, onOpenChange }: SearchBarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -31,6 +32,11 @@ export function SearchBar({ className, placeholder = "Search essentials, pantry,
   const results = searchQuery.data;
   const hasResults = Boolean(results && (results.products.length || results.stores.length || results.categories.length));
   const showSuggestions = enableSuggestions && openRouteKey === routeKey && currentValue.trim().length >= 2 && hasResults;
+
+  useEffect(() => {
+    onOpenChange?.(showSuggestions);
+    return () => onOpenChange?.(false);
+  }, [onOpenChange, showSuggestions]);
 
   const clearSearch = useCallback(() => {
     setInternalValue("");
@@ -116,7 +122,7 @@ export function SearchBar({ className, placeholder = "Search essentials, pantry,
       </button>
       </form>
       {showSuggestions && !searchQuery.isLoading && (
-        <div className="absolute left-0 right-0 top-full z-[100] mt-2 max-h-[420px] overflow-y-auto rounded-2xl border border-stone-200 bg-white p-2 shadow-2xl dark:border-stone-700 dark:bg-stone-900">
+        <div className="absolute left-0 right-0 top-full z-40 max-h-[420px] overflow-y-auto rounded-2xl border border-stone-200 bg-white p-2 shadow-2xl dark:border-stone-700 dark:bg-stone-900">
           {results && results.products.length > 0 ? <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-400">Products</p> : null}
           {results && results.products.slice(0, 5).map((product) => <button key={product.productId} type="button" onClick={() => goTo(`/products/${product.productId}`)} className="flex w-full items-center gap-3 rounded-xl p-2 text-left hover:bg-stone-50 dark:hover:bg-stone-800"><img src={product.thumbnail || "/placeholder.png"} alt="" className="h-10 w-10 rounded-lg object-cover" /><span className="text-sm font-medium text-stone-800 dark:text-stone-100">{product.name}</span></button>)}
           {results && results.stores.length > 0 ? <p className="px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-400">Stores</p> : null}

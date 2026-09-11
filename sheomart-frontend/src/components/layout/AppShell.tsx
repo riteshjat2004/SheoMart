@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { RouteGuard } from "@/components/auth/RouteGuard";
 import { Footer } from "@/components/layout/footer";
 import { Navbar } from "@/components/layout/navbar";
+import { FloatingCartButton } from "@/components/cart/FloatingCartButton";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -22,6 +23,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <RouteGuard>{children}</RouteGuard>
       </main>
       <Footer />
+      <FloatingCartButton />
     </div>
   );
 }

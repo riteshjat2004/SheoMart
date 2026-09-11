@@ -77,6 +77,9 @@ export interface IOrder extends Document {
 
   subtotal: number;
   discount: number;
+  festivalDiscount: number;
+  couponDiscount: number;
+  couponCode?: string;
   deliveryCharge: number;
   platformFee: number;
   grandTotal: number;
@@ -237,6 +240,9 @@ const orderSchema = new Schema<IOrder>(
       required: true,
       min: 0,
     },
+    festivalDiscount: { type: Number, default: 0, min: 0 },
+    couponDiscount: { type: Number, default: 0, min: 0 },
+    couponCode: { type: String, default: "", trim: true, uppercase: true },
     deliveryCharge: {
       type: Number,
       required: true,
