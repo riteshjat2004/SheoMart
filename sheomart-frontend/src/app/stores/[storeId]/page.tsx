@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Boxes, Clock3, Crown, MapPin, MessageSquareText, PackageSearch, Phone, Search, ShieldCheck, SortAsc, Star } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/layout/container";
 import { PageWrapper } from "@/components/layout/page-wrapper";
@@ -34,6 +34,29 @@ import { VerifiedOfferBanner } from "@/components/stores/verified/VerifiedOfferB
 import { VerifiedSearchSuggestions } from "@/components/stores/verified/VerifiedSearchSuggestions";
 import { VerifiedSpotlight } from "@/components/stores/verified/VerifiedSpotlight";
 import { VerifiedStickyBar } from "@/components/stores/verified/VerifiedStickyBar";
+import { RoyalStoreHero } from "@/components/store/royal/RoyalStoreHero";
+import { RoyalStickyBar } from "@/components/store/royal/RoyalStickyBar";
+import { RoyalConciergeCard } from "@/components/store/royal/RoyalConciergeCard";
+import { RoyalAuthenticityBanner } from "@/components/store/royal/RoyalAuthenticityBanner";
+import { RoyalCollections } from "@/components/store/royal/RoyalCollections";
+import { RoyalLimitedEdition } from "@/components/store/royal/RoyalLimitedEdition";
+import { RoyalPrivileges } from "@/components/store/royal/RoyalPrivileges";
+import { RoyalMembershipBanner } from "@/components/store/royal/RoyalMembershipBanner";
+import { RoyalTestimonials } from "@/components/store/royal/RoyalTestimonials";
+import { RoyalGiftExperience } from "@/components/store/royal/RoyalGiftExperience";
+import { RoyalDivider } from "@/components/store/royal/RoyalDivider";
+import { RoyalSectionHeader } from "@/components/store/royal/RoyalSectionHeader";
+import { RoyalLaunches } from "@/components/store/royal/RoyalLaunches";
+import { RoyalEarlyAccess } from "@/components/store/royal/RoyalEarlyAccess";
+import { RoyalShoppingConcierge } from "@/components/store/royal/RoyalShoppingConcierge";
+import { RoyalRecommendations } from "@/components/store/royal/RoyalRecommendations";
+import { RoyalGiftBoxShowcase } from "@/components/store/royal/RoyalGiftBoxShowcase";
+import { RoyalVIPBenefits } from "@/components/store/royal/RoyalVIPBenefits";
+import { RoyalPackagingShowcase } from "@/components/store/royal/RoyalPackagingShowcase";
+import { RoyalShoppingTimeline } from "@/components/store/royal/RoyalShoppingTimeline";
+import { RoyalMotion } from "@/components/store/royal/RoyalMotion";
+import { useStoreSearch } from "@/components/store/shared/useStoreSearch";
+import { getProductDomId, scrollToProduct } from "@/components/store/shared/scrollToProduct";
 
 const CATEGORY_ORDER = [
   "featured",
@@ -134,16 +157,25 @@ export default function StoreDetailPage() {
   const storeQuery = useStore(storeId);
   const productsQuery = useProductsByStore(storeId);
   const categoriesQuery = useCategories();
-  const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>(DEFAULT_SORT);
   const [highlightedCategory, setHighlightedCategory] = useState<string | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
   const categoryRefs = useRef<Record<string, HTMLElement | null>>({});
+  const stickySearchRef = useRef<HTMLInputElement | null>(null);
+  const [stickySearchVisible, setStickySearchVisible] = useState(false);
+
+  useEffect(() => {
+    const updateStickyVisibility = () => setStickySearchVisible(window.scrollY > 460);
+    updateStickyVisibility();
+    window.addEventListener("scroll", updateStickyVisibility, { passive: true });
+    return () => window.removeEventListener("scroll", updateStickyVisibility);
+  }, []);
 
   const store = storeQuery.data;
   const storeVariant = resolveStoreVariant(store?.badge ?? "normal");
   const products = useMemo(() => (Array.isArray(productsQuery.data) ? productsQuery.data : []), [productsQuery.data]);
+  const { searchQuery, setSearchQuery, filteredProducts: searchedProducts, searchResults, clearSearch } = useStoreSearch(products);
   const categories = useMemo(() => (Array.isArray(categoriesQuery.data) ? categoriesQuery.data : []), [categoriesQuery.data]);
   const categoryMap = useMemo(
     () => new Map(categories.map((category) => [category.categoryId ?? normalizeCategorySlug(category.name), category])),
@@ -151,18 +183,11 @@ export default function StoreDetailPage() {
   );
 
   const filteredProducts = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
-
-    return products.filter((product) => {
-      const matchesTerm =
-        !term ||
-        product.name.toLowerCase().includes(term) ||
-        (product.description ?? "").toLowerCase().includes(term) ||
-        (product.category ?? "").toLowerCase().includes(term);
+    return searchedProducts.filter((product) => {
       const matchesCategory = !activeCategory || product.categoryId === activeCategory || normalizeCategorySlug(product.category ?? categoryMap.get(product.categoryId ?? "")?.name ?? "") === activeCategory;
-      return matchesTerm && matchesCategory;
+      return matchesCategory;
     });
-  }, [activeCategory, categoryMap, products, searchTerm]);
+  }, [activeCategory, categoryMap, searchedProducts]);
 
   const sortedFilteredProducts = useMemo(() => sortProducts(filteredProducts, sortMode), [filteredProducts, sortMode]);
 
@@ -223,15 +248,15 @@ export default function StoreDetailPage() {
   const activeCategoryLabel = activeCategory ? categories.find((category) => (category.categoryId ?? normalizeCategorySlug(category.name)) === activeCategory)?.name ?? activeCategory : "";
 
   const activeFilters = [
-    searchTerm.trim() ? { key: "search", label: searchTerm.trim() } : null,
+    searchQuery.trim() ? { key: "search", label: searchQuery.trim() } : null,
     activeCategoryLabel ? { key: "category", label: activeCategoryLabel } : null,
   ].filter(Boolean) as Array<{ key: string; label: string }>;
 
   const hasSortChanged = sortMode !== DEFAULT_SORT;
-  const hasFilterChanged = Boolean(searchTerm.trim()) || Boolean(activeCategory) || hasSortChanged;
+  const hasFilterChanged = Boolean(searchQuery.trim()) || Boolean(activeCategory) || hasSortChanged;
 
   const displayedProducts = useMemo(() => {
-    if (searchTerm.trim()) {
+    if (searchQuery.trim()) {
       return sortedFilteredProducts;
     }
 
@@ -240,9 +265,27 @@ export default function StoreDetailPage() {
     }
 
     return groupedProducts.flatMap((group) => group.products);
-  }, [activeCategory, groupedProducts, searchTerm, sortedFilteredProducts]);
+  }, [activeCategory, groupedProducts, searchQuery, sortedFilteredProducts]);
 
-  const baseProductCount = searchTerm.trim() ? filteredProducts.length : activeCategory ? groupedProducts.filter((group) => group.id === activeCategory).flatMap((group) => group.products).length : products.length;
+  const baseProductCount = searchQuery.trim() ? filteredProducts.length : activeCategory ? groupedProducts.filter((group) => group.id === activeCategory).flatMap((group) => group.products).length : products.length;
+
+  const selectSearchResult = (product: ProductItem) => {
+    const productId = product.productId ?? product._id ?? product.name;
+    window.setTimeout(() => {
+      scrollToProduct(productId, store?.badge ?? "normal");
+    }, 50);
+  };
+
+  const scrollToStickySearch = () => {
+    setStickySearchVisible(true);
+    document.getElementById("store-sticky-search")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.scrollTo({ top: Math.max(window.scrollY, 461), behavior: "smooth" });
+    window.setTimeout(() => {
+      const input = stickySearchRef.current;
+      input?.focus();
+      if (input) input.setSelectionRange(input.value.length, input.value.length);
+    }, 350);
+  };
 
   const featuredSections = useMemo(() => {
     const hasRatings = products.some((product) => typeof product.rating === "number");
@@ -314,9 +357,9 @@ export default function StoreDetailPage() {
             <ErrorState message={(storeQuery.error ?? productsQuery.error) instanceof Error ? (storeQuery.error ?? productsQuery.error)?.message ?? "Unable to load store details." : "Unable to load store details."} />
           ) : store ? (
             <StoreVariantResolver variant={storeVariant}>
-            {storeVariant === "verified" ? <VerifiedStickyBar store={store} /> : null}
+            {storeVariant === "verified" ? <div id="store-sticky-search"><VerifiedStickyBar store={store} visible={stickySearchVisible} search={{ value: searchQuery, onChange: setSearchQuery, onClear: clearSearch, results: searchResults, onSelect: selectSearchResult }} stickySearchRef={stickySearchRef} /></div> : storeVariant === "royal" ? <div id="store-sticky-search" className="border-b border-[#D4AF37]/40"><RoyalStickyBar store={store} visible={stickySearchVisible} search={{ value: searchQuery, onChange: setSearchQuery, onClear: clearSearch, results: searchResults, onSelect: selectSearchResult }} stickySearchRef={stickySearchRef} /></div> : null}
             <div className="space-y-6">
-              {storeVariant === "verified" ? <VerifiedStoreHero store={store} /> : <div className="overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900">
+              {storeVariant === "verified" ? <VerifiedStoreHero store={store} search={{ value: searchQuery, onChange: setSearchQuery, onClear: clearSearch, results: searchResults, onSelect: selectSearchResult }} stickySearchRef={stickySearchRef} scrollToStickySearch={scrollToStickySearch} /> : storeVariant === "royal" ? <RoyalStoreHero store={store} search={{ value: searchQuery, onChange: setSearchQuery, onClear: clearSearch, results: searchResults, onSelect: selectSearchResult }} stickySearchRef={stickySearchRef} scrollToStickySearch={scrollToStickySearch} /> : <div className="overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900">
                 <div className="relative h-60 overflow-hidden bg-stone-100 sm:h-72 lg:h-80 dark:bg-stone-800">
                   {store.banner ? (
                     <Image src={store.banner} alt={`${store.storeName ?? "Store"} banner`} fill className="object-cover" />
@@ -442,8 +485,9 @@ export default function StoreDetailPage() {
                 </div>
               </div>}
 
-              {storeVariant === "verified" ? (
+              {storeVariant !== "normal" ? (
                 <div className="space-y-5">
+                  {storeVariant === "royal" ? <RoyalMotion><div className="space-y-5"><div className="grid gap-5 lg:grid-cols-2"><RoyalConciergeCard /><RoyalAuthenticityBanner /></div><RoyalDivider /><RoyalCollections products={products} /><RoyalLimitedEdition products={products} /><RoyalDivider /><RoyalPrivileges /><RoyalMembershipBanner /><RoyalTestimonials /><RoyalGiftExperience /><RoyalDivider /><RoyalSectionHeader title="VIP Shopping Experience" subtitle="A flagship journey from discovery to delivery." /><RoyalLaunches products={products} /><RoyalEarlyAccess /><RoyalShoppingConcierge /><RoyalRecommendations products={products} /><RoyalGiftBoxShowcase /><RoyalVIPBenefits /><RoyalPackagingShowcase /><RoyalShoppingTimeline /><RoyalDivider /></div></RoyalMotion> : null}
                   <VerifiedTrustScore />
                   <VerifiedInfoGrid store={store} productCount={products.length} />
                   <VerifiedAchievements />
@@ -461,7 +505,7 @@ export default function StoreDetailPage() {
                   <VerifiedProductStrip title="New Arrivals" subtitle="The latest additions to this store." products={products} mode="new" />
                   <VerifiedProductStrip title="Trending This Week" subtitle="A quick look at what shoppers are exploring." products={products} mode="trending" />
                   <VerifiedOfferBanner />
-                  <VerifiedSearchSuggestions onSelect={setSearchTerm} />
+                  <VerifiedSearchSuggestions onSelect={setSearchQuery} />
                   <VerifiedSpotlight product={products[0]} />
                 </div>
               ) : null}
@@ -492,7 +536,7 @@ export default function StoreDetailPage() {
                                 type="button"
                                 onClick={() => {
                                   if (filter.key === "search") {
-                                    setSearchTerm("");
+                                    clearSearch();
                                   }
                                   if (filter.key === "category") {
                                     setActiveCategory(null);
@@ -510,8 +554,8 @@ export default function StoreDetailPage() {
                         {hasFilterChanged ? (
                           <button
                             type="button"
-                            onClick={() => {
-                              setSearchTerm("");
+                              onClick={() => {
+                              clearSearch();
                               setActiveCategory(null);
                               setSortMode(DEFAULT_SORT);
                             }}
@@ -544,8 +588,8 @@ export default function StoreDetailPage() {
                       <label className="relative block w-full xl:max-w-md">
                         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
                         <input
-                          value={searchTerm}
-                          onChange={(event) => setSearchTerm(event.target.value)}
+                          value={searchQuery}
+                          onChange={(event) => setSearchQuery(event.target.value)}
                           placeholder="Search products in this store"
                           className="h-11 w-full rounded-full border border-stone-200 bg-stone-50 pl-10 pr-4 text-sm text-stone-700 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-200 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/20"
                         />
@@ -599,7 +643,7 @@ export default function StoreDetailPage() {
                   </div>
                 ) : null}
 
-                {products.length > 0 && !searchTerm.trim() && !activeCategory ? (
+                {products.length > 0 && !searchQuery.trim() && !activeCategory ? (
                   <div className="mt-2 space-y-8">
                     {featuredSections.map((section) => {
                       if (section.title === "Today's Deals" && !section.products.length) {
@@ -620,7 +664,7 @@ export default function StoreDetailPage() {
 
                           <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                             {section.products.map((product) => (
-                              <div key={product.productId ?? product.name} className="min-w-[240px] max-w-[240px] shrink-0 snap-start sm:min-w-[260px] sm:max-w-[260px]">
+                              <div id={getProductDomId(product.productId ?? product._id ?? product.name)} key={product.productId ?? product.name} className="min-w-[240px] max-w-[240px] shrink-0 snap-start sm:min-w-[260px] sm:max-w-[260px]">
                                 <ProductCard product={product} />
                               </div>
                             ))}
@@ -631,7 +675,7 @@ export default function StoreDetailPage() {
                   </div>
                 ) : null}
 
-                {searchTerm.trim() ? (
+                {searchQuery.trim() ? (
                   <div className="mt-6">
                     <div className="mb-4 flex items-center justify-between gap-4">
                       <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-50">Search Results</h3>
@@ -640,13 +684,13 @@ export default function StoreDetailPage() {
                     {filteredProducts.length ? (
                       <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
                         {filteredProducts.map((product, index) => (
-                          <div key={product.productId ?? product.name} className="animate-[store-fade-in_500ms_ease-out_both]" style={{ animationDelay: `${Math.min(index * 45, 300)}ms` }}>
+                          <div id={getProductDomId(product.productId ?? product._id ?? product.name)} key={product.productId ?? product.name} className="animate-[store-fade-in_500ms_ease-out_both]" style={{ animationDelay: `${Math.min(index * 45, 300)}ms` }}>
                             <ProductCard product={product} />
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <StoreEmptyState title="No products match your search" description="Try another keyword or clear the search to browse the full store." actionLabel="Clear search" onAction={() => setSearchTerm("")} />
+                      <StoreEmptyState title="No products match your search" description="Try another keyword or clear the search to browse the full store." actionLabel="Clear search" onAction={clearSearch} />
                     )}
                   </div>
                 ) : products.length > 0 ? (
@@ -684,7 +728,7 @@ export default function StoreDetailPage() {
 
                           <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
                             {visibleProducts.map((product, productIndex) => (
-                              <div key={product.productId ?? product.name} className="animate-[store-fade-in_500ms_ease-out_both]" style={{ animationDelay: `${Math.min(productIndex * 45, 300)}ms` }}>
+                              <div id={getProductDomId(product.productId ?? product._id ?? product.name)} key={product.productId ?? product.name} className="animate-[store-fade-in_500ms_ease-out_both]" style={{ animationDelay: `${Math.min(productIndex * 45, 300)}ms` }}>
                                 <ProductCard product={product} />
                               </div>
                             ))}
@@ -717,7 +761,7 @@ export default function StoreDetailPage() {
           )}
         </Container>
       </Section>
-      <style jsx global>{`@keyframes store-fade-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+      <style jsx global>{`@keyframes store-fade-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } } @keyframes royal-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } } @keyframes royal-shimmer { from { background-position: 200% 0; } to { background-position: -20% 0; } } @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; } }`}</style>
     </PageWrapper>
   );
 }

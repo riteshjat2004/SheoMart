@@ -1,0 +1,5 @@
+import { ArrowRight, Crown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { royalTheme } from "./royalTheme";
+
+export function RoyalMembershipBanner() { return <section className={`relative overflow-hidden rounded-[2rem] border p-6 sm:p-8 ${royalTheme.hero}`} aria-labelledby="royal-membership-heading"><div className="absolute -right-10 -top-16 h-48 w-48 rounded-full border border-[#D4AF37]/30 bg-[#D4AF37]/10 blur-2xl" /><div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between"><div><p className={`flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] ${royalTheme.accent}`}><Crown className="h-4 w-4" /> Royal membership</p><h2 id="royal-membership-heading" className="mt-2 text-2xl font-semibold text-[#F8E7B0]">Unlock Royal Privileges</h2><p className="mt-2 text-sm text-stone-300">Enjoy a more personal way to shop exceptional collections.</p></div><Button type="button" className={royalTheme.primaryButton}>Join now <ArrowRight className="h-4 w-4" /></Button></div></section>; }

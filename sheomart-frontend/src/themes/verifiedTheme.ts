@@ -19,3 +19,7 @@ export const verifiedTheme = {
   hover: "transition duration-200 hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-[0_14px_35px_-24px_rgba(16,185,129,0.8)] active:scale-[0.99] motion-reduce:transition-none",
   focus: "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950",
 } as const;
+
+export type StoreTheme = {
+  [key in keyof typeof verifiedTheme]: string;
+};
