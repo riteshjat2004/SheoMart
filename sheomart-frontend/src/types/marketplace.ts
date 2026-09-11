@@ -70,6 +70,15 @@ export interface StoreItem {
   totalReviews?: number;
   pickupOpeningTime?: string;
   pickupClosingTime?: string;
+  pickupEnabled?: boolean;
+  deliveryEnabled?: boolean;
+  deliveryFee?: number;
+  freeDeliveryAbove?: number;
+  deliveryRadiusKm?: number;
+  preparationTimeMinutes?: number;
+  latitude?: number;
+  longitude?: number;
+  deliverySlots?: import("@/services/store").DeliverySlot[];
   deliveryTime?: string;
   address?: string;
   city?: string;

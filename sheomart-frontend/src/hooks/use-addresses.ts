@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { addAddress, fetchAddresses, removeAddress } from "@/services/addresses";
+import { addAddress, fetchAddresses, removeAddress, updateAddress } from "@/services/addresses";
 import type { AddressItem, CreateAddressPayload } from "@/services/addresses";
 
 export function useAddresses(enabled = true) {
@@ -29,6 +29,14 @@ export function useRemoveAddress() {
 
   return useMutation<AddressItem | undefined, Error, string>({
     mutationFn: removeAddress,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["addresses"] }),
+  });
+}
+
+export function useUpdateAddress() {
+  const queryClient = useQueryClient();
+  return useMutation<AddressItem | undefined, Error, { addressId: string; payload: Partial<CreateAddressPayload> }>({
+    mutationFn: ({ addressId, payload }) => updateAddress(addressId, payload),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["addresses"] }),
   });
 }

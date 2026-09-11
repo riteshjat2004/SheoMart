@@ -52,8 +52,20 @@ export function ProductCard({ product }: ProductCardProps) {
     );
   };
 
+  const openProduct = () => {
+    if (product.productId) router.push(`/products/${product.productId}`);
+  };
+
+  const handleCardKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+    if (event.target !== event.currentTarget) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openProduct();
+    }
+  };
+
   return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-[1.6rem] border border-stone-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-stone-800 dark:bg-zinc-900">
+    <article role="link" tabIndex={product.productId ? 0 : -1} onClick={openProduct} onKeyDown={handleCardKeyDown} className="group flex h-full cursor-pointer flex-col overflow-hidden rounded-[1.6rem] border border-stone-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-stone-800 dark:bg-zinc-900">
       <div className="relative h-52 overflow-hidden border-b border-stone-200 bg-stone-100 dark:border-stone-800 dark:bg-stone-950/40">
         <img
           src={imageSrc}
@@ -99,7 +111,7 @@ export function ProductCard({ product }: ProductCardProps) {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={handleAddToCart}
+              onClick={(event) => { event.stopPropagation(); handleAddToCart(); }}
               disabled={addCartMutation.isPending || isOutOfStock}
               className={`flex-1 rounded-full px-4 py-3 text-sm font-semibold transition-all duration-200 ${
                 isOutOfStock
@@ -113,6 +125,7 @@ export function ProductCard({ product }: ProductCardProps) {
             <button
               type="button"
               aria-label="Add to wishlist"
+              onClick={(event) => event.stopPropagation()}
               className="flex h-11 w-11 items-center justify-center rounded-full border border-stone-200 bg-stone-50 text-stone-600 transition-all duration-200 hover:scale-105 hover:border-emerald-200 hover:text-emerald-600 active:translate-y-[1px] dark:border-stone-700 dark:bg-stone-950 dark:text-stone-200 dark:hover:border-emerald-500/40 dark:hover:text-emerald-300"
             >
               <Heart className="h-4 w-4" />

@@ -8,6 +8,15 @@ export enum STORE_BADGE {
   ROYAL = "royal",
 }
 
+export interface IDeliverySlot {
+  slotId: string;
+  label: string;
+  startTime: string;
+  endTime: string;
+  capacity?: number;
+  isActive: boolean;
+}
+
 export interface IStore extends Document {
   storeId: string;
   ownerId: string;
@@ -31,6 +40,15 @@ export interface IStore extends Document {
   totalReviews: number;
   pickupOpeningTime: string;
   pickupClosingTime: string;
+  pickupEnabled: boolean;
+  deliveryEnabled: boolean;
+  deliveryFee: number;
+  freeDeliveryAbove: number;
+  deliveryRadiusKm: number;
+  preparationTimeMinutes: number;
+    latitude?: number;
+    longitude?: number;
+    deliverySlots: IDeliverySlot[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -165,6 +183,53 @@ const storeSchema = new Schema<IStore>(
     pickupClosingTime: {
       type: String,
       default: "20:00",
+    },
+
+    pickupEnabled: {
+      type: Boolean,
+      default: true,
+    },
+
+    deliveryEnabled: {
+      type: Boolean,
+      default: false,
+    },
+
+    deliveryFee: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+
+    freeDeliveryAbove: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+
+    deliveryRadiusKm: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+
+    preparationTimeMinutes: {
+      type: Number,
+      min: 0,
+      default: 30,
+    },
+    latitude: { type: Number, min: -90, max: 90 },
+    longitude: { type: Number, min: -180, max: 180 },
+    deliverySlots: {
+      type: [{
+        slotId: { type: String, required: true },
+        label: { type: String, required: true, trim: true },
+        startTime: { type: String, required: true },
+        endTime: { type: String, required: true },
+        capacity: { type: Number, min: 1 },
+        isActive: { type: Boolean, default: true },
+      }],
+      default: [],
     },
   },
   {

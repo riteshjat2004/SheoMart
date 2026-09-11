@@ -22,6 +22,8 @@ export interface IAddress extends Document {
   pincode: string;
   addressType: AddressType;
   isDefault: boolean;
+  latitude?: number;
+  longitude?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -88,6 +90,8 @@ const addressSchema = new Schema<IAddress>(
       type: Boolean,
       default: false,
     },
+    latitude: { type: Number, min: -90, max: 90 },
+    longitude: { type: Number, min: -180, max: 180 },
   },
   {
     timestamps: true,

@@ -1,0 +1,8 @@
+import type { DeliverySlot } from "@/services/store";
+
+export function DeliverySlotPicker({ slots, value, onChange }: { slots: DeliverySlot[]; value?: string; onChange: (slot: DeliverySlot) => void }) {
+  const activeSlots = slots.filter((slot) => slot.isActive);
+  const now = new Date();
+  const isPast = (slot: DeliverySlot, day: string) => day === "Today" && Number(slot.endTime.split(":")[0]) * 60 + Number(slot.endTime.split(":")[1]) <= now.getHours() * 60 + now.getMinutes();
+  return <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm dark:border-stone-800 dark:bg-stone-900"><h2 className="text-lg font-semibold">Choose delivery slot</h2><div className="mt-4 space-y-4">{["Today", "Tomorrow"].map((day) => <div key={day}><p className="text-sm font-semibold text-stone-500">{day}</p><div className="mt-2 grid gap-2 sm:grid-cols-2">{activeSlots.map((slot) => { const disabled = isPast(slot, day); return <button key={`${day}-${slot.slotId}`} type="button" disabled={disabled} onClick={() => onChange(slot)} className={`rounded-xl border p-3 text-left text-sm transition motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-40 ${value === slot.slotId ? "border-emerald-500 bg-emerald-50 text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-200" : "border-stone-200 dark:border-stone-800"}`}><span className="font-semibold">{slot.label}</span><span className="mt-1 block text-xs text-stone-500">{slot.startTime} - {slot.endTime}</span></button>; })}</div></div>)}</div>{activeSlots.length === 0 ? <p className="mt-4 text-sm text-stone-500">No delivery slots are currently available.</p> : null}</section>;
+}

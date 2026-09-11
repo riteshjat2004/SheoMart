@@ -64,7 +64,7 @@ export default function OrderDetailsPage() {
           <OrderItemsList items={(order.orderItems ?? []).map((item) => ({ name: item.name ?? "Product", quantity: item.quantity ?? 0, price: `₹${item.discountPrice ?? item.price ?? 0}`, total: `₹${item.totalPrice ?? 0}` }))} />
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <PaymentSummaryCard subtotal={order.subtotal} discount={order.discount} deliveryCharge={order.deliveryCharge} platformFee={order.platformFee} grandTotal={order.grandTotal} amountPaid={order.amountPaid} remainingAmount={order.remainingAmount} paymentMethod={order.paymentMethod} paymentStatus={order.paymentStatus === "PAID" ? "Paid" : "Pending"} />
+            <div><PaymentSummaryCard subtotal={order.subtotal} discount={order.discount} deliveryCharge={order.deliveryCharge} platformFee={order.platformFee} grandTotal={order.grandTotal} amountPaid={order.amountPaid} remainingAmount={order.remainingAmount} paymentMethod={order.paymentMethod} paymentStatus={order.paymentStatus === "PAID" ? "Paid" : "Pending"} />{order.paymentStatus === "PAID" && order.razorpayPaymentId ? <div className="mt-3 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200"><p className="font-semibold">Paid online</p><p className="mt-1 break-all">Payment ID: {order.razorpayPaymentId}</p>{order.paidAt ? <p className="mt-1">Paid at: {new Date(order.paidAt).toLocaleString()}</p> : null}</div> : null}</div>
             <PickupInfoCard order={order} />
           </div>
 

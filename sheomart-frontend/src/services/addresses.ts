@@ -13,6 +13,8 @@ export interface AddressItem {
   pincode?: string;
   addressType?: string;
   isDefault?: boolean;
+  latitude?: number;
+  longitude?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -32,6 +34,8 @@ export interface CreateAddressPayload {
   pincode: string;
   addressType?: string;
   isDefault?: boolean;
+  latitude?: number;
+  longitude?: number;
 }
 
 export async function fetchAddresses() {
@@ -41,6 +45,11 @@ export async function fetchAddresses() {
 
 export async function addAddress(payload: CreateAddressPayload) {
   const response = await api.post<ApiResponse<{ address: AddressItem }>>("/api/v1/addresses", payload);
+  return response.data.data?.address;
+}
+
+export async function updateAddress(addressId: string, payload: Partial<CreateAddressPayload>) {
+  const response = await api.patch<ApiResponse<{ address: AddressItem }>>(`/api/v1/addresses/${addressId}`, payload);
   return response.data.data?.address;
 }
 

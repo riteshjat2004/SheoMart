@@ -5,12 +5,10 @@ import { razorpay } from "../config/razorpay";
 import { AppError } from "../errors/AppError";
 import { CartItem } from "../models/cart.model";
 import { Inventory } from "../models/inventory.model";
-import {
-  Order,
-  ORDER_STATUS,
-  PAYMENT_STATUS,
-} from "../models/order.model";
+import { ORDER_STATUS, PAYMENT_STATUS } from "../models/order.model";
 import { Product } from "../models/product.model";
+import { CreateOrderInput } from "../validators/checkout.validator";
+import { OrderService } from "./order.service";
 
 export class PaymentService {
   /**
@@ -18,33 +16,10 @@ export class PaymentService {
    */
   static async createPaymentOrder(
     userId: string,
-    orderId: string
+    data: CreateOrderInput
   ) {
-    const order = await Order.findOne({
-      orderId,
-      userId,
-      status: ORDER_STATUS.DRAFT,
-    });
-
-    if (!order) {
-      throw new AppError("Draft order not found", 404);
-    }
-
-    if (order.paymentStatus === PAYMENT_STATUS.PAID) {
-      throw new AppError("Order already paid", 409);
-    }
-
-    if (order.razorpayOrderId) {
-      return {
-        orderId: order.orderId,
-        razorpayOrderId: order.razorpayOrderId,
-        amount: Math.round(Number(order.grandTotal || 0) * 100),
-        currency: "INR",
-        key: env.RAZORPAY_KEY_ID,
-      };
-    }
-
-    const amountInPaise = Math.round(Number(order.grandTotal || 0) * 100);
+    const { amount } = await OrderService.calculateCheckoutAmount(userId, data);
+    const amountInPaise = Math.round(amount * 100);
 
     try {
       if (!razorpay?.orders?.create) {
@@ -54,18 +29,13 @@ export class PaymentService {
       const razorpayOrder = await razorpay.orders.create({
         amount: amountInPaise,
         currency: "INR",
-        receipt: order.orderId,
+        receipt: `checkout-${userId}-${Date.now()}`.slice(0, 40),
         notes: {
-          orderId: order.orderId,
           userId,
         },
       });
 
-      order.razorpayOrderId = razorpayOrder.id;
-      await order.save();
-
       return {
-        orderId: order.orderId,
         razorpayOrderId: razorpayOrder.id,
         amount: amountInPaise,
         currency: "INR",
@@ -91,7 +61,8 @@ export class PaymentService {
     userId: string,
     razorpayOrderId: string,
     razorpayPaymentId: string,
-    razorpaySignature: string
+    razorpaySignature: string,
+    checkout: CreateOrderInput
   ) {
     const generatedSignature = crypto
       .createHmac("sha256", env.RAZORPAY_KEY_SECRET)
@@ -102,18 +73,7 @@ export class PaymentService {
       throw new AppError("Payment verification failed", 400);
     }
 
-    const order = await Order.findOne({
-      userId,
-      razorpayOrderId,
-    });
-
-    if (!order) {
-      throw new AppError("Order not found", 404);
-    }
-
-    if (order.paymentStatus === PAYMENT_STATUS.PAID) {
-      return order;
-    }
+    const order = await OrderService.createOrder(userId, checkout);
 
     for (const item of order.orderItems) {
       const inventory = await Inventory.findOne({ productId: item.productId });
@@ -136,6 +96,8 @@ export class PaymentService {
 
     order.paymentStatus = PAYMENT_STATUS.PAID;
     order.status = ORDER_STATUS.CONFIRMED;
+    order.paymentRequiredBeforeConfirmation = true;
+    order.razorpayOrderId = razorpayOrderId;
     order.razorpayPaymentId = razorpayPaymentId;
     order.razorpaySignature = razorpaySignature;
     order.paidAt = new Date();

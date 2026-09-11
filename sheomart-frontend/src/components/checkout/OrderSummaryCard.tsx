@@ -15,6 +15,8 @@ interface OrderSummaryCardProps {
   deliverySavings?: number;
   platformFee: number;
   grandTotal: number;
+  paymentStatusPreview: string;
+  canPlaceOrder?: boolean;
   isSubmitting: boolean;
   termsAccepted: boolean;
   onTermsChange: (accepted: boolean) => void;
@@ -38,6 +40,8 @@ export function OrderSummaryCard({
   deliverySavings = 0,
   platformFee,
   grandTotal,
+  paymentStatusPreview,
+  canPlaceOrder = true,
   isSubmitting,
   termsAccepted,
   onTermsChange,
@@ -88,6 +92,10 @@ export function OrderSummaryCard({
           <dd className="font-semibold">{paymentMethod}</dd>
         </div>
         <div className="flex justify-between gap-4">
+          <dt className="text-stone-500">Payment status</dt>
+          <dd className="font-semibold">{paymentStatusPreview}</dd>
+        </div>
+        <div className="flex justify-between gap-4">
           <dt className="text-stone-500">Delivery method</dt>
           <dd className="font-semibold">{deliveryMethod}</dd>
         </div>
@@ -109,7 +117,7 @@ export function OrderSummaryCard({
         type="button"
         className="mt-6 w-full"
         onClick={onPlaceOrder}
-        disabled={isSubmitting || !termsAccepted}
+        disabled={isSubmitting || !termsAccepted || !canPlaceOrder}
       >
         {isSubmitting ? "Creating Order..." : "Place Order"}
       </Button>

@@ -17,6 +17,9 @@ export interface OrderRecord {
   pickupStatus?: string;
   statusUpdatedAt?: string;
   paymentStatus?: string;
+  razorpayPaymentId?: string;
+  paidAt?: string;
+  paymentRequiredBeforeConfirmation?: boolean;
   paymentMethod?: string;
   amountPaid?: number;
   remainingAmount?: number;
@@ -50,7 +53,14 @@ export async function createDraftOrder(payload: {
   deliverySlot: string;
   storeId: string;
   deliveryMethod: "pickup" | "delivery";
-  paymentMethod: "cod" | "online";
+  fulfillmentType?: "pickup" | "delivery";
+  selectedAddressId?: string;
+  deliverySlotId?: string;
+  pickupSlot?: string;
+  estimatedReadyTime?: string;
+  estimatedDeliveryWindow?: string;
+  paymentMethod: "ONLINE" | "PAY_AT_PICKUP" | "PAY_AT_DELIVERY";
+  paymentRequiredBeforeConfirmation: boolean;
   couponCode?: string;
 }) {
   const response = await api.post<ApiResponse<{ order: OrderRecord }>>("/api/v1/orders", payload);

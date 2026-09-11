@@ -25,6 +25,7 @@ export const ORDER_STATUS = {
 
 export const PAYMENT_STATUS = {
   PENDING: "PENDING",
+  UNPAID: "UNPAID",
   PAID: "PAID",
   FAILED: "FAILED",
   CANCELLED: "CANCELLED",
@@ -64,7 +65,16 @@ export interface IOrder extends Document {
   deliveryDate: string;
   deliverySlot: string;
   deliveryMethod: string;
+  fulfillmentType: "pickup" | "delivery";
+  deliveryFee: number;
+  estimatedReadyTime: Date;
+  estimatedDeliveryTime?: Date;
+  selectedAddressId?: string;
+  deliverySlotId?: string;
+  pickupSlot?: string;
+  estimatedDeliveryWindow?: string;
   paymentMethod: string;
+  paymentRequiredBeforeConfirmation: boolean;
   paymentStatus: string;
   amountPaid?: number;
   remainingAmount?: number;
@@ -195,9 +205,38 @@ const orderSchema = new Schema<IOrder>(
       type: String,
       required: true,
     },
+    fulfillmentType: {
+      type: String,
+      enum: ["pickup", "delivery"],
+      required: true,
+      default: "pickup",
+    },
+    deliveryFee: {
+      type: Number,
+      required: true,
+      min: 0,
+      default: 0,
+    },
+    estimatedReadyTime: {
+      type: Date,
+      required: true,
+    },
+    estimatedDeliveryTime: {
+      type: Date,
+      default: null,
+    },
+    selectedAddressId: { type: String, default: "" },
+    deliverySlotId: { type: String, default: "" },
+    pickupSlot: { type: String, default: "" },
+    estimatedDeliveryWindow: { type: String, default: "" },
     paymentMethod: {
       type: String,
       required: true,
+    },
+    paymentRequiredBeforeConfirmation: {
+      type: Boolean,
+      required: true,
+      default: true,
     },
     paymentStatus: {
       type: String,

@@ -5,6 +5,8 @@ import { loadRazorpay } from "@/lib/loadRazorpay";
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { FulfillmentSelector } from "@/components/checkout/FulfillmentSelector";
+import { FulfillmentInfoCard } from "@/components/checkout/FulfillmentInfoCard";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/layout/container";
@@ -14,19 +16,26 @@ import { SectionHeading } from "@/components/marketplace/SectionHeading";
 import { EmptyState } from "@/components/common/empty-state";
 import { ErrorState } from "@/components/common/error-state";
 import { LoadingSkeleton } from "@/components/dashboard/LoadingSkeleton";
-import { DeliveryMethodCard } from "@/components/checkout/DeliveryMethodCard";
-import { PickupInfoCard } from "@/components/checkout/PickupInfoCard";
-import { PaymentMethodCard } from "@/components/checkout/PaymentMethodCard";
+import { PaymentSelector, type CheckoutPaymentMethod } from "@/components/checkout/PaymentSelector";
+import { MembershipBanner } from "@/components/checkout/MembershipBanner";
+import { PaymentStatusCard } from "@/components/checkout/PaymentStatusCard";
+import { PaymentValidationNotice } from "@/components/checkout/PaymentValidationNotice";
 import { OrderSummaryCard } from "@/components/checkout/OrderSummaryCard";
 import { useCart } from "@/hooks/use-cart";
-import { useAddresses } from "@/hooks/use-addresses";
+import { useAddresses, useAddAddress, useRemoveAddress, useUpdateAddress } from "@/hooks/use-addresses";
+import type { AddressItem, CreateAddressPayload } from "@/services/addresses";
+import { AddressSelector } from "@/components/checkout/AddressSelector";
+import { AddAddressSheet } from "@/components/checkout/AddAddressSheet";
+import { DeliverySlotPicker } from "@/components/checkout/DeliverySlotPicker";
+import { PickupSlotPicker } from "@/components/checkout/PickupSlotPicker";
+import { DeliveryUnavailableCard } from "@/components/checkout/DeliveryUnavailableCard";
+import { EstimatedArrivalCard } from "@/components/checkout/EstimatedArrivalCard";
+import { PickupStoreCard } from "@/components/checkout/PickupStoreCard";
 import { useStore } from "@/hooks/use-store";
 import { useStoreCustomer } from "@/hooks/use-store-customer";
 import { useAuthStore } from "@/store/auth-store";
 import { createDraftOrder } from "@/services/orders";
 import { fetchActiveOffers, validateCoupon, type CouponValidation } from "@/services/promotions";
-
-type PaymentOption = "online" | "cash" | "upi" | "credit";
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -35,9 +44,17 @@ export default function CheckoutPage() {
   const user = useAuthStore((state) => state.user);
   const cartQuery = useCart();
   const addressesQuery = useAddresses();
+  const addAddressMutation = useAddAddress();
+  const updateAddressMutation = useUpdateAddress();
+  const removeAddressMutation = useRemoveAddress();
   const [stage, setStage] = useState<1 | 2>(1);
   const [selectedAddressId, setSelectedAddressId] = useState("");
-  const [paymentOption, setPaymentOption] = useState<PaymentOption>("online");
+  const [addressSheetOpen, setAddressSheetOpen] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<AddressItem | null>(null);
+  const [deliverySlotId, setDeliverySlotId] = useState("");
+  const [deliverySlotLabel, setDeliverySlotLabel] = useState("");
+  const [pickupSlot, setPickupSlot] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<CheckoutPaymentMethod>("ONLINE");
   const [deliveryMethod, setDeliveryMethod] = useState<"pickup" | "delivery">(
     "pickup",
   );
@@ -49,6 +66,8 @@ export default function CheckoutPage() {
   > | null>(null);
   const [paying, setPaying] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [retryPaymentPayload, setRetryPaymentPayload] = useState<Record<string, unknown> | null>(null);
+  const [paymentSuccess, setPaymentSuccess] = useState<{ amount: number; paymentId: string; readyText: string } | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<CouponValidation | null>(null);
@@ -85,30 +104,18 @@ export default function CheckoutPage() {
     addresses.find((address) => address.addressId === selectedAddressId) ??
     addresses.find((address) => address.isDefault) ??
     addresses[0];
+  const effectiveAddressId = selectedAddressId || selectedAddress?.addressId || "";
   const isPlusCustomer =
     !customerQuery.isError &&
     Boolean(
       customerQuery.data?.isPlusCustomer ??
       customerQuery.data?.customer?.isPlusCustomer,
     );
-  const membershipFailed = customerQuery.isError;
-  const paymentValue = isPlusCustomer
-    ? paymentOption === "online"
-      ? "cash"
-      : paymentOption
-    : "online";
-  const paymentLabel =
-    paymentValue === "online"
-      ? "Online Payment"
-      : paymentValue === "cash"
-        ? "Cash at Shop"
-        : paymentValue === "upi"
-          ? "UPI at Shop"
-          : "Credit";
-  const deliveryEnabled = Boolean(
-    (store as (typeof store & { deliveryEnabled?: boolean }) | null)
-      ?.deliveryEnabled,
-  );
+  const paymentLabel = paymentMethod === "ONLINE" ? "Razorpay" : paymentMethod === "PAY_AT_PICKUP" ? "Pay During Pickup" : "Pay During Delivery";
+  const paymentStatusPreview = paymentMethod === "ONLINE" ? "Pending Payment" : paymentMethod === "PAY_AT_PICKUP" ? "Pay on Pickup" : "Pay on Delivery";
+  const paymentValid = isPlusCustomer || paymentMethod === "ONLINE";
+  const pickupEnabled = store?.pickupEnabled !== false;
+  const deliveryEnabled = store?.deliveryEnabled === true;
   const loading =
     cartQuery.isLoading ||
     addressesQuery.isLoading ||
@@ -122,7 +129,19 @@ export default function CheckoutPage() {
     const raw = offer.discountType === "percentage" ? price * item.quantity * offer.discountValue / 100 : offer.discountValue * item.quantity;
     return total + Math.min(price * item.quantity, raw);
   }, 0), [activeOffersQuery.data, cartItems]);
-  const deliveryFee = deliveryMethod === "delivery" ? 50 : 0;
+  const configuredDeliveryFee = store?.deliveryFee ?? 0;
+  const freeDeliveryAbove = store?.freeDeliveryAbove ?? 0;
+  const preparationTimeMinutes = store?.preparationTimeMinutes ?? 30;
+  const addressDistance = selectedAddress && store ? (() => {
+    if (selectedAddress.latitude === undefined || selectedAddress.longitude === undefined || store.latitude === undefined || store.longitude === undefined) return null;
+    const toRadians = (value: number) => value * Math.PI / 180;
+    const latitudeDelta = toRadians(selectedAddress.latitude - store.latitude);
+    const longitudeDelta = toRadians(selectedAddress.longitude - store.longitude);
+    const a = Math.sin(latitudeDelta / 2) ** 2 + Math.cos(toRadians(store.latitude)) * Math.cos(toRadians(selectedAddress.latitude)) * Math.sin(longitudeDelta / 2) ** 2;
+    return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  })() : null;
+  const deliveryUnavailable = deliveryMethod === "delivery" && addressDistance !== null && (store?.deliveryRadiusKm ?? 0) > 0 && addressDistance > (store?.deliveryRadiusKm ?? 0);
+  const deliveryFee = deliveryMethod === "delivery" && !(freeDeliveryAbove > 0 && totals.subtotal >= freeDeliveryAbove) ? configuredDeliveryFee : 0;
   const platformFee = deliveryMethod === "delivery" ? 10 : 0;
   const deliverySavings = deliveryMethod === "pickup" ? 50 : 0;
   const finalPayable = Math.max(0, totals.subtotal - totals.estimatedSavings - festivalSavings - (appliedCoupon?.discount ?? 0) + deliveryFee + platformFee);
@@ -141,7 +160,7 @@ export default function CheckoutPage() {
   };
 
   const continueToPickup = () => {
-    if (!selectedAddress?.addressId) {
+    if (deliveryMethod === "delivery" && !effectiveAddressId) {
       setDraftError("Please select a delivery address before continuing.");
       return;
     }
@@ -163,28 +182,43 @@ export default function CheckoutPage() {
         setDraftError("Please accept the terms before placing your order.");
         return;
       }
+      if (deliveryMethod === "delivery" && (!effectiveAddressId || deliveryUnavailable || !deliverySlotId)) {
+        setDraftError("Select an available address and delivery slot before placing your order.");
+        return;
+      }
+      if (deliveryMethod === "pickup" && !pickupSlot) {
+        setDraftError("Select a pickup time before placing your order.");
+        return;
+      }
       setCreatingOrder(true);
       setDraftError(null);
       setOrderSuccess(null);
       const payload = {
-        addressId: selectedAddress?.addressId || "",
+        addressId: effectiveAddressId,
+        selectedAddressId: effectiveAddressId,
         deliveryDate: new Date(Date.now() + 86400000)
           .toISOString()
           .slice(0, 10),
-        deliverySlot: "10:00 AM - 12:00 PM",
-        paymentMethod: (paymentValue === "online" ? "online" : "cod") as
-          "cod" | "online",
+        deliverySlot: deliveryMethod === "delivery" ? deliverySlotLabel : pickupSlot,
+        paymentMethod,
+        paymentRequiredBeforeConfirmation: paymentMethod === "ONLINE",
         deliveryMethod,
+        fulfillmentType: deliveryMethod,
+        deliverySlotId: deliveryMethod === "delivery" ? deliverySlotId : undefined,
+        pickupSlot: deliveryMethod === "pickup" ? pickupSlot : undefined,
+        estimatedReadyTime: new Date(Date.now() + preparationTimeMinutes * 60000).toISOString(),
+        estimatedDeliveryWindow: deliveryMethod === "delivery" ? deliverySlotLabel : undefined,
         storeId: storeId || "",
         ...(appliedCoupon?.code ? { couponCode: appliedCoupon.code } : {}),
       };
-      const order = await createDraftOrder(payload);
-      setDraftOrder(order);
-      setOrderSuccess("Order created successfully.");
-      window.setTimeout(() => {
-        window.alert(orderSuccess || "Order created successfully.");
-        router.push("/orders");
-      }, 500);
+      if (paymentMethod === "ONLINE") {
+        await handleOnlinePayment(payload);
+      } else {
+        const order = await createDraftOrder(payload);
+        setDraftOrder(order);
+        setOrderSuccess("Order created successfully.");
+        window.setTimeout(() => router.push("/orders"), 500);
+      }
     } catch (error) {
       setDraftError(
         error instanceof Error ? error.message : "Unable to create order.",
@@ -193,56 +227,44 @@ export default function CheckoutPage() {
       setCreatingOrder(false);
     }
   };
-  const handlePayment = async () => {
-    if (!draftOrder?.orderId) {
-      setPaymentError("Create a draft order before paying.");
-      return;
+  const saveAddress = (payload: CreateAddressPayload) => {
+    if (editingAddress?.addressId) {
+      updateAddressMutation.mutate({ addressId: editingAddress.addressId, payload }, { onSuccess: (address) => { if (address?.addressId) setSelectedAddressId(address.addressId); setAddressSheetOpen(false); setEditingAddress(null); } });
+    } else {
+      addAddressMutation.mutate(payload, { onSuccess: (address) => { if (address?.addressId) setSelectedAddressId(address.addressId); setAddressSheetOpen(false); } });
     }
+  };
+  const handleOnlinePayment = async (payload: Record<string, unknown>) => {
     try {
       setPaying(true);
       setPaymentError(null);
+      setRetryPaymentPayload(payload);
       const loaded = await loadRazorpay();
       if (!loaded) throw new Error("Unable to load Razorpay.");
-      const payment = await createPaymentOrder(draftOrder.orderId);
+      const payment = await createPaymentOrder(payload);
       const options = {
-        key: payment.key,
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || payment.key,
         amount: payment.amount,
         currency: payment.currency,
         order_id: payment.razorpayOrderId,
         name: "SheoMart",
-        description: `Order ${payment.orderId}`,
-        handler: async (response: {
-          razorpay_order_id: string;
-          razorpay_payment_id: string;
-          razorpay_signature: string;
-        }) => {
-          try {
-            await verifyPayment({
-              razorpayOrderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature,
-            });
-            await Promise.all([
-              queryClient.invalidateQueries({ queryKey: ["cart"] }),
-              queryClient.invalidateQueries({ queryKey: ["orders"] }),
-              queryClient.invalidateQueries({ queryKey: ["checkout"] }),
-            ]);
-            router.push("/orders");
-          } catch (error) {
-            setPaymentError(
-              error instanceof Error
-                ? error.message
-                : "Payment verification failed.",
-            );
-          }
-        },
+        description: "SheoMart checkout",
         prefill: {
           name: "SheoMart Customer",
           email: "customer@example.com",
           contact: "9999999999",
         },
         theme: { color: "#16a34a" },
-        modal: { ondismiss: () => setPaymentError("Payment was cancelled.") },
+        modal: { ondismiss: () => setPaymentError("Payment was cancelled. No order was created.") },
+      };
+      (options as Record<string, unknown>).handler = async (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
+        try {
+          await verifyPayment({ razorpayOrderId: response.razorpay_order_id, razorpayPaymentId: response.razorpay_payment_id, razorpaySignature: response.razorpay_signature, checkout: payload });
+          await queryClient.invalidateQueries({ queryKey: ["cart"] });
+          setPaymentSuccess({ amount: payment.amount / 100, paymentId: response.razorpay_payment_id, readyText: deliveryMethod === "pickup" ? (pickupSlot || `Ready in ${preparationTimeMinutes} minutes`) : deliverySlotLabel });
+        } catch (error) {
+          setPaymentError(error instanceof Error ? error.message : "Payment verification failed. No order was created.");
+        }
       };
       const Razorpay = (
         window as typeof window & {
@@ -252,7 +274,9 @@ export default function CheckoutPage() {
         }
       ).Razorpay;
       if (!Razorpay) throw new Error("Razorpay SDK not available.");
-      new Razorpay(options).open();
+      const razorpayInstance = new Razorpay(options) as { open: () => void; on?: (event: string, callback: () => void) => void };
+      razorpayInstance.on?.("payment.failed", () => setPaymentError("Payment failed. No order was created. You can retry payment."));
+      razorpayInstance.open();
     } catch (error) {
       setPaymentError(
         error instanceof Error ? error.message : "Unable to start payment.",
@@ -261,9 +285,7 @@ export default function CheckoutPage() {
       setPaying(false);
     }
   };
-  void handlePayment;
   void paying;
-  void paymentError;
 
   return (
     <PageWrapper>
@@ -297,73 +319,25 @@ export default function CheckoutPage() {
             <ErrorState message="Please resolve unavailable items before continuing." />
           ) : (
             <div className="space-y-6">
-              <section className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm dark:border-stone-800 dark:bg-stone-900">
-                <h2 className="text-lg font-semibold">1. Delivery address</h2>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  {addresses.map((address) => (
-                    <button
-                      key={address.addressId}
-                      type="button"
-                      onClick={() =>
-                        setSelectedAddressId(address.addressId ?? "")
-                      }
-                      className={`rounded-xl border p-4 text-left ${selectedAddress?.addressId === address.addressId ? "border-emerald-500 bg-emerald-50/70" : "border-stone-200"}`}
-                    >
-                      <p className="font-semibold">{address.fullName}</p>
-                      <p className="mt-1 text-sm">
-                        {[
-                          address.house,
-                          address.street,
-                          address.city,
-                          address.state,
-                          address.pincode,
-                        ]
-                          .filter(Boolean)
-                          .join(", ")}
-                      </p>
-                      <p className="mt-1 text-sm">{address.mobile}</p>
-                    </button>
-                  ))}
-                </div>
-                {draftError ? (
-                  <div
-                    role="alert"
-                    className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700"
-                  >
-                    {draftError}
-                  </div>
-                ) : null}
-                <Button
-                  type="button"
-                  className="mt-5"
-                  onClick={continueToPickup}
-                >
-                  Continue
-                </Button>
-              </section>
+              <FulfillmentSelector value={deliveryMethod} onChange={(value) => { setDeliveryMethod(value); setStage(1); }} pickupEnabled={pickupEnabled} deliveryEnabled={deliveryEnabled} deliveryFee={configuredDeliveryFee} freeDeliveryAbove={freeDeliveryAbove} preparationTimeMinutes={preparationTimeMinutes} subtotal={totals.subtotal} />
+              {deliveryMethod === "delivery" ? <AddressSelector addresses={addresses} selectedAddressId={effectiveAddressId} onSelect={(address) => setSelectedAddressId(address.addressId ?? "")} onEdit={(address) => { setEditingAddress(address); setAddressSheetOpen(true); }} onDelete={(address) => address.addressId && removeAddressMutation.mutate(address.addressId)} onAdd={() => { setEditingAddress(null); setAddressSheetOpen(true); }} /> : <PickupStoreCard store={store ?? null} />}
+              {deliveryMethod === "delivery" && deliveryUnavailable ? <DeliveryUnavailableCard onChangeAddress={() => document.querySelector("[aria-labelledby='fulfillment-heading']")?.scrollIntoView({ behavior: "smooth" })} onSwitchToPickup={() => setDeliveryMethod("pickup")} /> : null}
+              {draftError ? <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{draftError}</div> : null}
+              <Button type="button" onClick={continueToPickup} disabled={deliveryUnavailable}>{stage === 1 ? "Continue" : "Review order"}</Button>
+              {addressSheetOpen ? <AddAddressSheet address={editingAddress} onClose={() => { setAddressSheetOpen(false); setEditingAddress(null); }} onSave={saveAddress} saving={addAddressMutation.isPending || updateAddressMutation.isPending} /> : null}
               {stage === 2 ? (
                 <div
                   ref={pickupRef}
                   className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(20rem,0.9fr)]"
                 >
                   <div className="space-y-6">
-                    <DeliveryMethodCard
-                      value={deliveryMethod}
-                      onChange={(value) =>
-                        setDeliveryMethod(
-                          deliveryEnabled || value === "pickup"
-                            ? value
-                            : "pickup",
-                        )
-                      }
-                    />
-                    <PickupInfoCard store={store ?? null} />
-                    <PaymentMethodCard
-                      value={paymentValue}
-                      onChange={setPaymentOption}
-                      isPlusCustomer={isPlusCustomer}
-                      membershipFailed={membershipFailed}
-                    />
+                    <FulfillmentInfoCard type={deliveryMethod} store={store ?? null} address={[selectedAddress?.house, selectedAddress?.street, selectedAddress?.city, selectedAddress?.state, selectedAddress?.pincode].filter(Boolean).join(", ")} preparationTimeMinutes={preparationTimeMinutes} deliveryFee={configuredDeliveryFee} freeDeliveryAbove={freeDeliveryAbove} subtotal={totals.subtotal} />
+                    {deliveryMethod === "delivery" ? <DeliverySlotPicker slots={store?.deliverySlots ?? []} value={deliverySlotId} onChange={(slot) => { setDeliverySlotId(slot.slotId); setDeliverySlotLabel(`${slot.label} (${slot.startTime} - ${slot.endTime})`); }} /> : <PickupSlotPicker openingTime={store?.pickupOpeningTime ?? "10:00"} closingTime={store?.pickupClosingTime ?? "20:00"} preparationTimeMinutes={preparationTimeMinutes} value={pickupSlot} onChange={setPickupSlot} />}
+                    <EstimatedArrivalCard type={deliveryMethod} text={deliveryMethod === "delivery" ? (deliverySlotLabel || "Choose a delivery window") : (pickupSlot ? `Today • ${pickupSlot}` : `Ready in ${preparationTimeMinutes} minutes`)} />
+                    <MembershipBanner isPlusCustomer={isPlusCustomer} />
+                    <PaymentSelector value={paymentMethod} onChange={setPaymentMethod} isPlusCustomer={isPlusCustomer} fulfillmentType={deliveryMethod} />
+                    <PaymentValidationNotice isPlusCustomer={isPlusCustomer} method={paymentMethod} />
+                    <PaymentStatusCard method={paymentMethod} />
                     <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm dark:border-stone-800 dark:bg-stone-900">
                       <h2 className="text-lg font-semibold">Apply coupon</h2>
                       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
@@ -377,6 +351,7 @@ export default function CheckoutPage() {
                       totalItems={totals.totalItems}
                       estimatedPickup="30 - 45 minutes"
                       paymentMethod={paymentLabel}
+                      paymentStatusPreview={paymentStatusPreview}
                       deliveryMethod={
                         deliveryMethod === "pickup" ? "Pickup" : "Delivery"
                       }
@@ -402,6 +377,7 @@ export default function CheckoutPage() {
                       termsAccepted={termsAccepted}
                       onTermsChange={setTermsAccepted}
                       onPlaceOrder={placeOrder}
+                      canPlaceOrder={paymentValid}
                     />
                     {orderSuccess ? (
                       <div
@@ -411,6 +387,8 @@ export default function CheckoutPage() {
                         {orderSuccess}
                       </div>
                     ) : null}
+                    {paymentError ? <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200"><p className="font-semibold">Payment could not be completed</p><p className="mt-1">{paymentError}</p>{retryPaymentPayload ? <button type="button" onClick={() => handleOnlinePayment(retryPaymentPayload)} className="mt-3 font-semibold underline">Retry payment</button> : null}</div> : null}
+                    {paymentSuccess ? <div role="dialog" aria-modal="true" className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-900 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-100"><h2 className="text-lg font-semibold">Payment Successful</h2><p className="mt-2 text-sm">Amount paid: ₹{paymentSuccess.amount.toLocaleString("en-IN")}</p><p className="mt-1 text-sm">Payment ID: {paymentSuccess.paymentId}</p><p className="mt-1 text-sm">Estimated arrival: {paymentSuccess.readyText}</p><div className="mt-4 flex flex-wrap gap-3"><Button type="button" onClick={() => router.push("/orders")}>View Order</Button><Button type="button" variant="outline" onClick={() => router.push("/")}>Continue Shopping</Button></div></div> : null}
                   </div>
                   <div className="hidden xl:block" />
                 </div>

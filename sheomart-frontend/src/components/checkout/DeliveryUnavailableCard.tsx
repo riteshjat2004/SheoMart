@@ -1,0 +1,3 @@
+export function DeliveryUnavailableCard({ onChangeAddress, onSwitchToPickup }: { onChangeAddress: () => void; onSwitchToPickup: () => void }) {
+  return <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200"><p className="font-semibold">Delivery unavailable for this address.</p><p className="mt-1">Choose another address or switch to pickup.</p><div className="mt-3 flex flex-wrap gap-3"><button type="button" onClick={onChangeAddress} className="font-semibold underline">Change address</button><button type="button" onClick={onSwitchToPickup} className="font-semibold underline">Switch to pickup</button></div></div>;
+}

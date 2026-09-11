@@ -32,6 +32,24 @@ export interface UpdateMyStorePayload {
   pincode?: string;
   pickupOpeningTime?: string;
   pickupClosingTime?: string;
+  pickupEnabled?: boolean;
+  deliveryEnabled?: boolean;
+  deliveryFee?: number;
+  freeDeliveryAbove?: number;
+  deliveryRadiusKm?: number;
+  preparationTimeMinutes?: number;
+  latitude?: number;
+  longitude?: number;
+  deliverySlots?: DeliverySlot[];
+}
+
+export interface DeliverySlot {
+  slotId: string;
+  label: string;
+  startTime: string;
+  endTime: string;
+  capacity?: number;
+  isActive: boolean;
 }
 
 function normalizeStore(store: Record<string, unknown>): StoreItem {
@@ -55,6 +73,15 @@ function normalizeStore(store: Record<string, unknown>): StoreItem {
     totalReviews: typeof store.totalReviews === "number" ? store.totalReviews : undefined,
     pickupOpeningTime: typeof store.pickupOpeningTime === "string" ? store.pickupOpeningTime : "10:00",
     pickupClosingTime: typeof store.pickupClosingTime === "string" ? store.pickupClosingTime : "20:00",
+    pickupEnabled: store.pickupEnabled !== false,
+    deliveryEnabled: store.deliveryEnabled === true,
+    deliveryFee: typeof store.deliveryFee === "number" ? store.deliveryFee : 0,
+    freeDeliveryAbove: typeof store.freeDeliveryAbove === "number" ? store.freeDeliveryAbove : 0,
+    deliveryRadiusKm: typeof store.deliveryRadiusKm === "number" ? store.deliveryRadiusKm : 0,
+    preparationTimeMinutes: typeof store.preparationTimeMinutes === "number" ? store.preparationTimeMinutes : 30,
+    latitude: typeof store.latitude === "number" ? store.latitude : undefined,
+    longitude: typeof store.longitude === "number" ? store.longitude : undefined,
+    deliverySlots: Array.isArray(store.deliverySlots) ? store.deliverySlots as DeliverySlot[] : [],
     badge,
     status: typeof store.status === "string" ? store.status : undefined,
   };

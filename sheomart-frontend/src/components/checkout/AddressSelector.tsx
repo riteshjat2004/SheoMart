@@ -1,0 +1,7 @@
+import { MapPin, Plus } from "lucide-react";
+import type { AddressItem } from "@/services/addresses";
+import { AddressCard } from "./AddressCard";
+
+export function AddressSelector({ addresses, selectedAddressId, onSelect, onEdit, onDelete, onAdd }: { addresses: AddressItem[]; selectedAddressId?: string; onSelect: (address: AddressItem) => void; onEdit: (address: AddressItem) => void; onDelete: (address: AddressItem) => void; onAdd: () => void }) {
+  return <section className="rounded-2xl border border-stone-200 bg-white p-6 shadow-sm dark:border-stone-800 dark:bg-stone-900"><div className="flex items-start justify-between gap-4"><div><h2 className="flex items-center gap-2 text-lg font-semibold"><MapPin className="h-5 w-5 text-emerald-600" />Choose delivery address</h2><p className="mt-1 text-sm text-stone-500">Select where this store should deliver your order.</p></div><button type="button" onClick={onAdd} className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-700"><Plus className="h-4 w-4" />Add new</button></div><div className="mt-4 grid gap-3 sm:grid-cols-2">{addresses.map((address) => <AddressCard key={address.addressId} address={address} selected={address.addressId === selectedAddressId} onSelect={() => onSelect(address)} onEdit={() => onEdit(address)} onDelete={() => onDelete(address)} />)}</div>{addresses.length === 0 ? <p className="mt-4 rounded-xl bg-stone-50 p-4 text-sm text-stone-600 dark:bg-stone-950/60 dark:text-stone-300">Add a delivery address to continue.</p> : null}</section>;
+}

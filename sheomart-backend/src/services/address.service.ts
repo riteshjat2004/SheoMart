@@ -26,6 +26,8 @@ export class AddressService {
       state: data.state,
       pincode: data.pincode,
       addressType: data.addressType,
+      latitude: data.latitude,
+      longitude: data.longitude,
       isDefault: shouldBeDefault,
     });
 
@@ -84,6 +86,8 @@ export class AddressService {
     if (data.addressType !== undefined) {
       address.addressType = data.addressType;
     }
+    if (data.latitude !== undefined) address.latitude = data.latitude;
+    if (data.longitude !== undefined) address.longitude = data.longitude;
 
     await address.save();
     return address;

@@ -19,7 +19,58 @@ const createInvoiceNumber = async (storeId: string, date: Date) => {
   return `${prefix}${String(count + 1).padStart(4, "0")}`;
 };
 
+const distanceInKm = (from: { latitude?: number; longitude?: number }, to: { latitude?: number; longitude?: number }) => {
+  if (from.latitude === undefined || from.longitude === undefined || to.latitude === undefined || to.longitude === undefined) return null;
+  const radians = (value: number) => value * Math.PI / 180;
+  const latitudeDelta = radians(to.latitude - from.latitude);
+  const longitudeDelta = radians(to.longitude - from.longitude);
+  const a = Math.sin(latitudeDelta / 2) ** 2 + Math.cos(radians(from.latitude)) * Math.cos(radians(to.latitude)) * Math.sin(longitudeDelta / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
 export class OrderService {
+  static async calculateCheckoutAmount(userId: string, data: CreateOrderInput) {
+    const cartItems = await CartItem.find({ userId });
+    if (!cartItems.length) throw new AppError("Cart is empty", 400);
+    const address = await Address.findOne({ addressId: data.addressId, userId });
+    if (!address) throw new AppError("Delivery address not found", 404);
+    const store = await Store.findOne({ storeId: data.storeId }).lean();
+    if (!store) throw new AppError("Store not found", 404);
+    const fulfillmentType = data.fulfillmentType ?? data.deliveryMethod;
+    if (fulfillmentType === "pickup" && store.pickupEnabled === false) throw new AppError("Pickup is not available for this store", 400);
+    if (fulfillmentType === "delivery" && store.deliveryEnabled !== true) throw new AppError("Delivery is not available for this store", 400);
+    const plusCustomer = await StoreCustomer.findOne({ storeId: data.storeId, customerId: userId }).select("isPlusCustomer").lean();
+    if (!plusCustomer?.isPlusCustomer && data.paymentMethod !== "ONLINE") throw new AppError("Online payment is required for non-Plus customers", 403);
+    if (data.paymentMethod === "PAY_AT_PICKUP" && fulfillmentType !== "pickup") throw new AppError("Pay During Pickup requires pickup fulfillment", 400);
+    if (data.paymentMethod === "PAY_AT_DELIVERY" && fulfillmentType !== "delivery") throw new AppError("Pay During Delivery requires delivery fulfillment", 400);
+    const distance = fulfillmentType === "delivery" ? distanceInKm(store, address) : null;
+    if (distance !== null && store.deliveryRadiusKm > 0 && distance > store.deliveryRadiusKm) throw new AppError("Delivery unavailable for this address", 400);
+    if (fulfillmentType === "delivery" && data.deliverySlotId && !(store.deliverySlots ?? []).some((slot) => slot.slotId === data.deliverySlotId && slot.isActive)) throw new AppError("Selected delivery slot is unavailable", 400);
+    const products = await Product.find({ productId: { $in: cartItems.map((item) => item.productId) }, isActive: true, isPublished: true });
+    const productMap = new Map(products.map((product) => [product.productId, product]));
+    let originalTotal = 0;
+    let discountedTotal = 0;
+    const orderItems = [] as Array<{ productId: string; quantity: number; discountPrice: number }>;
+    for (const item of cartItems) {
+      const product = productMap.get(item.productId);
+      if (!product) throw new AppError(`Product ${item.productId} is unavailable`, 400);
+      const inventory = await Inventory.findOne({ productId: item.productId });
+      if ((inventory?.availableQuantity ?? product.quantity) < item.quantity) throw new AppError(`Insufficient stock for ${product.name}`, 400);
+      const discountPrice = product.discountPrice ?? product.price;
+      originalTotal += product.price * item.quantity;
+      discountedTotal += discountPrice * item.quantity;
+      orderItems.push({ productId: product.productId, quantity: item.quantity, discountPrice });
+    }
+    const { festivalSavings } = await PromotionService.calculateFestivalDiscounts(orderItems.map((item) => ({ categoryId: productMap.get(item.productId)?.categoryId ?? "", quantity: item.quantity, price: item.discountPrice })));
+    const couponValidation = data.couponCode ? await PromotionService.validateCoupon(data.couponCode, userId, originalTotal) : null;
+    const festivalDiscount = Math.min(discountedTotal, festivalSavings);
+    const couponDiscount = Math.min(Math.max(0, discountedTotal - festivalDiscount), couponValidation?.discount ?? 0);
+    const discount = Math.max(0, originalTotal - discountedTotal);
+    const deliveryCharge = fulfillmentType === "pickup" ? 0 : store.freeDeliveryAbove > 0 && originalTotal >= store.freeDeliveryAbove ? 0 : store.deliveryFee ?? 0;
+    const platformFee = fulfillmentType === "pickup" ? 0 : 10;
+    return { amount: Math.max(0, originalTotal - discount - festivalDiscount - couponDiscount + deliveryCharge + platformFee) };
+  }
+
   static async markPaymentReceived(
     ownerId: string,
     orderId: string,
@@ -35,7 +86,7 @@ export class OrderService {
         orderId,
         storeId: store.storeId,
         pickupStatus: "PICKED_UP",
-        paymentStatus: PAYMENT_STATUS.PENDING,
+        paymentStatus: { $in: [PAYMENT_STATUS.PENDING, PAYMENT_STATUS.UNPAID] },
       },
       {
         $set: {
@@ -278,6 +329,41 @@ export class OrderService {
       throw new AppError("Delivery address not found", 404);
     }
 
+    const store = await Store.findOne({ storeId: data.storeId }).lean();
+    if (!store) {
+      throw new AppError("Store not found", 404);
+    }
+
+    const fulfillmentType = data.fulfillmentType ?? data.deliveryMethod;
+    if (fulfillmentType === "pickup" && store.pickupEnabled === false) {
+      throw new AppError("Pickup is not available for this store", 400);
+    }
+    if (fulfillmentType === "delivery" && store.deliveryEnabled !== true) {
+      throw new AppError("Delivery is not available for this store", 400);
+    }
+    const plusCustomer = await StoreCustomer.findOne({ storeId: data.storeId, customerId: userId }).select("isPlusCustomer").lean();
+    const isPlusCustomer = plusCustomer?.isPlusCustomer === true;
+    if (!isPlusCustomer && data.paymentMethod !== "ONLINE") {
+      throw new AppError("Online payment is required for non-Plus customers", 403);
+    }
+    if (data.paymentMethod === "PAY_AT_PICKUP" && fulfillmentType !== "pickup") {
+      throw new AppError("Pay During Pickup requires pickup fulfillment", 400);
+    }
+    if (data.paymentMethod === "PAY_AT_DELIVERY" && fulfillmentType !== "delivery") {
+      throw new AppError("Pay During Delivery requires delivery fulfillment", 400);
+    }
+    const paymentRequiredBeforeConfirmation = data.paymentMethod === "ONLINE";
+    const nextPaymentStatus = paymentRequiredBeforeConfirmation ? PAYMENT_STATUS.PENDING : PAYMENT_STATUS.UNPAID;
+    const nextOrderStatus = paymentRequiredBeforeConfirmation ? ORDER_STATUS.PENDING_PAYMENT : ORDER_STATUS.CONFIRMED;
+    const distance = fulfillmentType === "delivery" ? distanceInKm(store, address) : null;
+    if (distance !== null && store.deliveryRadiusKm > 0 && distance > store.deliveryRadiusKm) {
+      throw new AppError("Delivery unavailable for this address", 400);
+    }
+    if (fulfillmentType === "delivery" && data.deliverySlotId) {
+      const slot = (store.deliverySlots ?? []).find((candidate) => candidate.slotId === data.deliverySlotId && candidate.isActive);
+      if (!slot) throw new AppError("Selected delivery slot is unavailable", 400);
+    }
+
     const existingDraft = await Order.findOne({
       userId,
       status: ORDER_STATUS.DRAFT,
@@ -356,9 +442,17 @@ export class OrderService {
     const couponDiscount = Math.min(Math.max(0, discountedTotal - festivalDiscount), couponValidation?.discount ?? 0);
     const discount = Math.max(0, originalTotal - discountedTotal);
     const subtotal = originalTotal;
-    const deliveryCharge = data.deliveryMethod === "pickup" ? 0 : 50;
+    const deliveryCharge = fulfillmentType === "pickup"
+      ? 0
+      : store.freeDeliveryAbove > 0 && subtotal >= store.freeDeliveryAbove
+        ? 0
+        : store.deliveryFee ?? 0;
     const platformFee = data.deliveryMethod === "pickup" ? 0 : 10;
     const grandTotal = Math.max(0, subtotal - discount - festivalDiscount - couponDiscount + deliveryCharge + platformFee);
+    const estimatedReadyTime = new Date(Date.now() + (store.preparationTimeMinutes ?? 30) * 60 * 1000);
+    const estimatedDeliveryTime = fulfillmentType === "delivery"
+      ? new Date(estimatedReadyTime.getTime() + 60 * 60 * 1000)
+      : undefined;
 
     if (existingDraft) {
       existingDraft.addressId = address.addressId;
@@ -379,9 +473,18 @@ export class OrderService {
       existingDraft.deliverySlot = data.deliverySlot;
       existingDraft.storeId = data.storeId;
       existingDraft.deliveryMethod = data.deliveryMethod;
+      existingDraft.fulfillmentType = fulfillmentType;
+      existingDraft.deliveryFee = deliveryCharge;
+      existingDraft.estimatedReadyTime = estimatedReadyTime;
+      existingDraft.estimatedDeliveryTime = estimatedDeliveryTime;
+      existingDraft.selectedAddressId = data.selectedAddressId ?? address.addressId;
+      existingDraft.deliverySlotId = data.deliverySlotId;
+      existingDraft.pickupSlot = data.pickupSlot;
+      existingDraft.estimatedDeliveryWindow = data.estimatedDeliveryWindow;
       existingDraft.paymentMethod = data.paymentMethod;
-      existingDraft.paymentStatus = PAYMENT_STATUS.PENDING;
-      existingDraft.status = ORDER_STATUS.CONFIRMED;
+      existingDraft.paymentRequiredBeforeConfirmation = paymentRequiredBeforeConfirmation;
+      existingDraft.paymentStatus = nextPaymentStatus;
+      existingDraft.status = nextOrderStatus;
       existingDraft.statusUpdatedAt = new Date();
 
       existingDraft.orderItems = orderItems;
@@ -424,8 +527,17 @@ export class OrderService {
       deliveryDate: data.deliveryDate,
       deliverySlot: data.deliverySlot,
       deliveryMethod: data.deliveryMethod,
+      fulfillmentType,
+      deliveryFee: deliveryCharge,
+      estimatedReadyTime,
+      estimatedDeliveryTime,
+      selectedAddressId: data.selectedAddressId ?? address.addressId,
+      deliverySlotId: data.deliverySlotId,
+      pickupSlot: data.pickupSlot,
+      estimatedDeliveryWindow: data.estimatedDeliveryWindow,
       paymentMethod: data.paymentMethod,
-      paymentStatus: PAYMENT_STATUS.PENDING,
+      paymentRequiredBeforeConfirmation,
+      paymentStatus: nextPaymentStatus,
       pickupStatus: "ORDER_PLACED",
       subtotal,
       discount,
@@ -436,7 +548,7 @@ export class OrderService {
       platformFee,
       grandTotal,
       orderItems,
-      status: ORDER_STATUS.CONFIRMED,
+      status: nextOrderStatus,
       statusUpdatedAt: new Date(),
     });
 

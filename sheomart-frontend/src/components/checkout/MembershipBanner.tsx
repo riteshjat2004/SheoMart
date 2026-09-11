@@ -1,0 +1,5 @@
+import { Crown, ShieldCheck } from "lucide-react";
+
+export function MembershipBanner({ isPlusCustomer }: { isPlusCustomer: boolean }) {
+  return isPlusCustomer ? <div className="flex items-start gap-3 rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100"><Crown className="mt-0.5 h-5 w-5 text-amber-500" /><div><p className="font-semibold">You can Pay Later as a Plus Member.</p><span className="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-800">PLUS SAVINGS</span></div></div> : <div className="flex items-start gap-3 rounded-2xl border border-stone-200 bg-stone-50 p-4 text-sm text-stone-700 dark:border-stone-800 dark:bg-stone-950/60 dark:text-stone-300"><ShieldCheck className="mt-0.5 h-5 w-5 text-emerald-600" /><div><p className="font-semibold">Online payment required for non-Plus customers.</p><button type="button" className="mt-1 text-sm font-semibold text-emerald-700">Upgrade to Plus</button></div></div>;
+}
