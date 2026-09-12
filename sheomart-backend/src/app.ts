@@ -32,6 +32,7 @@ import sellerPasswordResetRoutes from "./routes/seller-password-reset.routes";
 import adminPasswordResetRoutes from "./routes/admin-password-reset.routes";
 
 const app = express();
+app.set("trust proxy", 1);
 
 // Security Middleware
 app.use(

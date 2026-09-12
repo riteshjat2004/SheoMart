@@ -5,14 +5,15 @@ import { logger } from "../utils/logger";
 const transporter = env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASSWORD
   ? nodemailer.createTransport({
       pool: true,
+      family: 4,
       host: env.SMTP_HOST,
       port: env.SMTP_PORT,
       secure: env.SMTP_SECURE,
       auth: { user: env.SMTP_USER, pass: env.SMTP_PASSWORD },
       connectionTimeout: 10_000,
       greetingTimeout: 10_000,
-      socketTimeout: 20_000,
-    })
+      socketTimeout: 10_000,
+    } as Parameters<typeof nodemailer.createTransport>[0])
   : null;
 
 export async function verifyEmailTransport(): Promise<boolean> {
@@ -33,7 +34,7 @@ export async function verifyEmailTransport(): Promise<boolean> {
     logger.info(`SMTP transporter verified for ${env.SMTP_HOST}:${env.SMTP_PORT}`);
     return true;
   } catch (error) {
-    logger.error("SMTP transporter verification failed", error);
+    logger.warn(`SMTP transporter verification failed; startup will continue: ${error instanceof Error ? error.message : "Unknown SMTP error"}`);
     return false;
   }
 }
