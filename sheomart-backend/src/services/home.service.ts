@@ -12,6 +12,8 @@ export interface HeroShowcaseItem {
   categoryId?: string;
   storeId?: string;
   rating?: number;
+  deliveryEnabled?: boolean;
+  badge?: "normal" | "verified" | "royal";
 }
 
 export class HomeService {
@@ -35,7 +37,7 @@ export class HomeService {
       Store.aggregate([
         { $match: { status: STORE_STATUS.APPROVED } },
         { $sample: { size: 1 } },
-        { $project: { storeId: 1, storeName: 1, banner: 1, logo: 1, rating: 1 } },
+        { $project: { storeId: 1, storeName: 1, banner: 1, logo: 1, rating: 1, deliveryEnabled: 1, badge: 1 } },
       ]),
     ]);
 
@@ -61,6 +63,8 @@ export class HomeService {
         image: store.banner || store.logo || "",
         storeId: store.storeId,
         rating: store.rating,
+        deliveryEnabled: store.deliveryEnabled === true,
+        badge: store.badge,
       })),
     ];
   }

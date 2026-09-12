@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BadgeCheck, MapPin, Star } from "lucide-react";
 import type { StoreItem } from "@/types/marketplace";
+import { DeliveryBadge } from "@/components/store/DeliveryBadge";
 
 function getStoreHref(store: StoreItem) {
   return `/stores/${encodeURIComponent(store.storeId ?? store._id ?? store.storeName ?? store.name ?? "store")}`;
@@ -31,7 +32,10 @@ export function ApprovedStoreCard({ store }: { store: StoreItem }) {
       <div className="p-5 pt-9">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <h3 className="text-base font-semibold text-stone-900 dark:text-stone-50">{displayName}</h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-base font-semibold text-stone-900 dark:text-stone-50">{displayName}</h3>
+              <DeliveryBadge deliveryEnabled={store.deliveryEnabled === true} variant="normal" compact />
+            </div>
             <div className="mt-1 flex items-center gap-2 text-sm text-stone-500 dark:text-stone-400">
               <Star className="h-3.5 w-3.5 fill-current text-amber-500" />
               {ratingLabel}

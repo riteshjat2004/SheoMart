@@ -18,6 +18,7 @@ router.get("/admin", authenticate, authorize(USER_ROLES.PLATFORM_ADMIN), asyncHa
 router.get("/profile", authenticate, asyncHandler(getProfile));
 router.patch("/profile", authenticate, asyncHandler(updateProfile));
 router.patch("/change-password", authenticate, asyncHandler(changePassword));
+router.post("/change-password", authenticate, asyncHandler(changePassword));
 router.delete("/account", authenticate, asyncHandler(deleteAccount));
 
 export default router;

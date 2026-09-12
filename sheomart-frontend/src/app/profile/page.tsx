@@ -135,7 +135,7 @@ export default function CustomerProfilePage() {
           <ProfileCard title="Quick actions" description="Jump into the most common customer flows.">
             <QuickActionsCard />
           </ProfileCard>
-          <ProfileCard title="Security" description="Manage how you sign in and protect your account.">
+          <ProfileCard id="security" title="Security" description="Manage how you sign in and protect your account.">
             <SecurityCard onLogout={handleLogout} />
           </ProfileCard>
         </div>

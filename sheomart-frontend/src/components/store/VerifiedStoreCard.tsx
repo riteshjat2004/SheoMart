@@ -2,6 +2,8 @@ import Link from "next/link";
 import { BadgeCheck, MapPin, Star } from "lucide-react";
 import type { StoreItem } from "@/types/marketplace";
 import { StoreBadge } from "@/components/store/StoreBadge";
+import { DeliveryBadge } from "@/components/store/DeliveryBadge";
+import { DeliveryRibbon } from "@/components/store/DeliveryRibbon";
 
 function getStoreHref(store: StoreItem) {
   return `/stores/${encodeURIComponent(store.storeId ?? store._id ?? store.storeName ?? store.name ?? "store")}`;
@@ -24,6 +26,7 @@ export function VerifiedStoreCard({ store }: { store: StoreItem }) {
     <Link href={getStoreHref(store)} className="group block overflow-hidden rounded-[1.5rem] border border-emerald-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-emerald-900/70 dark:bg-zinc-900">
       <div className="relative h-32 bg-stone-100 dark:bg-stone-800">
         {store.banner ? <img src={store.banner} alt="" className="h-full w-full object-cover" /> : null}
+        <DeliveryRibbon deliveryEnabled={store.deliveryEnabled === true} variant="verified" />
         <div className="absolute -bottom-6 left-5 flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-emerald-100 text-lg font-semibold text-emerald-700 dark:border-zinc-900 dark:bg-emerald-950/60 dark:text-emerald-300">
           {store.logo ? <img src={store.logo} alt="" className="h-full w-full object-cover" /> : initials}
         </div>
@@ -35,6 +38,7 @@ export function VerifiedStoreCard({ store }: { store: StoreItem }) {
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-base font-semibold text-stone-900 dark:text-stone-50">{displayName}</h3>
               <StoreBadge type="verified" />
+              <DeliveryBadge deliveryEnabled={store.deliveryEnabled === true} variant="verified" compact />
             </div>
             <div className="mt-1 flex items-center gap-2 text-sm text-stone-500 dark:text-stone-400">
               <Star className="h-3.5 w-3.5 fill-current text-amber-500" />

@@ -30,3 +30,23 @@ export async function getProfile(): Promise<AuthProfileResponse> {
   const response = await api.get<ApiResponse<AuthProfileResponse>>("/api/v1/users/profile");
   return response.data.data as AuthProfileResponse;
 }
+
+export async function requestPasswordReset(email: string) {
+  const response = await api.post<ApiResponse<{ accountType: "customer" | "seller" | "unknown"; message: string; seller?: { email: string; storeId: string; storeName: string } }>>("/api/v1/auth/forgot-password", { email });
+  return response.data.data as { accountType: "customer" | "seller" | "unknown"; message: string; seller?: { email: string; storeId: string; storeName: string } };
+}
+
+export async function resendPasswordResetOtp(email: string) {
+  const response = await api.post<ApiResponse<unknown>>("/api/v1/auth/resend-reset-otp", { email });
+  return response.data;
+}
+
+export async function verifyPasswordResetOtp(email: string, otp: string): Promise<{ email: string; resetToken: string }> {
+  const response = await api.post<ApiResponse<{ email: string; resetToken: string }>>("/api/v1/auth/verify-reset-otp", { email, otp });
+  return response.data.data as { email: string; resetToken: string };
+}
+
+export async function resetPassword(payload: { email: string; resetToken: string; newPassword: string; confirmPassword: string }) {
+  const response = await api.post<ApiResponse<unknown>>("/api/v1/auth/reset-password", payload);
+  return response.data;
+}

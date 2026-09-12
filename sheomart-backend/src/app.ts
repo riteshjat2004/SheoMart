@@ -28,6 +28,8 @@ import searchRoutes from "./routes/search.routes";
 import homeRoutes from "./routes/home.routes";
 import promotionRoutes from "./routes/promotion.routes";
 import platformFeeRoutes from "./routes/platformFee.routes";
+import sellerPasswordResetRoutes from "./routes/seller-password-reset.routes";
+import adminPasswordResetRoutes from "./routes/admin-password-reset.routes";
 
 const app = express();
 
@@ -78,6 +80,8 @@ app.use("/api/v1/analytics", analyticsRoutes);
 app.use("/api/v1/search", searchRoutes);
 app.use("/api/v1/promotions", promotionRoutes);
 app.use("/api/v1/platform-fee", platformFeeRoutes);
+app.use("/api/v1", sellerPasswordResetRoutes);
+app.use("/api/v1/admin", adminPasswordResetRoutes);
 app.use("/api/home", homeRoutes);
 // Global Error Handler (Always Last)
 app.use(errorHandler);

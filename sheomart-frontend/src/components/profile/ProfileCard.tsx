@@ -5,11 +5,12 @@ interface ProfileCardProps {
   description?: string;
   children: ReactNode;
   action?: ReactNode;
+  id?: string;
 }
 
-export function ProfileCard({ title, description, action, children }: ProfileCardProps) {
+export function ProfileCard({ title, description, action, children, id }: ProfileCardProps) {
   return (
-    <section className="rounded-[2rem] border border-stone-200 bg-white/80 p-6 shadow-sm backdrop-blur dark:border-stone-800 dark:bg-stone-900/80">
+    <section id={id} className="rounded-[2rem] border border-stone-200 bg-white/80 p-6 shadow-sm backdrop-blur dark:border-stone-800 dark:bg-stone-900/80">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-stone-900 dark:text-stone-50">{title}</h2>

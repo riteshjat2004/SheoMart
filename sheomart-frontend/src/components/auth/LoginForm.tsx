@@ -98,8 +98,8 @@ export function LoginForm() {
           <input type="checkbox" className="rounded border-stone-300 text-emerald-600 focus:ring-emerald-500" />
           Remember me
         </label>
-        <Link href="/forgot-password" className="font-medium text-emerald-600 hover:text-emerald-700">
-          Forgot password?
+        <Link href="/forgot-password" className="font-medium text-emerald-600 hover:text-emerald-700 hover:underline">
+          Forgot Password?
         </Link>
       </div>
 

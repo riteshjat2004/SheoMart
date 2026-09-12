@@ -13,6 +13,7 @@ interface PasswordInputProps extends React.InputHTMLAttributes<HTMLInputElement>
 
 export function PasswordInput({ label, error, helperText, id, className, ...props }: PasswordInputProps) {
   const [showPassword, setShowPassword] = useState(false);
+  const [capsLockOn, setCapsLockOn] = useState(false);
 
   return (
     <div className="space-y-2">
@@ -29,6 +30,10 @@ export function PasswordInput({ label, error, helperText, id, className, ...prop
             className
           )}
           {...props}
+          onKeyUp={(event) => {
+            setCapsLockOn(event.getModifierState("CapsLock"));
+            props.onKeyUp?.(event);
+          }}
         />
         <button
           type="button"
@@ -39,6 +44,7 @@ export function PasswordInput({ label, error, helperText, id, className, ...prop
           {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </button>
       </div>
+      {capsLockOn ? <p className="text-xs text-amber-600 dark:text-amber-400" role="status">Caps Lock is on</p> : null}
       {error?.message ? (
         <p className="text-sm text-red-600" role="alert">
           {error.message}

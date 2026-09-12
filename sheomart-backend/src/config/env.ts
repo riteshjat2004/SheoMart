@@ -19,6 +19,14 @@ const envSchema = z.object({
   JWT_REFRESH_EXPIRES_IN: z.string().default("7d"),
 
   CORS_ORIGIN: z.string().default("http://localhost:8081"),
+  FRONTEND_URL: z.string().optional(),
+
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().positive().default(587),
+  SMTP_SECURE: z.enum(["true", "false"]).default("false").transform((value) => value === "true"),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
+  SMTP_FROM: z.string().trim().min(1).optional(),
 
   CLOUDINARY_CLOUD_NAME: z.string().optional(),
 

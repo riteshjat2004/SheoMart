@@ -10,6 +10,8 @@ export interface HeroShowcaseItem {
   categoryId?: string;
   storeId?: string;
   rating?: number;
+  deliveryEnabled?: boolean;
+  badge?: "normal" | "verified" | "royal";
 }
 
 export async function fetchHeroCarousel(): Promise<HeroShowcaseItem[]> {

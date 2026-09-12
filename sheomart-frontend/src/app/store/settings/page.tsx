@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { fetchMyStore, updateMyStore, type DeliverySlot, type UpdateMyStorePayload } from "@/services/store";
 import { useAuthStore } from "@/store/auth-store";
 import type { StoreItem } from "@/types/marketplace";
+import { SellerSecurityRequestCard } from "@/components/security/SellerSecurityRequestCard";
 
 const settingsSchema = z.object({
   logo: z.string().url("Enter a valid logo URL").or(z.literal("")),
@@ -239,6 +240,7 @@ export default function StoreSettingsPage() {
       {storeQuery.isError ? <ErrorState message={storeQuery.error.message} /> : null}
       {!storeQuery.isLoading && !storeQuery.isError && !storeQuery.data ? <EmptyState title="Store profile unavailable" description="Create or approve a store before managing its settings." /> : null}
       {storeQuery.data ? <StoreSettingsForm key={storeQuery.data.storeId ?? storeQuery.data._id} store={storeQuery.data} fallbackPhone={user?.mobile ?? ""} ownerName={user?.name ?? ""} ownerEmail={user?.email ?? ""} /> : null}
+      {storeQuery.data && user?.email ? <DashboardCard title="Security" description="Request administrator approval when you need to reset your store owner password."><SellerSecurityRequestCard email={user.email} storeName={storeQuery.data.storeName ?? storeQuery.data.name ?? ""} /></DashboardCard> : null}
     </DashboardContent>
   );
 }

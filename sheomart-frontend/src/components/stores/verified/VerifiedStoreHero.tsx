@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { verifiedTheme, type StoreTheme } from "@/themes/verifiedTheme";
 import type { StoreItem } from "@/types/marketplace";
 import type { ProductItem } from "@/types/marketplace";
+import type { StoreBadge } from "@/types/marketplace";
 import { StoreSearchBar } from "@/components/store/shared/StoreSearchBar";
+import { StoreDeliveryInfo } from "@/components/store/StoreDeliveryInfo";
 import type { RefObject } from "react";
 
 function Stat({ icon: Icon, label, value, theme }: { icon: typeof Star; label: string; value: string; theme: StoreTheme }) {
@@ -19,7 +21,7 @@ function Stat({ icon: Icon, label, value, theme }: { icon: typeof Star; label: s
   );
 }
 
-export function VerifiedStoreHero({ store, theme = verifiedTheme, badgeLabel = "Verified Store", BadgeIcon = ShieldCheck, identityBanner = "Fresh essentials", search, stickySearchRef, scrollToStickySearch }: { store: StoreItem; theme?: StoreTheme; badgeLabel?: string; BadgeIcon?: typeof ShieldCheck; identityBanner?: string; search?: { value: string; onChange: (value: string) => void; onClear: () => void; results: ProductItem[]; onSelect: (product: ProductItem) => void }; stickySearchRef?: RefObject<HTMLInputElement | null>; scrollToStickySearch?: () => void }) {
+export function VerifiedStoreHero({ store, theme = verifiedTheme, badgeLabel = "Verified Store", BadgeIcon = ShieldCheck, identityBanner = "Fresh essentials", deliveryVariant = "verified", search, stickySearchRef, scrollToStickySearch }: { store: StoreItem; theme?: StoreTheme; badgeLabel?: string; BadgeIcon?: typeof ShieldCheck; identityBanner?: string; deliveryVariant?: StoreBadge; search?: { value: string; onChange: (value: string) => void; onClear: () => void; results: ProductItem[]; onSelect: (product: ProductItem) => void }; stickySearchRef?: RefObject<HTMLInputElement | null>; scrollToStickySearch?: () => void }) {
   const storeName = store.storeName ?? store.name ?? "Store";
   const location = [store.city, store.state].filter(Boolean).join(", ") || "Local store";
   const shareStore = async () => {
@@ -46,6 +48,7 @@ export function VerifiedStoreHero({ store, theme = verifiedTheme, badgeLabel = "
               <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold ${theme.badge}`}>
                 <BadgeIcon className="h-4 w-4" /> {badgeLabel} <Sparkles className="h-3 w-3" />
               </span>
+              <StoreDeliveryInfo deliveryEnabled={store.deliveryEnabled === true} variant={deliveryVariant} eta={store.deliveryTime} city={store.city ?? "Sheopur"} />
               <h1 id="verified-store-heading" className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-5xl">{storeName}</h1>
               <p className="mt-2 text-sm font-medium text-emerald-100">{identityBanner} <span className={theme.accent}>•</span> {location}</p>
               <p className="mt-4 max-w-2xl text-sm leading-6 text-emerald-50/85">{store.description ?? "Fresh products from this trusted local seller, curated for your everyday needs."}</p>

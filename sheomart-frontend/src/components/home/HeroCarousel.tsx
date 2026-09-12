@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, LoaderCircle, Star } from "lucide-react";
 import { useHeroCarousel } from "@/hooks/use-home";
 import type { HeroShowcaseItem } from "@/services/home";
+import { DeliveryBadge } from "@/components/store/DeliveryBadge";
 
 const labels: Record<HeroShowcaseItem["type"], string> = {
   product: "Product",
@@ -78,6 +79,7 @@ export function HeroCarousel() {
       <button type="button" onClick={() => navigateToItem(item)} className="block h-[300px] w-full text-left sm:h-[380px] lg:h-[430px]">
         {item.image ? <img src={item.image} alt={item.name} className="h-full w-full object-cover transition duration-300 ease-out" fetchPriority="high" /> : <div className="h-full w-full bg-emerald-950" />}
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/15 to-transparent" />
+        {item.type === "store" ? <div className="absolute right-5 top-5"><DeliveryBadge deliveryEnabled={item.deliveryEnabled === true} variant={item.badge ?? "normal"} /></div> : null}
         <div className="absolute inset-x-5 bottom-7 text-white sm:inset-x-8 sm:bottom-9">
           <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${badgeColors[item.type]}`}>{labels[item.type]}</span>
           <p className="mt-3 max-w-[85%] text-2xl font-semibold leading-tight sm:text-3xl">{item.name}</p>

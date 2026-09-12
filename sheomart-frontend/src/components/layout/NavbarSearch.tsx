@@ -2,7 +2,7 @@
 
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LoaderCircle, Search } from "lucide-react";
+import { LoaderCircle, Search, Truck } from "lucide-react";
 import { useSearch } from "@/hooks/use-search";
 import type { SearchCategorySuggestion, SearchProductSuggestion, SearchStoreSuggestion } from "@/services/search";
 
@@ -90,6 +90,7 @@ export function NavbarSearch({ className = "" }: NavbarSearchProps) {
             return <button key={`${result.type}-${result.type === "Product" ? result.item.productId : result.type === "Store" ? result.item.storeId : result.item.categoryId}`} type="button" onClick={() => navigateToResult(result)} className="flex w-full items-center gap-3 rounded-xl p-2 text-left transition hover:bg-stone-50 dark:hover:bg-stone-800">
               {image ? <img src={image} alt="" className="h-9 w-9 shrink-0 rounded-lg object-cover" /> : <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-sm font-semibold text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300">{getResultName(result).charAt(0)}</div>}
               <span className="min-w-0 flex-1 truncate text-sm font-medium text-stone-800 dark:text-stone-100">{getResultName(result)}</span>
+              {result.type === "Store" && result.item.deliveryEnabled === true ? <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400"><Truck className="h-3 w-3" />Delivery</span> : null}
               <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-wide ${badgeColors[result.type]}`}>{result.type}</span>
             </button>;
           }) : <p className="p-3 text-sm text-stone-500">No results found.</p>}

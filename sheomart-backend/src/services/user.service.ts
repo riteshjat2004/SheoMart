@@ -144,8 +144,8 @@ export class UserService {
     return this.getProfile(userId);
   }
 
-  static async changePassword(userId: string, data: { currentPassword: string; newPassword: string }) {
-    const user = await User.findOne({ userId }).select("+password");
+  static async changePassword(userId: string, sessionId: string, data: { currentPassword: string; newPassword: string }) {
+    const user = await User.findOne({ userId }).select("+password +sessions.refreshToken");
 
     if (!user) {
       throw new AppError("User not found", 404);
@@ -157,13 +157,19 @@ export class UserService {
       throw new AppError("Current password is incorrect", 401);
     }
 
+    if (await comparePassword(data.newPassword, user.password)) {
+      throw new AppError("New password must be different from your current password", 400);
+    }
+
     const hashedPassword = await hashPassword(data.newPassword);
     user.password = hashedPassword;
+    user.sessions = user.sessions.filter((session) => session.sessionId === sessionId);
+    user.markModified("sessions");
 
     await user.save();
 
     return {
-      message: "Password changed successfully",
+      message: "Password changed successfully. Other devices have been signed out.",
     };
   }
 

@@ -1,4 +1,4 @@
-import { BarChart3, Boxes, LayoutGrid, Package, Receipt, Settings, ShoppingBag, Store, Tag, Tags, TicketPercent, Users } from "lucide-react";
+import { BarChart3, Boxes, LayoutGrid, Package, Receipt, Settings, Shield, ShoppingBag, Store, Tag, Tags, TicketPercent, Users } from "lucide-react";
 import type { UserRole } from "@/types/auth";
 
 export interface DashboardNavItem {
@@ -10,7 +10,9 @@ export interface DashboardNavItem {
 }
 
 export const dashboardNavigation: Record<UserRole, DashboardNavItem[]> = {
-  customer: [],
+  customer: [
+    { id: "customer-security", title: "Security", href: "/profile#security", icon: Shield, permission: "customer" },
+  ],
   store_owner: [
     { id: "store-dashboard", title: "Dashboard", href: "/store", icon: LayoutGrid, permission: "all" },
     { id: "store-products", title: "Products", href: "/store/products", icon: Package, permission: "store_owner" },
@@ -33,6 +35,7 @@ export const dashboardNavigation: Record<UserRole, DashboardNavItem[]> = {
     { id: "admin-offers", title: "Offers", href: "/admin/offers", icon: Tag, permission: "platform_admin" },
     { id: "admin-reviews", title: "Reviews", href: "/admin/reviews", icon: ShoppingBag, permission: "platform_admin" },
     { id: "admin-analytics", title: "Analytics", href: "/admin/analytics", icon: BarChart3, permission: "platform_admin" },
+    { id: "admin-security", title: "Security", href: "/admin/security", icon: Shield, permission: "platform_admin" },
     { id: "admin-settings", title: "Settings", href: "/admin/settings", icon: Settings, permission: "platform_admin" },
   ],
 };

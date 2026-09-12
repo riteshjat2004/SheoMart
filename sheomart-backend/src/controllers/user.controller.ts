@@ -44,7 +44,7 @@ export const changePassword = async (
   res: Response
 ): Promise<void> => {
   const data = changePasswordSchema.parse(req.body);
-  const result = await UserService.changePassword(req.user?.userId as string, data);
+  const result = await UserService.changePassword(req.user?.userId as string, req.user?.sessionId as string, data);
 
   res.status(200).json(
     new ApiResponse(true, "Password changed successfully", result)

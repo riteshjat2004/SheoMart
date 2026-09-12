@@ -63,12 +63,15 @@ api.interceptors.response.use(
       }
     }
 
-    if (status && [400, 401, 403, 404, 409, 500].includes(status)) {
-      const message = error.response?.data?.message || "Request failed";
-      return Promise.reject(new Error(message));
+    if (status) {
+      const message = error.response?.data?.message || error.response?.data?.error || `Request failed with status ${status}`;
+      const normalizedError = new Error(message) as Error & { status?: number; details?: unknown };
+      normalizedError.status = status;
+      normalizedError.details = error.response?.data;
+      return Promise.reject(normalizedError);
     }
 
-    return Promise.reject(error);
+    return Promise.reject(new Error(error.message || "Network request failed"));
   }
 );
 

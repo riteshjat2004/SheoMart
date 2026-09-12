@@ -26,7 +26,7 @@ export class SearchService {
         ],
       }).select("productId name thumbnail discountPrice categoryId").limit(8).lean(),
       Store.find({ status: STORE_STATUS.APPROVED, storeName: regex })
-        .select("storeId storeName logo rating")
+        .select("storeId storeName logo rating deliveryEnabled")
         .limit(8)
         .lean(),
     ]);
@@ -60,6 +60,7 @@ export class SearchService {
         storeName: store.storeName,
         logo: store.logo,
         rating: store.rating,
+        deliveryEnabled: store.deliveryEnabled === true,
       })),
       categories: categories.slice(0, 8).map((category) => ({
         categoryId: category.categoryId,

@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { AuthService } from "../services/auth.services";
 import { registerSchema } from "../validators/auth.validator";
 import { ApiResponse } from "../utils/apiResponse";
-import { loginSchema } from "../validators/auth.validator";
+import { forgotPasswordSchema, loginSchema, resetPasswordSchema, verifyResetOtpSchema } from "../validators/auth.validator";
 
 export const register = async (
   req: Request,
@@ -48,4 +48,28 @@ export const refresh = async (
   res.status(200).json(
     new ApiResponse(true, "Token refreshed successfully", result)
   );
+};
+
+export const forgotPassword = async (req: Request, res: Response): Promise<void> => {
+  const { email } = forgotPasswordSchema.parse(req.body);
+  const result = await AuthService.requestPasswordReset(email);
+  res.status(200).json(new ApiResponse(true, result.message, result));
+};
+
+export const resendResetOtp = async (req: Request, res: Response): Promise<void> => {
+  const { email } = forgotPasswordSchema.parse(req.body);
+  const result = await AuthService.requestPasswordReset(email);
+  res.status(200).json(new ApiResponse(true, result.message));
+};
+
+export const verifyResetOtp = async (req: Request, res: Response): Promise<void> => {
+  const data = verifyResetOtpSchema.parse(req.body);
+  const result = await AuthService.verifyPasswordResetOtp(data.email, data.otp);
+  res.status(200).json(new ApiResponse(true, "Verification successful", result));
+};
+
+export const resetPassword = async (req: Request, res: Response): Promise<void> => {
+  const data = resetPasswordSchema.parse(req.body);
+  const result = await AuthService.resetPassword(data.email, data.resetToken, data.newPassword);
+  res.status(200).json(new ApiResponse(true, result.message));
 };

@@ -2,6 +2,8 @@ import Link from "next/link";
 import { BadgeCheck, Crown, MapPin, Star } from "lucide-react";
 import type { StoreItem } from "@/types/marketplace";
 import { StoreBadge } from "@/components/store/StoreBadge";
+import { DeliveryBadge } from "@/components/store/DeliveryBadge";
+import { DeliveryRibbon } from "@/components/store/DeliveryRibbon";
 
 function getStoreHref(store: StoreItem) {
   return `/stores/${encodeURIComponent(store.storeId ?? store._id ?? store.storeName ?? store.name ?? "store")}`;
@@ -24,6 +26,7 @@ export function RoyalStoreCard({ store }: { store: StoreItem }) {
     <Link href={getStoreHref(store)} className="group block overflow-hidden rounded-[1.5rem] border border-amber-200 bg-gradient-to-b from-amber-50/90 to-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-amber-900/70 dark:from-amber-950/20 dark:to-zinc-900">
       <div className="relative h-32 bg-stone-100 dark:bg-stone-800">
         {store.banner ? <img src={store.banner} alt="" className="h-full w-full object-cover" /> : null}
+        <DeliveryRibbon deliveryEnabled={store.deliveryEnabled === true} variant="royal" />
         <div className="absolute left-5 top-3">
           <StoreBadge type="royal" />
         </div>
@@ -41,6 +44,7 @@ export function RoyalStoreCard({ store }: { store: StoreItem }) {
                 <Crown className="h-3 w-3" />
                 Featured
               </span>
+              <DeliveryBadge deliveryEnabled={store.deliveryEnabled === true} variant="royal" compact />
             </div>
             <div className="mt-1 flex items-center gap-2 text-sm text-stone-500 dark:text-stone-400">
               <Star className="h-3.5 w-3.5 fill-current text-amber-500" />

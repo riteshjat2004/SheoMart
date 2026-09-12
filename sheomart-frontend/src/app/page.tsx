@@ -33,7 +33,6 @@ const expiry = (value: string) => new Date(value).toLocaleDateString("en-IN", { 
 export default function Home() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchOpen, setSearchOpen] = useState(false);
   const categoriesQuery = useCategories();
   const productsQuery = useTrendingProducts();
   const isCustomer = useAuthStore((state) => state.user?.role === "customer");
@@ -77,14 +76,14 @@ export default function Home() {
         <Container className="space-y-6 sm:space-y-8">
           <Hero />
 
-          <div className={`relative z-20 overflow-visible rounded-[2rem] border border-stone-200 bg-white/90 p-4 shadow-sm backdrop-blur transition-[padding-bottom] duration-300 dark:border-stone-800 dark:bg-zinc-900/85 ${searchOpen ? "pb-[22rem]" : "pb-4"}`}>
+          <div className="relative z-20 overflow-visible rounded-[2rem] border border-stone-200 bg-white/90 p-4 shadow-sm backdrop-blur dark:border-stone-800 dark:bg-zinc-900/85">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="max-w-2xl">
                 <p className="text-sm font-semibold uppercase tracking-[0.28em] text-emerald-600">Discover what you need</p>
                 <h2 className="mt-2 text-lg font-semibold text-stone-900 sm:text-xl dark:text-stone-50">Search fresh groceries, pantry staples, and everyday essentials in seconds.</h2>
               </div>
               <div className="w-full lg:max-w-xl">
-                <SearchBar value={searchQuery} onChange={setSearchQuery} onSubmit={handleSearchSubmit} enableSuggestions onOpenChange={setSearchOpen} />
+                <SearchBar value={searchQuery} onChange={setSearchQuery} onSubmit={handleSearchSubmit} enableSuggestions />
               </div>
             </div>
           </div>

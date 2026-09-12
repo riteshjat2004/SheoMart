@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { USER_ROLES } from "../constants/roles";
+import { strongPassword } from "./auth.validator";
 
 const booleanQueryParam = z.enum(["true", "false"]).transform((value) => value === "true");
 
@@ -39,7 +40,7 @@ export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 export const changePasswordSchema = z
   .object({
     currentPassword: z.string().min(8, "Current password must be at least 8 characters"),
-    newPassword: z.string().min(8, "New password must be at least 8 characters"),
+    newPassword: strongPassword,
     confirmPassword: z.string().min(8, "Confirm password must be at least 8 characters"),
   })
   .superRefine(({ newPassword, confirmPassword }, ctx) => {

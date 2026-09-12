@@ -13,6 +13,7 @@ export interface SearchStoreSuggestion {
   storeName: string;
   logo?: string;
   rating?: number;
+  deliveryEnabled?: boolean;
 }
 
 export interface SearchCategorySuggestion {
