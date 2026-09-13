@@ -123,3 +123,6 @@ firebase-debug.log
 
 info.txt
 assets
+
+# Local Gradle daemon configuration
+gradle/gradle-daemon-jvm.properties
