@@ -1,3 +1,52 @@
 <resources>
     <string name="app_name">SheoMart</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_explore">Explore</string>
+    <string name="nav_cart">Cart</string>
+    <string name="nav_wishlist">Wishlist</string>
+    <string name="nav_profile">Profile</string>
+
+    <!-- Auth -->
+    <string name="auth_welcome_back">Welcome Back</string>
+    <string name="auth_sign_in_desc">Sign in to continue shopping from your favourite local stores.</string>
+    <string name="auth_identifier_hint">Email or Mobile Number</string>
+    <string name="auth_password_hint">Password</string>
+    <string name="auth_forgot_password">Forgot Password?</string>
+    <string name="auth_continue">Continue</string>
+    <string name="auth_no_account">Don\'t have an account? </string>
+    <string name="auth_sign_up">Sign Up</string>
+    <string name="auth_create_account">Create Account</string>
+    <string name="auth_register_desc">Join SheoMart and shop from trusted local stores.</string>
+    <string name="auth_already_have_account">Already have an account? </string>
+    <string name="auth_login">Login</string>
+
+    <!-- Home -->
+    <string name="home_delivering_to">Delivering to</string>
+    <string name="home_default_location">Sheopur, MP 476337</string>
+    <string name="home_search_placeholder">Search fresh groceries, stores…</string>
+    <string name="home_categories_title">Shop by Category</string>
+    <string name="home_featured_title">Featured Products</string>
+    <string name="home_popular_title">Most Loved Essentials</string>
+    <string name="home_new_arrivals_title">New Arrivals</string>
+    <string name="home_stores_title">Nearby Stores</string>
+
+    <!-- Dashboard -->
+    <string name="dashboard_title">Customer Profile</string>
+    <string name="dashboard_verified_customer">Verified Customer</string>
+    <string name="dashboard_edit_profile">Edit Profile</string>
+    <string name="dashboard_summary_title">Account Overview</string>
+    <string name="dashboard_orders">My Orders</string>
+    <string name="dashboard_wishlist">Wishlist</string>
+    <string name="dashboard_cart">Cart</string>
+    <string name="dashboard_addresses">Saved Addresses</string>
+    <string name="dashboard_coupons">Coupons &amp; Offers</string>
+    <string name="dashboard_notifications">Notifications</string>
+    <string name="dashboard_support">Help &amp; Support</string>
+    <string name="dashboard_about">About SheoMart</string>
+    <string name="dashboard_logout">Sign Out</string>
+    <string name="dashboard_recommended_title">Explore More in Sheopur</string>
+    <string name="dashboard_recommended_desc">Browse top-rated stores, fresh produce, and exclusive local deals.</string>
+    <string name="dashboard_member_since">Member since</string>
 </resources>

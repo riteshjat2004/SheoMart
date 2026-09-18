@@ -3,7 +3,9 @@ package com.sheomart.mobile
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import com.sheomart.mobile.ui.auth.LoginScreen
+import androidx.compose.runtime.remember
+import com.sheomart.mobile.auth.AuthState
+import com.sheomart.mobile.navigation.AppNavigation
 import com.sheomart.mobile.ui.theme.SheoMartTheme
 
 class MainActivity : ComponentActivity() {
@@ -11,7 +13,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             SheoMartTheme {
-                LoginScreen()
+                val auth = remember { AuthState(applicationContext) }
+                AppNavigation(auth)
             }
         }
     }
