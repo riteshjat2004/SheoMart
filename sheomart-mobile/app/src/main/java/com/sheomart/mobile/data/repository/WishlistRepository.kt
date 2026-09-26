@@ -29,25 +29,54 @@ class WishlistRepository(private val tokenStore: SecureTokenStore) {
             val list = mutableListOf<WishlistItem>()
             for (i in 0 until wishArray.length()) {
                 val obj = wishArray.getJSONObject(i)
-                val prodObj = obj.optJSONObject("product") ?: obj.optJSONObject("productId")
-                val pId = prodObj?.optString("productId", prodObj.optString("_id", "$i")) ?: obj.optString("productId", "$i")
-                val pName = prodObj?.optString("name", obj.optString("name", "Product")) ?: "Product"
-                val pThumb = (prodObj?.optString("thumbnail") ?: prodObj?.optString("imageUrl", obj.optString("thumbnail", ""))).takeIf { !it.isNullOrBlank() }
-                val pPrice = prodObj?.optDouble("price", obj.optDouble("price", 0.0)) ?: 0.0
-                val pDiscPrice = if (prodObj != null && prodObj.has("discountPrice")) prodObj.optDouble("discountPrice") else if (obj.has("discountPrice")) obj.optDouble("discountPrice") else null
-                val wId = obj.optString("wishlistItemId", obj.optString("_id", "$pId-$i"))
+                val wId = obj.optString("wishlistItemId", obj.optString("_id", "$i"))
+                val addedAt = obj.optString("createdAt").takeIf { it.isNotBlank() }
+
+                // Backend returns { wishlistItemId, product: { full product object } }
+                val prodObj = obj.optJSONObject("product") ?: obj
+                val pId = prodObj.optString("productId", prodObj.optString("_id", "$i"))
+                val pName = prodObj.optString("name", "Product")
+
+                // Store info — nested storeId object or plain fields
+                val storeObj = prodObj.optJSONObject("storeId")
+                val storeId = storeObj?.optString("storeId") ?: storeObj?.optString("_id")
+                    ?: prodObj.optString("storeId").takeIf { it.isNotBlank() }
+                val storeName = storeObj?.optString("storeName")
+                    ?: prodObj.optString("storeName").takeIf { it.isNotBlank() }
+                val storeBadge = storeObj?.optString("badge", "normal")
+                    ?: prodObj.optString("storeBadge", "normal")
+                val storeRating = if (storeObj?.has("rating") == true) storeObj.optDouble("rating") else null
+
+                val price = prodObj.optDouble("price", obj.optDouble("price", 0.0))
+                val discountPrice = when {
+                    prodObj.has("discountPrice") && !prodObj.isNull("discountPrice") -> prodObj.optDouble("discountPrice")
+                    obj.has("discountPrice") && !obj.isNull("discountPrice") -> obj.optDouble("discountPrice")
+                    else -> null
+                }
+                val discount = if (prodObj.has("discount") && !prodObj.isNull("discount")) prodObj.optInt("discount") else null
+                val rating = if (prodObj.has("rating") && !prodObj.isNull("rating")) prodObj.optDouble("rating") else null
+                val inStock = prodObj.optInt("quantity", 1) > 0 &&
+                        prodObj.optBoolean("isActive", true) &&
+                        prodObj.optBoolean("isPublished", true)
 
                 list.add(
                     WishlistItem(
                         wishlistItemId = wId,
                         productId = pId,
                         productName = pName,
-                        thumbnail = pThumb?.takeIf { it.isNotBlank() },
-                        price = pPrice,
-                        discountPrice = pDiscPrice,
-                        rating = if (prodObj != null && prodObj.has("rating")) prodObj.optDouble("rating") else null,
-                        storeName = prodObj?.optString("storeName"),
-                        inStock = prodObj?.optBoolean("isActive", true) ?: true
+                        thumbnail = prodObj.optString("thumbnail").takeIf { it.isNotBlank() },
+                        price = price,
+                        discountPrice = discountPrice,
+                        discount = discount,
+                        rating = rating,
+                        storeId = storeId,
+                        storeName = storeName,
+                        storeBadge = storeBadge ?: "normal",
+                        storeRating = storeRating,
+                        brand = prodObj.optString("brand").takeIf { it.isNotBlank() },
+                        categoryId = prodObj.optString("categoryId").takeIf { it.isNotBlank() },
+                        inStock = inStock,
+                        addedAt = addedAt
                     )
                 )
             }
@@ -69,11 +98,13 @@ class WishlistRepository(private val tokenStore: SecureTokenStore) {
         }
     }
 
-    suspend fun addWishlistItem(productId: String): Result<Boolean> = withContext(Dispatchers.IO) {
+    /** Adds a product to the wishlist. Returns the new wishlistItemId on success. */
+    suspend fun addWishlistItem(productId: String): Result<String> = withContext(Dispatchers.IO) {
         runCatching {
             val body = JSONObject().put("productId", productId)
-            request("/wishlist", "POST", body)
-            true
+            val json = request("/wishlist", "POST", body)
+            val item = json.optJSONObject("data")?.optJSONObject("wishlistItem")
+            item?.optString("wishlistItemId") ?: productId
         }
     }
 
@@ -83,6 +114,7 @@ class WishlistRepository(private val tokenStore: SecureTokenStore) {
             true
         }
     }
+
 
     private fun request(path: String, method: String, body: JSONObject? = null): JSONObject {
         val url = URL(ApiConfig.urlFor(path))

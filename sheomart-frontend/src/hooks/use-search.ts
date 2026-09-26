@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchSearchResults, type SearchResults } from "@/services/search";
 
-export function useSearch(query: string) {
+export function useSearch(query: string, page: number = 1, limit: number = 8) {
   const [debouncedQuery, setDebouncedQuery] = useState("");
 
   useEffect(() => {
@@ -13,10 +13,11 @@ export function useSearch(query: string) {
   }, [query]);
 
   return useQuery<SearchResults, Error>({
-    queryKey: ["marketplace-search", debouncedQuery],
-    queryFn: () => fetchSearchResults(debouncedQuery),
+    queryKey: ["marketplace-search", debouncedQuery, page, limit],
+    queryFn: () => fetchSearchResults(debouncedQuery, page, limit),
     enabled: debouncedQuery.length >= 2,
     staleTime: 1000 * 30,
     retry: 1,
   });
 }
+

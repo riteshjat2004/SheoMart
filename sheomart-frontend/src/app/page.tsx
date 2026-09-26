@@ -26,6 +26,8 @@ import { useAddresses } from "@/hooks/use-addresses";
 import { useAuthStore } from "@/store/auth-store";
 import { ArrowRight, Check, CheckCircle2, Clock3, Copy, Leaf, ShieldCheck, Smartphone } from "lucide-react";
 import { useCoupons, useOffers } from "@/hooks/use-promotions";
+import { ANDROID_APP } from "@/constants/app";
+import { trackEvent } from "@/lib/analytics";
 
 const money = (value: number) => `₹${value.toLocaleString("en-IN")}`;
 const expiry = (value: string) => new Date(value).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
@@ -199,16 +201,86 @@ export default function Home() {
                 <p className="text-sm font-semibold uppercase tracking-[0.28em] text-emerald-100">Download the app</p>
                 <h2 className="mt-3 text-3xl font-semibold sm:text-4xl">Shop smarter from your phone.</h2>
                 <p className="mt-3 text-sm leading-7 text-emerald-50 sm:text-base">Get the SheoMart app for faster reorders, curated deals, and a smoother grocery routine.</p>
+
+                {/* Compact Beta Features List */}
+                <div className="mt-5 grid grid-cols-1 gap-4 border-t border-emerald-400/30 pt-4 sm:grid-cols-2 text-xs">
+                  <div className="space-y-2">
+                    <p className="font-semibold uppercase tracking-wider text-emerald-100 text-[11px]">Features</p>
+                    <ul className="space-y-1.5 text-emerald-50">
+                      <li className="flex items-center gap-2">
+                        <Check className="h-3.5 w-3.5 shrink-0 text-white" />
+                        <span>Secure Login</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Check className="h-3.5 w-3.5 shrink-0 text-white" />
+                        <span>Home Screen</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Check className="h-3.5 w-3.5 shrink-0 text-white" />
+                        <span>Browse Categories</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Check className="h-3.5 w-3.5 shrink-0 text-white" />
+                        <span>Featured Products</span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="font-semibold uppercase tracking-wider text-emerald-200/90 text-[11px]">Coming Soon</p>
+                    <ul className="space-y-1.5 text-emerald-100/80">
+                      <li className="flex items-center gap-2">
+                        <Clock3 className="h-3.5 w-3.5 shrink-0 text-emerald-200" />
+                        <span>Cart</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Clock3 className="h-3.5 w-3.5 shrink-0 text-emerald-200" />
+                        <span>Wishlist</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Clock3 className="h-3.5 w-3.5 shrink-0 text-emerald-200" />
+                        <span>Orders</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Clock3 className="h-3.5 w-3.5 shrink-0 text-emerald-200" />
+                        <span>Payments</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
               </div>
-              <div className="flex flex-wrap gap-3">
-                <Button variant="secondary" className="bg-white text-stone-900 hover:bg-stone-100">
-                  <Smartphone className="mr-2 h-4 w-4" />
-                  Download app
-                </Button>
-                <Button variant="outline" className="border-white/40 bg-transparent text-white hover:bg-white/10">
-                  Learn more
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
+
+              <div className="flex flex-col gap-3 lg:items-end">
+                <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-emerald-300/40 bg-emerald-700/50 px-3 py-1 text-xs font-medium text-emerald-100 shadow-sm backdrop-blur-sm">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-300"></span>
+                  Android Beta v{ANDROID_APP.VERSION}
+                </span>
+                <div className="flex flex-wrap gap-3">
+                  <a
+                    href={ANDROID_APP.DOWNLOAD_PATH}
+                    download={`SheoMart-v${ANDROID_APP.VERSION}-beta.apk`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => {
+                      trackEvent("app_download_clicked", {
+                        platform: "android",
+                        version: ANDROID_APP.VERSION,
+                        source: "homepage_download_section",
+                      });
+                    }}
+                  >
+                    <Button variant="secondary" className="bg-white text-stone-900 hover:bg-stone-100">
+                      <Smartphone className="mr-2 h-4 w-4" />
+                      Download app
+                    </Button>
+                  </a>
+                  <Button variant="outline" className="border-white/40 bg-transparent text-white hover:bg-white/10" asChild>
+                    <Link href="/about">
+                      Learn more
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                </div>
               </div>
             </div>
           </section>

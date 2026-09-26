@@ -5,8 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.sheomart.mobile.data.model.Product
 import com.sheomart.mobile.data.repository.CartRepository
 import com.sheomart.mobile.data.repository.ProductRepository
-import com.sheomart.mobile.data.repository.WishlistRepository
+import com.sheomart.mobile.ui.cart.CartStateHolder
 import com.sheomart.mobile.ui.state.UiState
+import com.sheomart.mobile.ui.wishlist.WishlistStateHolder
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,8 +23,12 @@ enum class ProductSortOption(val label: String) {
 class CategoryProductsViewModel(
     private val productRepository: ProductRepository,
     private val cartRepository: CartRepository? = null,
-    private val wishlistRepository: WishlistRepository? = null
+    private val wishlistStateHolder: WishlistStateHolder? = null,
+    private val cartStateHolder: CartStateHolder? = null
 ) : ViewModel() {
+
+    val wishlistProductIds: StateFlow<Set<String>> =
+        wishlistStateHolder?.wishlistProductIds ?: MutableStateFlow(emptySet())
 
     private val _productsState = MutableStateFlow<UiState<List<Product>>>(UiState.Loading)
     val productsState: StateFlow<UiState<List<Product>>> = _productsState.asStateFlow()
@@ -67,14 +72,17 @@ class CategoryProductsViewModel(
     }
 
     fun addToCart(productId: String) {
-        viewModelScope.launch {
-            cartRepository?.addCartItem(productId, 1)
+        if (cartStateHolder != null) {
+            val matching = rawProducts.find { it.productId == productId }
+            cartStateHolder.addItem(productId, 1, matching?.storeId)
+        } else {
+            viewModelScope.launch {
+                cartRepository?.addCartItem(productId, 1)
+            }
         }
     }
 
     fun toggleWishlist(productId: String) {
-        viewModelScope.launch {
-            wishlistRepository?.addWishlistItem(productId)
-        }
+        wishlistStateHolder?.toggleWishlist(productId)
     }
 }

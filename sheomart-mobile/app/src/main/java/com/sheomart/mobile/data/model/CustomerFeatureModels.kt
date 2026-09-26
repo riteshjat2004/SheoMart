@@ -82,10 +82,18 @@ data class CartItem(
     val quantity: Int = 1,
     val storeId: String? = null,
     val storeName: String? = null,
-    val stockAvailable: Int = 99
+    val storeBadge: String = "normal", // "normal", "verified", "royal"
+    val brand: String? = null,
+    val isAvailable: Boolean = true,
+    val availabilityMessage: String = "In stock",
+    val maxAvailableQuantity: Int = 99
 ) {
     val unitPrice: Double get() = discountPrice ?: price
     val totalPrice: Double get() = unitPrice * quantity
+    val originalTotalPrice: Double get() = price * quantity
+    val savings: Double get() = if (discountPrice != null && discountPrice < price) (price - discountPrice) * quantity else 0.0
+    val hasDiscount: Boolean get() = discountPrice != null && discountPrice < price
+    val discountPercent: Int get() = if (hasDiscount && price > 0) (((price - discountPrice!!) / price) * 100).toInt() else 0
 }
 
 data class CartData(
@@ -96,9 +104,15 @@ data class CartData(
     val deliveryFee: Double = 0.0,
     val discountAmount: Double = 0.0,
     val totalAmount: Double = 0.0,
-    val appliedCouponCode: String? = null
+    val appliedCouponCode: String? = null,
+    val appliedCoupon: Coupon? = null,
+    val estimatedSavings: Double = 0.0,
+    val hasUnavailableItems: Boolean = false
 ) {
     val totalItems: Int get() = items.sumOf { it.quantity }
+    val totalProducts: Int get() = items.size
+    val totalSavings: Double get() = estimatedSavings + discountAmount
+    val canCheckout: Boolean get() = items.isNotEmpty() && !hasUnavailableItems
 }
 
 // ── Wishlist ──────────────────────────────────────────────────────────────
@@ -110,11 +124,29 @@ data class WishlistItem(
     val thumbnail: String? = null,
     val price: Double = 0.0,
     val discountPrice: Double? = null,
+    val discount: Int? = null,           // discount % from backend
     val rating: Double? = null,
+    val storeId: String? = null,
     val storeName: String? = null,
-    val inStock: Boolean = true
+    val storeBadge: String = "normal",   // "normal", "verified", "royal"
+    val storeRating: Double? = null,
+    val brand: String? = null,
+    val categoryId: String? = null,
+    val inStock: Boolean = true,
+    val addedAt: String? = null          // ISO timestamp from createdAt
 ) {
     val displayPrice: Double get() = discountPrice ?: price
+
+    val discountPercent: Int
+        get() = discount
+            ?: if (discountPrice != null && price > 0.0 && discountPrice < price)
+                (((price - discountPrice) / price) * 100).toInt()
+            else 0
+
+    val savingsAmount: Double
+        get() = if (discountPrice != null && discountPrice < price) price - discountPrice else 0.0
+
+    val hasDiscount: Boolean get() = discountPercent > 0
 }
 
 // ── Addresses ─────────────────────────────────────────────────────────────

@@ -73,6 +73,12 @@ data class PromotionOffer(
     val discountValue: Double = 0.0,
     val bannerImage: String? = null,
     val endsAt: String? = null
-)
-
+) {
+    val displayDiscount: String
+        get() = if (discountType.equals("flat", ignoreCase = true)) {
+            "₹${discountValue.toInt()} OFF"
+        } else {
+            "${discountValue.toInt()}% OFF"
+        }
+}
 

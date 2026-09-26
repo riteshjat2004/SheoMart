@@ -172,6 +172,42 @@ class HomeRepository(private val tokenStore: SecureTokenStore? = null) {
         }
     }
 
+    suspend fun getActiveCoupons(): Result<List<Coupon>> = withContext(Dispatchers.IO) {
+        runCatching {
+            val json = request("/promotions/coupons/active", "GET")
+            val couponsArray = when {
+                json.optJSONObject("data")?.optJSONArray("coupons") != null ->
+                    json.getJSONObject("data").getJSONArray("coupons")
+                json.optJSONArray("data") != null ->
+                    json.getJSONArray("data")
+                else -> JSONArray()
+            }
+            val list = mutableListOf<Coupon>()
+            for (i in 0 until couponsArray.length()) {
+                val obj = couponsArray.getJSONObject(i)
+                val couponId = obj.optString("couponId", obj.optString("_id", ""))
+                val code = obj.optString("code", "").uppercase()
+                if (couponId.isNotBlank() && code.isNotBlank()) {
+                    list.add(
+                        Coupon(
+                            couponId = couponId,
+                            code = code,
+                            title = obj.optString("title", "Special Discount"),
+                            description = obj.optString("description").takeIf { it.isNotBlank() },
+                            discountType = obj.optString("discountType", "percentage"),
+                            discountValue = obj.optDouble("discountValue", 0.0),
+                            minOrderAmount = if (obj.has("minOrderAmount") && !obj.isNull("minOrderAmount")) obj.optDouble("minOrderAmount") else null,
+                            maxDiscountAmount = if (obj.has("maxDiscountAmount") && !obj.isNull("maxDiscountAmount")) obj.optDouble("maxDiscountAmount") else null,
+                            expiresAt = obj.optString("expiresAt").takeIf { it.isNotBlank() }
+                                ?: obj.optString("endsAt").takeIf { it.isNotBlank() }
+                        )
+                    )
+                }
+            }
+            list
+        }
+    }
+
     private fun parseProducts(array: JSONArray): List<Product> {
         val list = mutableListOf<Product>()
         for (i in 0 until array.length()) {

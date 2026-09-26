@@ -4,7 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sheomart.mobile.data.model.*
 import com.sheomart.mobile.data.repository.HomeRepository
+import com.sheomart.mobile.ui.cart.CartStateHolder
 import com.sheomart.mobile.ui.state.UiState
+import com.sheomart.mobile.ui.wishlist.WishlistStateHolder
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,16 +20,30 @@ data class HomeUiState(
     val popularProductsState: UiState<List<Product>> = UiState.Loading,
     val newArrivalsState: UiState<List<Product>> = UiState.Loading,
     val storesState: UiState<List<Store>> = UiState.Loading,
-    val wishlistProductIds: Set<String> = emptySet(),
+    val offersState: UiState<List<PromotionOffer>> = UiState.Loading,
+    val couponsState: UiState<List<Coupon>> = UiState.Loading,
     val feedbackMessage: String? = null
 )
 
 class HomeViewModel(
-    private val repository: HomeRepository = HomeRepository()
+    private val repository: HomeRepository = HomeRepository(),
+    private val wishlistStateHolder: WishlistStateHolder? = null,
+    private val cartStateHolder: CartStateHolder? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
+    // Expose wishlist product IDs from the shared holder
+    val wishlistProductIds: StateFlow<Set<String>> =
+        wishlistStateHolder?.wishlistProductIds ?: MutableStateFlow(emptySet())
+
+    // Expose cart item count and product quantities from shared holder
+    val cartItemCount: StateFlow<Int> =
+        cartStateHolder?.cartItemCount ?: MutableStateFlow(0)
+
+    val cartQuantities: StateFlow<Map<String, Int>> =
+        cartStateHolder?.productQuantities ?: MutableStateFlow(emptyMap())
 
     init {
         loadAll()
@@ -39,6 +55,8 @@ class HomeViewModel(
         loadFeaturedProducts()
         loadPopularAndNewProducts()
         loadStores()
+        loadOffers()
+        loadCoupons()
     }
 
     fun loadBanners() {
@@ -184,26 +202,71 @@ class HomeViewModel(
         }
     }
 
-    fun toggleWishlist(productId: String) {
-        _uiState.update { current ->
-            val set = current.wishlistProductIds.toMutableSet()
-            val added = if (set.contains(productId)) {
-                set.remove(productId)
-                false
-            } else {
-                set.add(productId)
-                true
-            }
-            current.copy(
-                wishlistProductIds = set,
-                feedbackMessage = if (added) "Saved to wishlist" else "Removed from wishlist"
+    fun loadOffers() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(offersState = UiState.Loading) }
+            val result = repository.getActiveOffers()
+            result.fold(
+                onSuccess = { offers ->
+                    _uiState.update {
+                        it.copy(
+                            offersState = if (offers.isEmpty()) UiState.Empty else UiState.Success(offers)
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update {
+                        it.copy(offersState = UiState.Error(error.message ?: "Unable to load offers"))
+                    }
+                }
             )
         }
     }
 
-    fun addToCart(productId: String) {
+    fun loadCoupons() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(couponsState = UiState.Loading) }
+            val result = repository.getActiveCoupons()
+            result.fold(
+                onSuccess = { coupons ->
+                    _uiState.update {
+                        it.copy(
+                            couponsState = if (coupons.isEmpty()) UiState.Empty else UiState.Success(coupons)
+                        )
+                    }
+                },
+                onFailure = { error ->
+                    _uiState.update {
+                        it.copy(couponsState = UiState.Error(error.message ?: "Unable to load coupons"))
+                    }
+                }
+            )
+        }
+    }
+
+    fun toggleWishlist(productId: String) {
+        if (wishlistStateHolder != null) {
+            wishlistStateHolder.toggleWishlist(productId)
+        } else {
+            _uiState.update { current ->
+                current.copy(feedbackMessage = "Wishlist updated")
+            }
+        }
+    }
+
+    fun addToCart(productId: String, storeId: String? = null) {
+        if (cartStateHolder != null) {
+            cartStateHolder.addItem(productId, 1, storeId)
+        } else {
+            _uiState.update {
+                it.copy(feedbackMessage = "Added to cart")
+            }
+        }
+    }
+
+    fun onCouponCopied(code: String) {
         _uiState.update {
-            it.copy(feedbackMessage = "Added to cart")
+            it.copy(feedbackMessage = "Coupon code \"$code\" copied!")
         }
     }
 

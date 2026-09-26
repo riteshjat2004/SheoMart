@@ -16,8 +16,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sheomart.mobile.data.model.*
@@ -42,6 +47,8 @@ fun HomeScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val wishlistProductIds by viewModel.wishlistProductIds.collectAsState()
+    val cartItemCount by viewModel.cartItemCount.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
     // Display feedback message when item is added to cart or wishlisted
@@ -72,7 +79,9 @@ fun HomeScreen(
         bottomBar = {
             SheoBottomNavigation(
                 currentTab = CustomerNavTab.HOME,
-                onTabSelected = onNavigateTab
+                onTabSelected = onNavigateTab,
+                wishlistCount = wishlistProductIds.size,
+                cartCount = cartItemCount
             )
         }
     ) { innerPadding ->
@@ -354,7 +363,7 @@ fun HomeScreen(
                                     onClick = { onProductClick(product.productId) },
                                     onAddToCart = { viewModel.addToCart(product.productId) },
                                     onToggleWishlist = { viewModel.toggleWishlist(product.productId) },
-                                    isWishlisted = uiState.wishlistProductIds.contains(product.productId)
+                                    isWishlisted = wishlistProductIds.contains(product.productId)
                                 )
                             }
                         }
@@ -420,7 +429,7 @@ fun HomeScreen(
                                     onClick = { onProductClick(product.productId) },
                                     onAddToCart = { viewModel.addToCart(product.productId) },
                                     onToggleWishlist = { viewModel.toggleWishlist(product.productId) },
-                                    isWishlisted = uiState.wishlistProductIds.contains(product.productId)
+                                    isWishlisted = wishlistProductIds.contains(product.productId)
                                 )
                             }
                         }
@@ -486,7 +495,7 @@ fun HomeScreen(
                                     onClick = { onProductClick(product.productId) },
                                     onAddToCart = { viewModel.addToCart(product.productId) },
                                     onToggleWishlist = { viewModel.toggleWishlist(product.productId) },
-                                    isWishlisted = uiState.wishlistProductIds.contains(product.productId)
+                                    isWishlisted = wishlistProductIds.contains(product.productId)
                                 )
                             }
                         }
@@ -574,9 +583,369 @@ fun HomeScreen(
             }
 
             // ==========================================
-            // 9. BOTTOM SPACING
+            // 9. FESTIVAL OFFERS SECTION
+            // ==========================================
+            val offersUiState = uiState.offersState
+            if (offersUiState !is UiState.Empty) {
+                Spacer(modifier = Modifier.height(28.dp))
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    SectionHeader(
+                        eyebrow = "Limited time deals",
+                        title = "Festival Offers 🎉",
+                        subtitle = "Seasonal savings just for you",
+                        actionText = null,
+                        onActionClick = {},
+                        modifier = Modifier.padding(horizontal = 20.dp)
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                    when (val state = offersUiState) {
+                        is UiState.Loading -> {
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = 20.dp),
+                                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                            ) {
+                                items(3) {
+                                    ShimmerPlaceholder(
+                                        modifier = Modifier.size(width = 220.dp, height = 130.dp),
+                                        shape = RoundedCornerShape(20.dp)
+                                    )
+                                }
+                            }
+                        }
+                        is UiState.Success -> {
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = 20.dp),
+                                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                            ) {
+                                items(state.data, key = { it.offerId }) { offer ->
+                                    FestivalOfferCard(offer = offer)
+                                }
+                            }
+                        }
+                        is UiState.Error -> {
+                            Box(modifier = Modifier.padding(horizontal = 20.dp)) {
+                                SectionErrorView(
+                                    message = state.message,
+                                    onRetry = { viewModel.loadOffers() }
+                                )
+                            }
+                        }
+                        else -> {}
+                    }
+                }
+            }
+
+            // ==========================================
+            // 10. COUPONS SECTION
+            // ==========================================
+            val couponsUiState = uiState.couponsState
+            if (couponsUiState !is UiState.Empty) {
+                Spacer(modifier = Modifier.height(28.dp))
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    SectionHeader(
+                        eyebrow = "Save more today",
+                        title = "Live Coupons 🏷️",
+                        subtitle = "Apply at checkout for instant savings",
+                        actionText = null,
+                        onActionClick = {},
+                        modifier = Modifier.padding(horizontal = 20.dp)
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                    val clipboardManager = LocalClipboardManager.current
+                    when (val state = couponsUiState) {
+                        is UiState.Loading -> {
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = 20.dp),
+                                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                            ) {
+                                items(3) {
+                                    ShimmerPlaceholder(
+                                        modifier = Modifier.size(width = 200.dp, height = 120.dp),
+                                        shape = RoundedCornerShape(20.dp)
+                                    )
+                                }
+                            }
+                        }
+                        is UiState.Success -> {
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = 20.dp),
+                                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                            ) {
+                                items(state.data, key = { it.couponId }) { coupon ->
+                                    CouponCard(
+                                        coupon = coupon,
+                                        onCopyCode = {
+                                            clipboardManager.setText(AnnotatedString(coupon.code))
+                                            viewModel.onCouponCopied(coupon.code)
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                        is UiState.Error -> {
+                            Box(modifier = Modifier.padding(horizontal = 20.dp)) {
+                                SectionErrorView(
+                                    message = state.message,
+                                    onRetry = { viewModel.loadCoupons() }
+                                )
+                            }
+                        }
+                        else -> {}
+                    }
+                }
+            }
+
+            // ==========================================
+            // 11. WHY CHOOSE SHEOMART TRUST BADGES
+            // ==========================================
+            Spacer(modifier = Modifier.height(32.dp))
+            WhyChooseSheoMart()
+
+            // ==========================================
+            // 12. BOTTOM SPACING
             // ==========================================
             Spacer(modifier = Modifier.height(40.dp))
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FESTIVAL OFFER CARD
+// ─────────────────────────────────────────────────────────────────────────────
+@Composable
+private fun FestivalOfferCard(offer: PromotionOffer) {
+    Box(
+        modifier = Modifier
+            .width(220.dp)
+            .height(130.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(
+                        Color(0xFFFF6B35),
+                        Color(0xFFFF8C42)
+                    )
+                )
+            )
+            .border(1.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(20.dp))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Festival name badge
+            offer.festivalName?.let { festival ->
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Color.White.copy(alpha = 0.2f)
+                ) {
+                    Text(
+                        text = "🎊 $festival",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+
+            Column {
+                Text(
+                    text = offer.displayDiscount,
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 26.sp
+                    ),
+                    color = Color.White
+                )
+                Text(
+                    text = offer.title,
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                    color = Color.White.copy(alpha = 0.9f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+
+        // Decorative circle
+        Box(
+            modifier = Modifier
+                .size(80.dp)
+                .align(Alignment.TopEnd)
+                .offset(x = 20.dp, y = (-20).dp)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.1f))
+        )
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COUPON CARD
+// ─────────────────────────────────────────────────────────────────────────────
+@Composable
+private fun CouponCard(
+    coupon: Coupon,
+    onCopyCode: () -> Unit
+) {
+    var copied by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = Modifier
+            .width(200.dp)
+            .wrapContentHeight()
+            .clip(RoundedCornerShape(20.dp))
+            .background(Surface)
+            .border(1.5.dp, Border, RoundedCornerShape(20.dp))
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Discount badge
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = PrimaryGreen.copy(alpha = 0.12f)
+            ) {
+                Text(
+                    text = coupon.displayDiscount,
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.ExtraBold
+                    ),
+                    color = PrimaryGreen,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                )
+            }
+
+            Text(
+                text = coupon.title,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                color = PrimaryText,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            coupon.minOrderText?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                    color = SecondaryText
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Code + Copy row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Dashed code box
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Background
+                ) {
+                    Text(
+                        text = coupon.code,
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        ),
+                        color = PrimaryText,
+                        modifier = Modifier
+                            .border(1.dp, Border, RoundedCornerShape(8.dp))
+                            .padding(horizontal = 8.dp, vertical = 5.dp)
+                    )
+                }
+
+                // Copy button
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = if (copied) PrimaryGreen else PrimaryGreen.copy(alpha = 0.12f),
+                    modifier = Modifier.clickable {
+                        onCopyCode()
+                        copied = true
+                    }
+                ) {
+                    Text(
+                        text = if (copied) "✓ Copied" else "Copy",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp
+                        ),
+                        color = if (copied) Color.White else PrimaryGreen,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WHY CHOOSE SHEOMART
+// ─────────────────────────────────────────────────────────────────────────────
+@Composable
+private fun WhyChooseSheoMart() {
+    val features = listOf(
+        Triple("⚡", "10-min Delivery", "From store to door"),
+        Triple("🔒", "Secure Payments", "100% safe checkout"),
+        Triple("✅", "Verified Stores", "Quality guaranteed"),
+        Triple("🥗", "Fresh Products", "Farm to table daily")
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+    ) {
+        Text(
+            text = "Why Choose SheoMart?",
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            color = PrimaryText
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            features.forEach { (emoji, title, subtitle) ->
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Surface)
+                        .border(1.dp, Border, RoundedCornerShape(16.dp))
+                        .padding(10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(text = emoji, fontSize = 22.sp)
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 10.sp
+                        ),
+                        color = PrimaryText,
+                        textAlign = TextAlign.Center,
+                        maxLines = 2
+                    )
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                        color = SecondaryText,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
         }
     }
 }

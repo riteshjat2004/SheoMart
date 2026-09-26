@@ -33,9 +33,16 @@ class CartRepository(private val tokenStore: SecureTokenStore) {
                     val pName = prodObj?.optString("name", obj.optString("name", "Product")) ?: "Product"
                     val pThumb = (prodObj?.optString("thumbnail") ?: prodObj?.optString("imageUrl", obj.optString("thumbnail", ""))).takeIf { !it.isNullOrBlank() }
                     val pPrice = prodObj?.optDouble("price", obj.optDouble("price", 0.0)) ?: 0.0
-                    val pDiscPrice = if (prodObj != null && prodObj.has("discountPrice")) prodObj.optDouble("discountPrice") else if (obj.has("discountPrice")) obj.optDouble("discountPrice") else null
+                    val pDiscPrice = if (prodObj != null && prodObj.has("discountPrice") && !prodObj.isNull("discountPrice")) prodObj.optDouble("discountPrice")
+                        else if (obj.has("discountPrice") && !obj.isNull("discountPrice")) obj.optDouble("discountPrice") else null
                     val qty = obj.optInt("quantity", 1)
                     val cId = obj.optString("cartItemId", obj.optString("_id", "$pId-$i"))
+
+                    val isAvailable = obj.optBoolean("isAvailable", true)
+                    val availabilityMsg = obj.optString("availabilityMessage", if (isAvailable) "In stock" else "Unavailable")
+                    val maxQty = obj.optInt("maxAvailableQuantity", 99)
+                    val storeBadge = prodObj?.optString("storeBadge", prodObj.optString("badge", "normal")) ?: "normal"
+                    val brand = prodObj?.optString("brand")?.takeIf { it.isNotBlank() }
 
                     itemsList.add(
                         CartItem(
@@ -47,15 +54,24 @@ class CartRepository(private val tokenStore: SecureTokenStore) {
                             discountPrice = pDiscPrice,
                             quantity = qty,
                             storeId = prodObj?.optString("storeId"),
-                            storeName = prodObj?.optString("storeName")
+                            storeName = prodObj?.optString("storeName"),
+                            storeBadge = storeBadge,
+                            brand = brand,
+                            isAvailable = isAvailable,
+                            availabilityMessage = availabilityMsg,
+                            maxAvailableQuantity = maxQty
                         )
                     )
                 }
             }
 
-            val subtotal = itemsList.sumOf { it.totalPrice }
+            val summaryObj = cartObj?.optJSONObject("summary")
+            val subtotal = summaryObj?.optDouble("subtotal", itemsList.sumOf { it.totalPrice }) ?: itemsList.sumOf { it.totalPrice }
+            val estimatedSavings = summaryObj?.optDouble("estimatedSavings", itemsList.sumOf { it.savings }) ?: itemsList.sumOf { it.savings }
+            val hasUnavailable = summaryObj?.optBoolean("hasUnavailableItems", itemsList.any { !it.isAvailable }) ?: itemsList.any { !it.isAvailable }
+
             val platformFee = cartObj?.optDouble("platformFee", 10.0) ?: 10.0
-            val deliveryFee = cartObj?.optDouble("deliveryFee", if (subtotal >= 499.0 || subtotal == 0.0) 0.0 else 40.0) ?: 0.0
+            val deliveryFee = cartObj?.optDouble("deliveryFee", if (subtotal >= 499.0 || subtotal == 0.0) 0.0 else 40.0) ?: (if (subtotal >= 499.0 || subtotal == 0.0) 0.0 else 40.0)
             val discountAmount = cartObj?.optDouble("discountAmount", 0.0) ?: 0.0
             val total = (subtotal + platformFee + deliveryFee - discountAmount).coerceAtLeast(0.0)
 
@@ -67,7 +83,9 @@ class CartRepository(private val tokenStore: SecureTokenStore) {
                 deliveryFee = deliveryFee,
                 discountAmount = discountAmount,
                 totalAmount = total,
-                appliedCouponCode = cartObj?.optString("couponCode")?.takeIf { it.isNotBlank() }
+                appliedCouponCode = cartObj?.optString("couponCode")?.takeIf { it.isNotBlank() },
+                estimatedSavings = estimatedSavings,
+                hasUnavailableItems = hasUnavailable
             )
         }
     }
@@ -77,16 +95,22 @@ class CartRepository(private val tokenStore: SecureTokenStore) {
         runCatching {
             val json = request("/cart", "GET")
             val cartData = json.optJSONObject("data")?.optJSONObject("cart")
-            val cartItems = cartData?.optJSONArray("cartItems") ?: cartData?.optJSONArray("items")
-            cartItems?.length() ?: cartData?.optInt("totalItems", 0) ?: 0
+            val summaryObj = cartData?.optJSONObject("summary")
+            if (summaryObj != null && summaryObj.has("totalItems")) {
+                summaryObj.getInt("totalItems")
+            } else {
+                val cartItems = cartData?.optJSONArray("cartItems") ?: cartData?.optJSONArray("items")
+                cartItems?.length() ?: cartData?.optInt("totalItems", 0) ?: 0
+            }
         }
     }
 
-    suspend fun addCartItem(productId: String, quantity: Int = 1): Result<Boolean> = withContext(Dispatchers.IO) {
+    suspend fun addCartItem(productId: String, quantity: Int = 1, storeId: String? = null): Result<Boolean> = withContext(Dispatchers.IO) {
         runCatching {
             val body = JSONObject().apply {
                 put("productId", productId)
                 put("quantity", quantity)
+                if (!storeId.isNullOrBlank()) put("storeId", storeId)
             }
             request("/cart", "POST", body)
             true

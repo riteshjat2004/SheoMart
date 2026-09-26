@@ -22,13 +22,29 @@ export interface SearchCategorySuggestion {
   image?: string;
 }
 
+export interface SearchPagination {
+  page: number;
+  limit: number;
+  totalProducts: number;
+  totalStores: number;
+  totalCategories: number;
+}
+
 export interface SearchResults {
   products: SearchProductSuggestion[];
   stores: SearchStoreSuggestion[];
   categories: SearchCategorySuggestion[];
+  pagination?: SearchPagination;
 }
 
-export async function fetchSearchResults(query: string): Promise<SearchResults> {
-  const response = await api.get<{ data?: SearchResults }>("/api/v1/search", { params: { q: query } });
+export async function fetchSearchResults(
+  query: string,
+  page: number = 1,
+  limit: number = 8
+): Promise<SearchResults> {
+  const response = await api.get<{ data?: SearchResults }>("/api/v1/search", {
+    params: { q: query, page, limit },
+  });
   return response.data.data ?? { products: [], stores: [], categories: [] };
 }
+

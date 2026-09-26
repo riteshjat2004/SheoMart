@@ -19,7 +19,7 @@ import com.sheomart.mobile.ui.components.*
 import com.sheomart.mobile.ui.theme.*
 
 @Composable
-fun LoginScreen(error: String?, loading: Boolean, onLogin: (String, String) -> Unit, onRegister: () -> Unit) {
+fun LoginScreen(error: String?, loading: Boolean, onLogin: (String, String) -> Unit, onRegister: () -> Unit, onForgotPassword: () -> Unit = {}) {
     var identifier by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var visible by rememberSaveable { mutableStateOf(false) }
@@ -31,7 +31,7 @@ fun LoginScreen(error: String?, loading: Boolean, onLogin: (String, String) -> U
         SheoTextField(identifier, { identifier = it }, "Email or Mobile Number", EmailIcon, "Email or mobile number", Modifier.fillMaxWidth(), keyboardType = KeyboardType.Email, imeAction = ImeAction.Next)
         Spacer(Modifier.height(14.dp))
         SheoTextField(password, { password = it }, "Password", LockIcon, "Password", Modifier.fillMaxWidth(), trailingIcon = { PasswordToggle(visible) { visible = !visible } }, passwordMode = !visible, imeAction = ImeAction.Done)
-        TextButton(onClick = {}, Modifier.align(Alignment.End)) { Text("Forgot Password?", color = PrimaryGreen) }
+        TextButton(onClick = onForgotPassword, Modifier.align(Alignment.End)) { Text("Forgot Password?", color = PrimaryGreen) }
         validation?.let { Text(it, color = Error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth()) }
         Spacer(Modifier.height(8.dp))
         PrimaryButton("Continue", { if (identifier.trim().isEmpty() || password.length < 8) validation = "Enter your email or mobile and an 8-character password" else { validation = null; onLogin(identifier.trim(), password) } }, loading = loading)

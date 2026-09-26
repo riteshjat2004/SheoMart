@@ -1,5 +1,7 @@
 package com.sheomart.mobile.ui.components
 
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -27,7 +29,9 @@ enum class CustomerNavTab(
 @Composable
 fun SheoBottomNavigation(
     currentTab: CustomerNavTab,
-    onTabSelected: (CustomerNavTab) -> Unit
+    onTabSelected: (CustomerNavTab) -> Unit,
+    wishlistCount: Int = 0,
+    cartCount: Int = 0
 ) {
     NavigationBar(
         containerColor = Color.White,
@@ -35,10 +39,37 @@ fun SheoBottomNavigation(
     ) {
         CustomerNavTab.values().forEach { tab ->
             val isSelected = tab == currentTab
+            val badgeCount = when (tab) {
+                CustomerNavTab.WISHLIST -> wishlistCount
+                CustomerNavTab.CART -> cartCount
+                else -> 0
+            }
+
             NavigationBarItem(
                 selected = isSelected,
                 onClick = { onTabSelected(tab) },
-                icon = { Text(text = tab.icon, fontSize = 18.sp) },
+                icon = {
+                    BadgedBox(
+                        badge = {
+                            if (badgeCount > 0) {
+                                Badge(
+                                    containerColor = PrimaryGreen,
+                                    contentColor = Color.White
+                                ) {
+                                    Text(
+                                        text = if (badgeCount > 99) "99+" else badgeCount.toString(),
+                                        fontSize = 10.sp
+                                    )
+                                }
+                            }
+                        }
+                    ) {
+                        Text(
+                            text = if (tab == CustomerNavTab.WISHLIST && (isSelected || wishlistCount > 0)) "❤️" else tab.icon,
+                            fontSize = 18.sp
+                        )
+                    }
+                },
                 label = {
                     Text(
                         text = tab.title,
@@ -56,3 +87,4 @@ fun SheoBottomNavigation(
         }
     }
 }
+

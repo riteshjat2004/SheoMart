@@ -40,6 +40,7 @@ fun CategoryProductsScreen(
 
     val productsState by viewModel.productsState.collectAsState()
     val selectedSort by viewModel.selectedSort.collectAsState()
+    val wishlistProductIds by viewModel.wishlistProductIds.collectAsState()
 
     Scaffold(
         topBar = {
@@ -156,7 +157,8 @@ fun CategoryProductsScreen(
                                         product = item,
                                         onClick = { onProductClick(item.productId) },
                                         onAddToCart = { viewModel.addToCart(item.productId) },
-                                        onToggleWishlist = { viewModel.toggleWishlist(item.productId) }
+                                        onToggleWishlist = { viewModel.toggleWishlist(item.productId) },
+                                        isWishlisted = wishlistProductIds.contains(item.productId)
                                     )
                                 }
                             }

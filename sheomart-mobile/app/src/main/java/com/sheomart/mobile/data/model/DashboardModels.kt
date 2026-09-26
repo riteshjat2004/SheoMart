@@ -25,16 +25,26 @@ data class Coupon(
     val couponId: String,
     val code: String,
     val title: String,
+    val description: String? = null,
     val discountType: String = "percentage",
     val discountValue: Double = 0.0,
+    val minOrderAmount: Double? = null,
     val minimumCartValue: Double = 0.0,
-    val endsAt: String? = null
+    val maxDiscountAmount: Double? = null,
+    val endsAt: String? = null,
+    val expiresAt: String? = null
 ) {
     val displayDiscount: String
-        get() = if (discountType == "percentage") {
-            "${discountValue.toInt()}% OFF"
-        } else {
+        get() = if (discountType.equals("flat", ignoreCase = true)) {
             "₹${discountValue.toInt()} OFF"
+        } else {
+            "${discountValue.toInt()}% OFF"
+        }
+
+    val minOrderText: String?
+        get() {
+            val min = minOrderAmount ?: minimumCartValue.takeIf { it > 0.0 }
+            return min?.let { "Min order ₹${it.toInt()}" }
         }
 }
 

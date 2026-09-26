@@ -8,9 +8,19 @@ package com.sheomart.mobile.navigation
  */
 object Routes {
 
+    // ── Splash / Init ─────────────────────────────────────────────────────
+    const val Splash          = "splash"
+
     // ── Auth ──────────────────────────────────────────────────────────────
-    const val Login    = "login"
-    const val Register = "register"
+    const val Login           = "login"
+    const val Register        = "register"
+    const val ForgotPassword  = "forgot_password"
+    const val OtpVerification = "otp_verification/{email}"
+    const val ResetPassword   = "reset_password/{email}/{resetToken}"
+
+    fun otpVerification(email: String) = "otp_verification/${java.net.URLEncoder.encode(email, "UTF-8")}"
+    fun resetPassword(email: String, resetToken: String) =
+        "reset_password/${java.net.URLEncoder.encode(email, "UTF-8")}/${java.net.URLEncoder.encode(resetToken, "UTF-8")}"
 
     // ── Main customer tabs ─────────────────────────────────────────────────
     const val Home     = "home"

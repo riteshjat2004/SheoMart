@@ -18,6 +18,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.sheomart.mobile.auth.AuthState
+import com.sheomart.mobile.data.model.UserRoles
 import com.sheomart.mobile.data.repository.*
 import com.sheomart.mobile.ui.addresses.AddressesScreen
 import com.sheomart.mobile.ui.addresses.AddressesViewModel
@@ -39,7 +40,14 @@ import com.sheomart.mobile.ui.admin.users.AdminUsersScreen
 import com.sheomart.mobile.ui.admin.users.AdminUsersViewModel
 import com.sheomart.mobile.ui.auth.LoginScreen
 import com.sheomart.mobile.ui.auth.RegisterScreen
+import com.sheomart.mobile.ui.auth.ForgotPasswordScreen
+import com.sheomart.mobile.ui.auth.ForgotPasswordViewModel
+import com.sheomart.mobile.ui.auth.OtpVerificationScreen
+import com.sheomart.mobile.ui.auth.ResetPasswordScreen
+import com.sheomart.mobile.ui.splash.AppInitializationScreen
+import com.sheomart.mobile.ui.splash.AppInitViewModel
 import com.sheomart.mobile.ui.cart.CartScreen
+import com.sheomart.mobile.ui.cart.CartStateHolder
 import com.sheomart.mobile.ui.cart.CartViewModel
 import com.sheomart.mobile.ui.category.CategoryProductsScreen
 import com.sheomart.mobile.ui.category.CategoryProductsViewModel
@@ -73,6 +81,7 @@ import com.sheomart.mobile.ui.theme.Background
 import com.sheomart.mobile.ui.theme.PrimaryGreen
 import com.sheomart.mobile.ui.theme.SecondaryText
 import com.sheomart.mobile.ui.wishlist.WishlistScreen
+import com.sheomart.mobile.ui.wishlist.WishlistStateHolder
 import com.sheomart.mobile.ui.wishlist.WishlistViewModel
 import com.sheomart.mobile.utils.SecureTokenStore
 
@@ -91,23 +100,33 @@ fun AppNavigation(auth: AuthState) {
     val wishlistRepository = remember { WishlistRepository(tokenStore) }
     val ordersRepository = remember { OrdersRepository(tokenStore) }
     val addressesRepository = remember { AddressesRepository(tokenStore) }
+    val promotionsRepository = remember { PromotionsRepository(tokenStore) }
     val userRepository = remember { UserRepository(tokenStore) }
     val sellerRepository = remember { SellerRepository(tokenStore) }
     val adminRepository = remember { AdminRepository(tokenStore) }
+    val authRepository = remember { AuthRepository(tokenStore) }
+
+    // Auth & Init ViewModels
+    val forgotPasswordViewModel = remember { ForgotPasswordViewModel(authRepository) }
+    val appInitViewModel = remember { AppInitViewModel(context, auth) }
+
+    // Shared Wishlist & Cart State Holders (Single Sources of Truth)
+    val wishlistStateHolder = remember { WishlistStateHolder(wishlistRepository) }
+    val cartStateHolder = remember { CartStateHolder(cartRepository) }
 
     // Customer ViewModels
-    val homeViewModel = remember { HomeViewModel(homeRepository) }
+    val homeViewModel = remember { HomeViewModel(homeRepository, wishlistStateHolder, cartStateHolder) }
     val dashboardViewModel = remember { DashboardViewModel(dashboardRepository) }
     val searchViewModel = remember { SearchViewModel(productRepository) }
-    val cartViewModel = remember { CartViewModel(cartRepository) }
-    val wishlistViewModel = remember { WishlistViewModel(wishlistRepository, cartRepository) }
+    val cartViewModel = remember { CartViewModel(cartStateHolder, addressesRepository, promotionsRepository, wishlistStateHolder) }
+    val wishlistViewModel = remember { WishlistViewModel(wishlistStateHolder, cartRepository, cartStateHolder) }
     val ordersViewModel = remember { OrdersViewModel(ordersRepository) }
     val addressesViewModel = remember { AddressesViewModel(addressesRepository) }
     val notificationsViewModel = remember { NotificationsViewModel() }
     val editProfileViewModel = remember { EditProfileViewModel(userRepository) }
     val checkoutViewModel = remember { CheckoutViewModel(cartRepository, addressesRepository, ordersRepository) }
-    val productDetailViewModel = remember { ProductDetailViewModel(productRepository, cartRepository, wishlistRepository) }
-    val categoryProductsViewModel = remember { CategoryProductsViewModel(productRepository, cartRepository, wishlistRepository) }
+    val productDetailViewModel = remember { ProductDetailViewModel(productRepository, cartRepository, wishlistStateHolder, cartStateHolder) }
+    val categoryProductsViewModel = remember { CategoryProductsViewModel(productRepository, cartRepository, wishlistStateHolder, cartStateHolder) }
 
     // Seller ViewModels
     val sellerDashboardViewModel = remember { SellerDashboardViewModel(sellerRepository) }
@@ -125,17 +144,6 @@ fun AppNavigation(auth: AuthState) {
     val adminAnalyticsViewModel = remember { AdminAnalyticsViewModel(adminRepository) }
     val adminSettingsViewModel = remember { AdminSettingsViewModel(adminRepository) }
 
-    LaunchedEffect(Unit) { auth.restore(scope) }
-
-    if (auth.loading && auth.user == null) return
-
-    val start = when {
-        auth.user == null -> Routes.Login
-        auth.user?.role.equals("platform_admin", ignoreCase = true) -> Routes.AdminDashboard
-        auth.user?.role.equals("store_owner", ignoreCase = true) -> Routes.SellerDashboard
-        else -> Routes.Home
-    }
-
     val navigateToTab: (CustomerNavTab) -> Unit = { tab ->
         navController.navigate(tab.route) {
             popUpTo(Routes.Home) {
@@ -146,7 +154,22 @@ fun AppNavigation(auth: AuthState) {
         }
     }
 
-    NavHost(navController = navController, startDestination = start) {
+    NavHost(navController = navController, startDestination = Routes.Splash) {
+        // ==========================================
+        // SPLASH / INITIALIZATION
+        // ==========================================
+
+        composable(Routes.Splash) {
+            AppInitializationScreen(
+                viewModel = appInitViewModel,
+                onInitialized = { destination ->
+                    navController.navigate(destination) {
+                        popUpTo(Routes.Splash) { inclusive = true }
+                    }
+                }
+            )
+        }
+
         // ==========================================
         // AUTHENTICATION
         // ==========================================
@@ -156,18 +179,15 @@ fun AppNavigation(auth: AuthState) {
                 error = auth.error,
                 loading = auth.loading,
                 onLogin = { identifier, password ->
-                    auth.login(scope, identifier, password) {
-                        val destination = when {
-                            auth.user?.role.equals("platform_admin", ignoreCase = true) -> Routes.AdminDashboard
-                            auth.user?.role.equals("store_owner", ignoreCase = true) -> Routes.SellerDashboard
-                            else -> Routes.Home
-                        }
+                    auth.login(scope, identifier, password) { user ->
+                        val destination = UserRoles.getDashboardRoute(user.role)
                         navController.navigate(destination) {
                             popUpTo(Routes.Login) { inclusive = true }
                         }
                     }
                 },
                 onRegister = { navController.navigate(Routes.Register) },
+                onForgotPassword = { navController.navigate(Routes.ForgotPassword) },
             )
         }
 
@@ -176,8 +196,9 @@ fun AppNavigation(auth: AuthState) {
                 error = auth.error,
                 loading = auth.loading,
                 onRegister = { request ->
-                    auth.register(scope, request) {
-                        navController.navigate(Routes.Home) {
+                    auth.register(scope, request) { user ->
+                        val destination = UserRoles.getDashboardRoute(user.role)
+                        navController.navigate(destination) {
                             popUpTo(Routes.Register) { inclusive = true }
                         }
                     }
@@ -186,11 +207,86 @@ fun AppNavigation(auth: AuthState) {
             )
         }
 
+        // ── Forgot-password flow ───────────────────────────────────────────────
+
+        composable(Routes.ForgotPassword) {
+            ForgotPasswordScreen(
+                loading = forgotPasswordViewModel.loading,
+                error = forgotPasswordViewModel.error,
+                onSendOtp = { email ->
+                    forgotPasswordViewModel.sendOtp(email) {
+                        navController.navigate(Routes.otpVerification(email))
+                    }
+                },
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(
+            route = Routes.OtpVerification,
+            arguments = listOf(navArgument("email") { type = NavType.StringType }),
+        ) { backStack ->
+            val email = java.net.URLDecoder.decode(
+                backStack.arguments?.getString("email") ?: "", "UTF-8"
+            )
+            OtpVerificationScreen(
+                email = email,
+                loading = forgotPasswordViewModel.loading,
+                error = forgotPasswordViewModel.error,
+                onVerify = { otp ->
+                    forgotPasswordViewModel.verifyOtp(email, otp) {
+                        navController.navigate(Routes.resetPassword(email, forgotPasswordViewModel.resetToken))
+                    }
+                },
+                onResend = { forgotPasswordViewModel.resendOtp(email) },
+                onBack = { navController.popBackStack() },
+            )
+        }
+
+        composable(
+            route = Routes.ResetPassword,
+            arguments = listOf(
+                navArgument("email") { type = NavType.StringType },
+                navArgument("resetToken") { type = NavType.StringType },
+            ),
+        ) { backStack ->
+            val email = java.net.URLDecoder.decode(
+                backStack.arguments?.getString("email") ?: "", "UTF-8"
+            )
+            ResetPasswordScreen(
+                loading = forgotPasswordViewModel.loading,
+                error = forgotPasswordViewModel.error,
+                onReset = { newPassword, confirmPassword ->
+                    forgotPasswordViewModel.resetPassword(email, newPassword, confirmPassword) {
+                        // Success — navigate back to login, clearing the whole forgot-password stack
+                        navController.navigate(Routes.Login) {
+                            popUpTo(Routes.Login) { inclusive = false }
+                        }
+                    }
+                },
+                onBack = { navController.popBackStack() },
+            )
+        }
+
         // ==========================================
         // 5 MAIN CUSTOMER TABS
         // ==========================================
 
         composable(Routes.Home) {
+            LaunchedEffect(auth.user) {
+                auth.user?.let { user ->
+                    if (UserRoles.isPlatformAdmin(user.role)) {
+                        navController.navigate(Routes.AdminDashboard) {
+                            popUpTo(Routes.Home) { inclusive = true }
+                        }
+                    } else if (UserRoles.isStoreOwner(user.role)) {
+                        navController.navigate(Routes.SellerDashboard) {
+                            popUpTo(Routes.Home) { inclusive = true }
+                        }
+                    }
+                }
+            }
+
             HomeScreen(
                 user = auth.user,
                 viewModel = homeViewModel,
@@ -249,7 +345,7 @@ fun AppNavigation(auth: AuthState) {
                 onExploreClick = { navigateToTab(CustomerNavTab.EXPLORE) },
                 onLogout = {
                     auth.logout()
-                    navController.navigate(Routes.Login) { popUpTo(0) }
+                    navController.navigate(Routes.Login) { popUpTo(0) { inclusive = true } }
                 }
             )
         }
@@ -378,6 +474,23 @@ fun AppNavigation(auth: AuthState) {
         // ==========================================
 
         composable(Routes.SellerDashboard) {
+            LaunchedEffect(auth.user) {
+                val user = auth.user
+                if (user == null) {
+                    navController.navigate(Routes.Login) { popUpTo(0) { inclusive = true } }
+                } else if (UserRoles.isPlatformAdmin(user.role)) {
+                    navController.navigate(Routes.AdminDashboard) {
+                        popUpTo(Routes.SellerDashboard) { inclusive = true }
+                    }
+                } else if (UserRoles.isCustomer(user.role)) {
+                    navController.navigate(Routes.Home) {
+                        popUpTo(Routes.SellerDashboard) { inclusive = true }
+                    }
+                } else {
+                    sellerDashboardViewModel.loadDashboard()
+                }
+            }
+
             SellerDashboardScreen(
                 user = auth.user,
                 viewModel = sellerDashboardViewModel,
@@ -386,7 +499,7 @@ fun AppNavigation(auth: AuthState) {
                 onNavigateInventory = { navController.navigate(Routes.SellerInventory) },
                 onLogout = {
                     auth.logout()
-                    navController.navigate(Routes.Login) { popUpTo(0) }
+                    navController.navigate(Routes.Login) { popUpTo(0) { inclusive = true } }
                 }
             )
         }
@@ -417,6 +530,23 @@ fun AppNavigation(auth: AuthState) {
         // ==========================================
 
         composable(Routes.AdminDashboard) {
+            LaunchedEffect(auth.user) {
+                val user = auth.user
+                if (user == null) {
+                    navController.navigate(Routes.Login) { popUpTo(0) { inclusive = true } }
+                } else if (UserRoles.isStoreOwner(user.role)) {
+                    navController.navigate(Routes.SellerDashboard) {
+                        popUpTo(Routes.AdminDashboard) { inclusive = true }
+                    }
+                } else if (UserRoles.isCustomer(user.role)) {
+                    navController.navigate(Routes.Home) {
+                        popUpTo(Routes.AdminDashboard) { inclusive = true }
+                    }
+                } else {
+                    adminDashboardViewModel.loadDashboard()
+                }
+            }
+
             AdminDashboardScreen(
                 user = auth.user,
                 viewModel = adminDashboardViewModel,
@@ -436,7 +566,7 @@ fun AppNavigation(auth: AuthState) {
                 onNavigateSettings = { navController.navigate(Routes.AdminSettings) },
                 onLogout = {
                     auth.logout()
-                    navController.navigate(Routes.Login) { popUpTo(0) }
+                    navController.navigate(Routes.Login) { popUpTo(0) { inclusive = true } }
                 }
             )
         }

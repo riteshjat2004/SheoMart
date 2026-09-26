@@ -117,11 +117,16 @@ class ProductRepository(private val tokenStore: SecureTokenStore? = null) {
             }
         }
 
-    suspend fun search(query: String): Result<SearchResults> = withContext(Dispatchers.IO) {
+    suspend fun search(query: String, page: Int? = null, limit: Int? = null): Result<SearchResults> = withContext(Dispatchers.IO) {
         runCatching {
             val q = URLEncoder.encode(query.trim(), "UTF-8")
-            val json = request("/search?q=$q", "GET")
-            val data = json.getJSONObject("data")
+            val params = mutableListOf("q=$q")
+            if (page != null && page > 0) params.add("page=$page")
+            if (limit != null && limit > 0) params.add("limit=$limit")
+            val queryString = "?${params.joinToString("&")}"
+
+            val json = request("/search$queryString", "GET")
+            val data = json.optJSONObject("data") ?: JSONObject()
 
             val products = mutableListOf<SearchProductItem>()
             val prodArr = data.optJSONArray("products")
@@ -173,6 +178,33 @@ class ProductRepository(private val tokenStore: SecureTokenStore? = null) {
             }
 
             SearchResults(products, stores, categories)
+        }
+    }
+
+    suspend fun submitProductReview(
+        productId: String,
+        rating: Int,
+        title: String? = null,
+        comment: String? = null
+    ): Result<ProductReviewItem> = withContext(Dispatchers.IO) {
+        runCatching {
+            val body = JSONObject().apply {
+                put("rating", rating.coerceIn(1, 5))
+                if (!title.isNullOrBlank()) put("title", title.trim())
+                if (!comment.isNullOrBlank()) put("comment", comment.trim())
+                put("isVerifiedPurchase", true)
+            }
+            val json = request("/products/$productId/reviews", "POST", body)
+            val revObj = json.optJSONObject("data")?.optJSONObject("review") ?: json.optJSONObject("data") ?: JSONObject()
+            val userObj = revObj.optJSONObject("user") ?: revObj.optJSONObject("userId")
+
+            ProductReviewItem(
+                reviewId = revObj.optString("reviewId", revObj.optString("_id", System.currentTimeMillis().toString())),
+                rating = revObj.optInt("rating", rating),
+                comment = revObj.optString("comment", comment ?: "").takeIf { it.isNotBlank() },
+                userName = userObj?.optString("name", "You") ?: "You",
+                createdAt = revObj.optString("createdAt", "Just now")
+            )
         }
     }
 
