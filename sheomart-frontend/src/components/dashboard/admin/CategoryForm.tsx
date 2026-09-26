@@ -22,7 +22,7 @@ function getImageUrl(image: unknown) {
 }
 
 interface CategoryFormProps {
-  initialValues?: Partial<CategoryFormValues>;
+  initialValues?: Partial<Omit<CategoryFormValues, "image"> & { image?: string | { url: string; publicId: string } }>;
   onSubmit: (values: CategoryFormValues) => void;
 }
 

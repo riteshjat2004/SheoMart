@@ -9,6 +9,8 @@ import {
   protectedStoreUpdateFields,
   updateStoreBadgeSchema,
   updateStoreSchema,
+  updateStoreStatusSchema,
+  bulkStoreStatusSchema,
 } from "../validators/store.validator";
 
 export const createStore = async (
@@ -124,14 +126,56 @@ export const updateStoreStatus = async (
   res: Response
 ): Promise<void> => {
   const storeId = Array.isArray(req.params.storeId) ? req.params.storeId[0] : req.params.storeId;
+  const result = updateStoreStatusSchema.safeParse(req.body);
+
+  if (!result.success) {
+    const message = result.error.issues[0]?.message || "Invalid store status payload";
+    throw new AppError(message, 400);
+  }
+
   const store = await StoreService.updateStoreStatus(
     storeId,
-    req.body.status,
+    result.data.status,
     req.user?.userId
   );
 
   res.status(200).json(
     new ApiResponse(true, "Store status updated successfully", { store })
+  );
+};
+
+export const deleteStore = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const storeId = Array.isArray(req.params.storeId) ? req.params.storeId[0] : req.params.storeId;
+  const store = await StoreService.deleteStore(storeId);
+
+  res.status(200).json(
+    new ApiResponse(true, "Store deleted successfully", { store })
+  );
+};
+
+export const bulkUpdateStoreStatus = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const result = bulkStoreStatusSchema.safeParse(req.body);
+
+  if (!result.success) {
+    const message = result.error.issues[0]?.message || "Invalid bulk store status payload";
+    throw new AppError(message, 400);
+  }
+
+  const { storeIds, status } = result.data;
+  const outcome = await StoreService.bulkUpdateStatus(
+    storeIds,
+    status,
+    req.user?.userId
+  );
+
+  res.status(200).json(
+    new ApiResponse(true, `Bulk store update successful (${outcome.modifiedCount} stores updated)`, outcome)
   );
 };
 

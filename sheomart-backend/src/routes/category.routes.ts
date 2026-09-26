@@ -3,8 +3,10 @@ import {
   createCategory,
   createBulkCategories,
   deleteCategory,
+  getAdminCategories,
   getCategories,
   getCategoryById,
+  restoreCategory,
   updateCategory,
   updateCategoryStatus,
 } from "../controllers/category.controller";
@@ -16,6 +18,12 @@ import { uploadProductImage } from "../middleware/upload.middleware";
 
 const router = Router();
 
+router.get(
+  "/admin",
+  authenticate,
+  authorize(USER_ROLES.PLATFORM_ADMIN),
+  asyncHandler(getAdminCategories)
+);
 router.get("/", asyncHandler(getCategories));
 router.get("/:categoryId", asyncHandler(getCategoryById));
 
@@ -44,6 +52,12 @@ router.delete(
   authenticate,
   authorize(USER_ROLES.PLATFORM_ADMIN),
   asyncHandler(deleteCategory)
+);
+router.patch(
+  "/:categoryId/restore",
+  authenticate,
+  authorize(USER_ROLES.PLATFORM_ADMIN),
+  asyncHandler(restoreCategory)
 );
 router.patch(
   "/:categoryId/status",

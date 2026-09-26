@@ -5,10 +5,15 @@ export interface CategoryItem {
   slug?: string;
   description?: string;
   icon?: string;
-  image?: string;
+  image?: string | { url: string; publicId: string };
   isActive?: boolean;
+  isDeleted?: boolean;
+  productCount?: number;
+  activeProductCount?: number;
   parentCategory?: string | null;
   sortOrder?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ProductItem {
@@ -36,7 +41,13 @@ export interface ProductItem {
   updatedAt?: string;
   isActive?: boolean;
   isPublished?: boolean;
+  isDeleted?: boolean;
+  isFeatured?: boolean;
+  isBestseller?: boolean;
+  isTrending?: boolean;
+  inventoryStatus?: string;
   category?: string;
+  store?: string;
 }
 
 export interface CartItem {
@@ -59,6 +70,7 @@ export type StoreBadge = "normal" | "verified" | "royal";
 export interface StoreItem {
   _id?: string;
   storeId?: string;
+  ownerId?: string;
   name?: string;
   storeName?: string;
   description?: string;
@@ -93,6 +105,21 @@ export interface StoreItem {
   status?: string;
   isVerified?: boolean;
   isActive?: boolean;
+  isDeleted?: boolean;
+  approvedAt?: string | null;
+  approvedBy?: string | null;
+  seller?: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    registeredAt?: string;
+  } | null;
+  stats?: {
+    totalProducts: number;
+    activeProducts: number;
+    outOfStockProducts: number;
+    totalCategories: number;
+  };
   createdAt?: string;
   updatedAt?: string;
 }

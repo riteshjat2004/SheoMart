@@ -3,6 +3,7 @@ import { STORE_STATUS, StoreStatus } from "../constants/store";
 import { USER_ROLES } from "../constants/roles";
 import { Store, STORE_BADGE } from "../models/store.model";
 import { User } from "../models/user.model";
+import { Product } from "../models/product.model";
 import { allowedStoreUpdateFields } from "../validators/store.validator";
 
 interface StoreCreateInput {
@@ -164,17 +165,49 @@ export class StoreService {
   }
 
   static async getStoreById(storeId: string) {
-    const store = await Store.findOne({ storeId });
+    const store = await Store.findOne({ storeId, isDeleted: { $ne: true } });
 
     if (!store) {
       throw new AppError("Store not found", 404);
     }
 
-    return StoreService.toFulfillmentResponse(store.toObject(), true) as unknown as typeof store;
+    const fulfillment = StoreService.toFulfillmentResponse(store.toObject(), true);
+    const owner = await User.findOne({ userId: store.ownerId })
+      .select("userId name email mobile createdAt")
+      .lean();
+
+    const [totalProducts, activeProducts, outOfStockProducts, categories] = await Promise.all([
+      Product.countDocuments({ storeId }),
+      Product.countDocuments({ storeId, isActive: true, isPublished: true }),
+      Product.countDocuments({ storeId, quantity: 0 }),
+      Product.distinct("categoryId", { storeId }),
+    ]);
+
+    return {
+      ...fulfillment,
+      seller: owner
+        ? {
+            name: owner.name,
+            email: owner.email,
+            phone: owner.mobile,
+            registeredAt: owner.createdAt,
+          }
+        : null,
+      stats: {
+        totalProducts,
+        activeProducts,
+        outOfStockProducts,
+        totalCategories: categories.length,
+      },
+    };
   }
 
   static async getAllStores(location?: { pincode?: string; city?: string; state?: string }) {
-    const stores = await Store.find({ status: STORE_STATUS.APPROVED })
+    const stores = await Store.find({
+      status: { $in: [STORE_STATUS.APPROVED, STORE_STATUS.ACTIVE] },
+      isActive: { $ne: false },
+      isDeleted: { $ne: true },
+    })
       .sort({ createdAt: -1 })
       .lean();
     const pincode = location?.pincode?.trim().toLowerCase();
@@ -186,8 +219,78 @@ export class StoreService {
   }
 
   static async getAdminStores() {
-    const stores = await Store.find({}).sort({ createdAt: -1 }).lean();
-    return stores.map((store) => StoreService.toFulfillmentResponse(store, true));
+    const stores = await Store.find({ isDeleted: { $ne: true } }).sort({ createdAt: -1 }).lean();
+
+    const ownerIds = Array.from(new Set(stores.map((s) => s.ownerId).filter(Boolean)));
+    const owners = await User.find({ userId: { $in: ownerIds } })
+      .select("userId name email mobile createdAt")
+      .lean();
+    const ownerMap = new Map(owners.map((o) => [o.userId, o]));
+
+    const productStats = await Product.aggregate([
+      {
+        $group: {
+          _id: "$storeId",
+          totalProducts: { $sum: 1 },
+          activeProducts: {
+            $sum: {
+              $cond: [
+                { $and: [{ $eq: ["$isActive", true] }, { $eq: ["$isPublished", true] }] },
+                1,
+                0,
+              ],
+            },
+          },
+          outOfStockProducts: {
+            $sum: {
+              $cond: [{ $eq: ["$quantity", 0] }, 1, 0],
+            },
+          },
+          categories: { $addToSet: "$categoryId" },
+        },
+      },
+    ]);
+
+    const statsMap = new Map(
+      productStats.map((stat) => [
+        stat._id,
+        {
+          totalProducts: stat.totalProducts,
+          activeProducts: stat.activeProducts,
+          outOfStockProducts: stat.outOfStockProducts,
+          totalCategories: stat.categories ? stat.categories.length : 0,
+        },
+      ])
+    );
+
+    return stores.map((store) => {
+      const fulfillment = StoreService.toFulfillmentResponse(store, true);
+      const owner = ownerMap.get(store.ownerId);
+      const stats = statsMap.get(store.storeId) || {
+        totalProducts: 0,
+        activeProducts: 0,
+        outOfStockProducts: 0,
+        totalCategories: 0,
+      };
+
+      return {
+        ...fulfillment,
+        isActive:
+          typeof store.isActive === "boolean"
+            ? store.isActive
+            : store.status === STORE_STATUS.APPROVED || store.status === STORE_STATUS.ACTIVE,
+        isDeleted: store.isDeleted === true,
+        seller: owner
+          ? {
+              name: owner.name,
+              email: owner.email,
+              phone: owner.mobile,
+              registeredAt: owner.createdAt,
+            }
+          : null,
+        stats,
+      };
+    });
   }
 
   static async updateStoreBadge(storeId: string, badge: STORE_BADGE) {
@@ -216,21 +319,28 @@ export class StoreService {
       throw new AppError("Store not found", 404);
     }
 
-    if (status === STORE_STATUS.APPROVED) {
-      store.status = STORE_STATUS.APPROVED;
-      store.approvedAt = new Date();
-      store.approvedBy = adminUserId ?? null;
+    const newStatus = status as StoreStatus;
+    store.status = newStatus;
+
+    if (newStatus === STORE_STATUS.APPROVED || newStatus === STORE_STATUS.ACTIVE) {
+      store.isActive = true;
+      store.isDeleted = false;
+      store.approvedAt = store.approvedAt ?? new Date();
+      store.approvedBy = store.approvedBy ?? (adminUserId ?? null);
 
       const owner = await User.findOne({ userId: store.ownerId });
-
-      if (!owner) {
-        throw new AppError("Store owner not found", 404);
+      if (owner) {
+        owner.role = USER_ROLES.STORE_OWNER;
+        await owner.save();
       }
-
-      owner.role = USER_ROLES.STORE_OWNER;
-      await owner.save();
-    } else {
-      store.status = status as StoreStatus;
+    } else if (newStatus === STORE_STATUS.INACTIVE || newStatus === STORE_STATUS.SUSPENDED) {
+      store.isActive = false;
+    } else if (newStatus === STORE_STATUS.REJECTED) {
+      store.isActive = false;
+      store.approvedAt = null;
+      store.approvedBy = null;
+    } else if (newStatus === STORE_STATUS.PENDING) {
+      store.isActive = false;
       store.approvedAt = null;
       store.approvedBy = null;
     }
@@ -239,4 +349,66 @@ export class StoreService {
 
     return store;
   }
+
+  static async deleteStore(storeId: string) {
+    const store = await Store.findOne({ storeId });
+
+    if (!store) {
+      throw new AppError("Store not found", 404);
+    }
+
+    store.isDeleted = true;
+    store.isActive = false;
+    store.status = STORE_STATUS.INACTIVE;
+    await store.save();
+
+    return store;
+  }
+
+  static async bulkUpdateStatus(storeIds: string[], status: string, adminUserId?: string) {
+    if (status === "delete") {
+      const result = await Store.updateMany(
+        { storeId: { $in: storeIds } },
+        { $set: { isDeleted: true, isActive: false, status: STORE_STATUS.INACTIVE } }
+      );
+      return { modifiedCount: result.modifiedCount };
+    }
+
+    const allowedStatuses = Object.values(STORE_STATUS);
+    if (!allowedStatuses.includes(status as StoreStatus)) {
+      throw new AppError("Invalid store status", 400);
+    }
+
+    const newStatus = status as StoreStatus;
+    const isActivating = newStatus === STORE_STATUS.APPROVED || newStatus === STORE_STATUS.ACTIVE;
+
+    const updateFields: Record<string, unknown> = {
+      status: newStatus,
+      isActive: isActivating,
+    };
+
+    if (isActivating) {
+      updateFields.isDeleted = false;
+      updateFields.approvedAt = new Date();
+      updateFields.approvedBy = adminUserId ?? null;
+
+      const stores = await Store.find({ storeId: { $in: storeIds } }).select("ownerId");
+      const ownerIds = Array.from(new Set(stores.map((s) => s.ownerId).filter(Boolean)));
+      await User.updateMany(
+        { userId: { $in: ownerIds } },
+        { $set: { role: USER_ROLES.STORE_OWNER } }
+      );
+    } else if (newStatus === STORE_STATUS.REJECTED || newStatus === STORE_STATUS.PENDING) {
+      updateFields.approvedAt = null;
+      updateFields.approvedBy = null;
+    }
+
+    const result = await Store.updateMany(
+      { storeId: { $in: storeIds } },
+      { $set: updateFields }
+    );
+
+    return { modifiedCount: result.modifiedCount };
+  }
 }
+

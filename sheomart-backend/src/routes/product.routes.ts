@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   addImages,
+  bulkProductAction,
   createBulkProducts,
   createProduct,
   deleteProduct,
@@ -9,6 +10,7 @@ import {
   getProductById,
   getProducts,
   removeImage,
+  restoreProduct,
   updateProduct,
   updateProductStatus,
   updateThumbnail,
@@ -27,6 +29,12 @@ router.get(
   authorize(USER_ROLES.PLATFORM_ADMIN),
   asyncHandler(getAdminProducts)
 );
+router.post(
+  "/admin/bulk-action",
+  authenticate,
+  authorize(USER_ROLES.PLATFORM_ADMIN),
+  asyncHandler(bulkProductAction)
+);
 router.get("/", asyncHandler(getProducts));
 router.get(
   "/me",
@@ -39,33 +47,39 @@ router.get("/:productId", asyncHandler(getProductById));
 router.post(
   "/bulk",
   authenticate,
-  authorize(USER_ROLES.STORE_OWNER),
+  authorize(USER_ROLES.STORE_OWNER, USER_ROLES.PLATFORM_ADMIN),
   asyncHandler(createBulkProducts)
 );
 router.post(
   "/",
   authenticate,
-  authorize(USER_ROLES.STORE_OWNER),
+  authorize(USER_ROLES.STORE_OWNER, USER_ROLES.PLATFORM_ADMIN),
   uploadProductImage,
   asyncHandler(createProduct)
 );
 router.patch(
   "/:productId",
   authenticate,
-  authorize(USER_ROLES.STORE_OWNER),
+  authorize(USER_ROLES.STORE_OWNER, USER_ROLES.PLATFORM_ADMIN),
   uploadProductImage,
   asyncHandler(updateProduct)
 );
 router.delete(
   "/:productId",
   authenticate,
-  authorize(USER_ROLES.STORE_OWNER),
+  authorize(USER_ROLES.STORE_OWNER, USER_ROLES.PLATFORM_ADMIN),
   asyncHandler(deleteProduct)
+);
+router.patch(
+  "/:productId/restore",
+  authenticate,
+  authorize(USER_ROLES.STORE_OWNER, USER_ROLES.PLATFORM_ADMIN),
+  asyncHandler(restoreProduct)
 );
 router.patch(
   "/:productId/status",
   authenticate,
-  authorize(USER_ROLES.STORE_OWNER),
+  authorize(USER_ROLES.STORE_OWNER, USER_ROLES.PLATFORM_ADMIN),
   asyncHandler(updateProductStatus)
 );
 router.post(

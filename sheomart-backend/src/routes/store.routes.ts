@@ -8,6 +8,8 @@ import {
   updateMyStore,
   updateStoreBadge,
   updateStoreStatus,
+  deleteStore,
+  bulkUpdateStoreStatus,
   getPlusMembers,
   createPlusMember,
   deletePlusMember,
@@ -43,12 +45,24 @@ router.get(
   authorize(USER_ROLES.PLATFORM_ADMIN),
   asyncHandler(getAdminStores)
 );
+router.post(
+  "/admin/bulk-status",
+  authenticate,
+  authorize(USER_ROLES.PLATFORM_ADMIN),
+  asyncHandler(bulkUpdateStoreStatus)
+);
 router.get("/", asyncHandler(getAllStores));
 router.patch(
   "/:storeId/badge",
   authenticate,
   authorize(USER_ROLES.PLATFORM_ADMIN),
   asyncHandler(updateStoreBadge)
+);
+router.delete(
+  "/:storeId",
+  authenticate,
+  authorize(USER_ROLES.PLATFORM_ADMIN),
+  asyncHandler(deleteStore)
 );
 router.get("/:storeId", asyncHandler(getStoreById));
 router.get("/:storeId/plus-members", authenticate, authorize(USER_ROLES.STORE_OWNER), asyncHandler(getPlusMembers));

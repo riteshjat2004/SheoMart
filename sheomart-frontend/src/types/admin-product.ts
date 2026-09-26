@@ -10,14 +10,29 @@ export interface AdminProduct {
   price: number;
   discountPrice: number;
   thumbnail: string;
+  images?: string[];
+  description?: string;
   isActive: boolean;
   isPublished: boolean;
+  isDeleted?: boolean;
+  isFeatured?: boolean;
+  isBestseller?: boolean;
+  isTrending?: boolean;
   quantity: number;
   inventoryStatus: AdminProductInventoryStatus;
   category: Pick<CategoryItem, "categoryId" | "name"> | null;
   store: Pick<StoreItem, "storeId" | "storeName" | "status"> | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface AdminProductStats {
+  total: number;
+  active: number;
+  draft: number;
+  outOfStock: number;
+  featured: number;
+  deleted: number;
 }
 
 export interface AdminProductPagination {
@@ -29,6 +44,7 @@ export interface AdminProductPagination {
 
 export interface AdminProductListResponse {
   products: AdminProduct[];
+  stats?: AdminProductStats;
   pagination: AdminProductPagination;
 }
 
@@ -36,8 +52,13 @@ export interface AdminProductFilters {
   search?: string;
   storeId?: string;
   categoryId?: string;
+  status?: string;
   isActive?: boolean;
   isPublished?: boolean;
+  isDeleted?: boolean;
+  isFeatured?: boolean;
+  minPrice?: number;
+  maxPrice?: number;
   inventoryStatus?: AdminProductInventoryStatus;
   page: number;
   limit: number;

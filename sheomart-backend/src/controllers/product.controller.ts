@@ -7,6 +7,7 @@ import {
   addImagesSchema,
   adminProductListQuerySchema,
   bulkCreateProductSchema,
+  bulkProductActionSchema,
   createProductSchema,
   removeImageSchema,
   updateProductSchema,
@@ -73,7 +74,7 @@ export const createProduct = async (
     throw new AppError(message, 400);
   }
 
-  const product = await ProductService.createProduct(result.data, req.user?.userId as string, req.file?.buffer);
+  const product = await ProductService.createProduct(result.data, req.user?.userId as string, req.file?.buffer, req.user?.role);
 
   res.status(201).json(
     new ApiResponse(true, "Product created successfully", { product })
@@ -118,7 +119,7 @@ export const updateProduct = async (
   }
 
   const productId = Array.isArray(req.params.productId) ? req.params.productId[0] : req.params.productId;
-  const product = await ProductService.updateProduct(productId, result.data, req.user?.userId as string, req.file?.buffer);
+  const product = await ProductService.updateProduct(productId, result.data, req.user?.userId as string, req.file?.buffer, req.user?.role);
 
   res.status(200).json(
     new ApiResponse(true, "Product updated successfully", { product })
@@ -130,10 +131,22 @@ export const deleteProduct = async (
   res: Response
 ): Promise<void> => {
   const productId = Array.isArray(req.params.productId) ? req.params.productId[0] : req.params.productId;
-  const product = await ProductService.deleteProduct(productId, req.user?.userId as string);
+  const product = await ProductService.deleteProduct(productId, req.user?.userId as string, req.user?.role);
 
   res.status(200).json(
     new ApiResponse(true, "Product deleted successfully", { product })
+  );
+};
+
+export const restoreProduct = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const productId = Array.isArray(req.params.productId) ? req.params.productId[0] : req.params.productId;
+  const product = await ProductService.restoreProduct(productId, req.user?.userId as string, req.user?.role);
+
+  res.status(200).json(
+    new ApiResponse(true, "Product restored successfully", { product })
   );
 };
 
@@ -148,10 +161,28 @@ export const updateProductStatus = async (
   }
 
   const productId = Array.isArray(req.params.productId) ? req.params.productId[0] : req.params.productId;
-  const product = await ProductService.updateProductStatus(productId, payload.isActive, req.user?.userId as string);
+  const product = await ProductService.updateProductStatus(productId, payload.isActive, req.user?.userId as string, req.user?.role);
 
   res.status(200).json(
     new ApiResponse(true, "Product status updated successfully", { product })
+  );
+};
+
+export const bulkProductAction = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const result = bulkProductActionSchema.safeParse(req.body);
+
+  if (!result.success) {
+    const message = result.error.issues[0]?.message || "Invalid bulk action payload";
+    throw new AppError(message, 400);
+  }
+
+  const bulkResult = await ProductService.bulkUpdateProducts(result.data, req.user?.userId as string, req.user?.role);
+
+  res.status(200).json(
+    new ApiResponse(true, "Bulk action executed successfully", bulkResult)
   );
 };
 

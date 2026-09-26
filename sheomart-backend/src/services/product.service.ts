@@ -11,6 +11,7 @@ import {
   UpdateProductInput,
   UpdateThumbnailInput,
   AdminProductListQuery,
+  BulkProductActionInput,
 } from "../validators/product.validator";
 import { InventoryService } from "./inventory.service";
 import { CLOUDINARY_FOLDERS } from "../constants/cloudinary";
@@ -30,8 +31,14 @@ export interface AdminProductListItem {
   price: number;
   discountPrice: number;
   thumbnail: string;
+  images?: string[];
+  description?: string;
   isActive: boolean;
   isPublished: boolean;
+  isDeleted: boolean;
+  isFeatured: boolean;
+  isBestseller?: boolean;
+  isTrending?: boolean;
   quantity: number;
   inventoryStatus: string;
   category: { categoryId: string; name: string } | null;
@@ -53,8 +60,14 @@ function mapAdminProduct(product: AdminProductListItem): AdminProductListItem {
     price: product.price,
     discountPrice: product.discountPrice,
     thumbnail: product.thumbnail,
+    images: product.images,
+    description: product.description,
     isActive: product.isActive,
     isPublished: product.isPublished,
+    isDeleted: product.isDeleted,
+    isFeatured: product.isFeatured,
+    isBestseller: product.isBestseller,
+    isTrending: product.isTrending,
     quantity: product.quantity,
     inventoryStatus: product.inventoryStatus,
     category: product.category,
@@ -72,6 +85,53 @@ export class ProductService {
     if (filters.categoryId) query.categoryId = filters.categoryId;
     if (typeof filters.isActive === "boolean") query.isActive = filters.isActive;
     if (typeof filters.isPublished === "boolean") query.isPublished = filters.isPublished;
+    if (typeof filters.isFeatured === "boolean") query.isFeatured = filters.isFeatured;
+
+    if (filters.status) {
+      switch (filters.status) {
+        case "active":
+          query.isDeleted = { $ne: true };
+          query.isActive = true;
+          query.isPublished = true;
+          break;
+        case "inactive":
+          query.isDeleted = { $ne: true };
+          query.isActive = false;
+          break;
+        case "draft":
+          query.isDeleted = { $ne: true };
+          query.isPublished = false;
+          break;
+        case "out_of_stock":
+          query.isDeleted = { $ne: true };
+          query.quantity = { $lte: 0 };
+          break;
+        case "featured":
+          query.isDeleted = { $ne: true };
+          query.isFeatured = true;
+          break;
+        case "deleted":
+          query.isDeleted = true;
+          break;
+        case "all":
+        default:
+          break;
+      }
+    } else if (typeof filters.isDeleted === "boolean") {
+      query.isDeleted = filters.isDeleted;
+    } else {
+      query.isDeleted = { $ne: true };
+    }
+
+    if (typeof filters.minPrice === "number" || typeof filters.maxPrice === "number") {
+      query.price = {};
+      if (typeof filters.minPrice === "number") {
+        (query.price as Record<string, unknown>).$gte = filters.minPrice;
+      }
+      if (typeof filters.maxPrice === "number") {
+        (query.price as Record<string, unknown>).$lte = filters.maxPrice;
+      }
+    }
 
     if (filters.search) {
       const search = new RegExp(escapeRegex(filters.search), "i");
@@ -92,12 +152,34 @@ export class ProductService {
     const skip = (filters.page - 1) * filters.limit;
     const sortDirection: 1 | -1 = filters.sortOrder === "asc" ? 1 : -1;
     const sort = { [filters.sortBy]: sortDirection };
-    const safeFields = "productId name sku brand price discountPrice thumbnail isActive isPublished quantity categoryId storeId createdAt updatedAt";
+    const safeFields = "productId name sku brand price discountPrice thumbnail images description isActive isPublished isDeleted isFeatured isBestseller isTrending quantity categoryId storeId createdAt updatedAt";
 
-    const [products, total] = await Promise.all([
+    const [products, total, statsResult] = await Promise.all([
       Product.find(query).select(safeFields).sort(sort).skip(skip).limit(filters.limit).lean(),
       Product.countDocuments(query),
+      Product.aggregate([
+        {
+          $facet: {
+            total: [{ $match: { isDeleted: { $ne: true } } }, { $count: "count" }],
+            active: [{ $match: { isDeleted: { $ne: true }, isActive: true, isPublished: true } }, { $count: "count" }],
+            draft: [{ $match: { isDeleted: { $ne: true }, isPublished: false } }, { $count: "count" }],
+            outOfStock: [{ $match: { isDeleted: { $ne: true }, quantity: { $lte: 0 } } }, { $count: "count" }],
+            featured: [{ $match: { isDeleted: { $ne: true }, isFeatured: true } }, { $count: "count" }],
+            deleted: [{ $match: { isDeleted: true } }, { $count: "count" }],
+          },
+        },
+      ]),
     ]);
+
+    const facet = statsResult[0] || {};
+    const stats = {
+      total: facet.total?.[0]?.count ?? 0,
+      active: facet.active?.[0]?.count ?? 0,
+      draft: facet.draft?.[0]?.count ?? 0,
+      outOfStock: facet.outOfStock?.[0]?.count ?? 0,
+      featured: facet.featured?.[0]?.count ?? 0,
+      deleted: facet.deleted?.[0]?.count ?? 0,
+    };
 
     const productIds = products.map((product) => product.productId);
     const categoryIds = [...new Set(products.map((product) => product.categoryId))];
@@ -126,8 +208,14 @@ export class ProductService {
           price: product.price,
           discountPrice: product.discountPrice ?? 0,
           thumbnail: product.thumbnail ?? "",
+          images: product.images ?? [],
+          description: product.description ?? "",
           isActive: product.isActive,
           isPublished: product.isPublished,
+          isDeleted: product.isDeleted ?? false,
+          isFeatured: product.isFeatured ?? false,
+          isBestseller: product.isBestseller ?? false,
+          isTrending: product.isTrending ?? false,
           quantity: inventory?.availableQuantity ?? product.quantity ?? 0,
           inventoryStatus: inventory?.status ?? "unavailable",
           category: category ? { categoryId: category.categoryId, name: category.name } : null,
@@ -136,6 +224,7 @@ export class ProductService {
           updatedAt: product.updatedAt,
         });
       }),
+      stats,
       pagination: {
         page: filters.page,
         limit: filters.limit,
@@ -241,11 +330,29 @@ export class ProductService {
     return product;
   }
 
-  static async createProduct(data: CreateProductInput, userId: string, imageBuffer?: Buffer) {
-    const store = await Store.findOne({ ownerId: userId, status: STORE_STATUS.APPROVED });
+  static async createProduct(data: CreateProductInput, userId: string, imageBuffer?: Buffer, role?: string) {
+    let storeId: string;
+    if (role === "platform_admin") {
+      if (data.storeId) {
+        const store = await Store.findOne({ storeId: data.storeId });
+        if (!store) {
+          throw new AppError("Store not found", 404);
+        }
+        storeId = store.storeId;
+      } else {
+        const store = await Store.findOne({ status: STORE_STATUS.APPROVED });
+        if (!store) {
+          throw new AppError("No approved store found to associate with product", 400);
+        }
+        storeId = store.storeId;
+      }
+    } else {
+      const store = await Store.findOne({ ownerId: userId, status: STORE_STATUS.APPROVED });
 
-    if (!store) {
-      throw new AppError("Only approved store owners can create products", 403);
+      if (!store) {
+        throw new AppError("Only approved store owners can create products", 403);
+      }
+      storeId = store.storeId;
     }
 
     const category = await Category.findOne({ categoryId: data.categoryId, isActive: true });
@@ -286,7 +393,7 @@ export class ProductService {
 
     const imageUrls = data.imageUrl ? [data.imageUrl, ...data.images.filter((url) => url !== data.imageUrl)] : data.images;
     const product = await Product.create({
-      storeId: store.storeId,
+      storeId,
       categoryId: data.categoryId,
       name: data.name,
       slug,
@@ -300,6 +407,10 @@ export class ProductService {
       images: image ? [image.url, ...imageUrls.filter((url) => url !== image?.url)] : imageUrls,
       thumbnail: image?.url || imageUrls[0] || "",
       isPublished: data.isPublished ?? false,
+      isActive: data.isActive ?? true,
+      isFeatured: data.isFeatured ?? false,
+      isBestseller: data.isBestseller ?? false,
+      isTrending: data.isTrending ?? false,
       createdBy: userId,
       updatedBy: userId,
     });
@@ -413,18 +524,14 @@ export class ProductService {
     };
   }
 
-  static async updateProduct(productId: string, data: UpdateProductInput, userId: string, imageBuffer?: Buffer) {
-    const product = await Product.findOne({ productId, isActive: true });
+  static async updateProduct(productId: string, data: UpdateProductInput, userId: string, imageBuffer?: Buffer, role?: string) {
+    const product = await Product.findOne({ productId, isDeleted: { $ne: true } });
 
     if (!product) {
       throw new AppError("Product not found", 404);
     }
 
-    const store = await Store.findOne({ ownerId: userId, storeId: product.storeId, status: STORE_STATUS.APPROVED });
-
-    if (!store) {
-      throw new AppError("Only approved store owners can update products", 403);
-    }
+    await this.validateProductAccess(product, userId, role);
 
     if (data.categoryId) {
       const category = await Category.findOne({ categoryId: data.categoryId, isActive: true });
@@ -521,6 +628,22 @@ export class ProductService {
       product.isActive = data.isActive;
     }
 
+    if (typeof data.isFeatured === "boolean") {
+      product.isFeatured = data.isFeatured;
+    }
+
+    if (typeof data.isBestseller === "boolean") {
+      product.isBestseller = data.isBestseller;
+    }
+
+    if (typeof data.isTrending === "boolean") {
+      product.isTrending = data.isTrending;
+    }
+
+    if (role === "platform_admin" && data.storeId) {
+      product.storeId = data.storeId;
+    }
+
     product.updatedBy = userId;
     await product.save();
 
@@ -536,23 +659,16 @@ export class ProductService {
     return product;
   }
 
-  static async deleteProduct(productId: string, userId: string) {
-    const product = await Product.findOne({ productId, isActive: true });
+  static async deleteProduct(productId: string, userId: string, role?: string) {
+    const product = await Product.findOne({ productId, isDeleted: { $ne: true } });
 
     if (!product) {
       throw new AppError("Product not found", 404);
     }
 
-    const store = await Store.findOne({ ownerId: userId, storeId: product.storeId, status: STORE_STATUS.APPROVED });
+    await this.validateProductAccess(product, userId, role);
 
-    if (!store) {
-      throw new AppError("Only approved store owners can delete products", 403);
-    }
-
-    if (product.image?.publicId) {
-      await deleteImageFromCloudinary(product.image.publicId);
-    }
-
+    product.isDeleted = true;
     product.isActive = false;
     product.updatedBy = userId;
     await product.save();
@@ -560,24 +676,81 @@ export class ProductService {
     return product;
   }
 
-  static async updateProductStatus(productId: string, isActive: boolean, userId: string) {
-    const product = await Product.findOne({ productId });
+  static async restoreProduct(productId: string, userId: string, role?: string) {
+    const product = await Product.findOne({ productId, isDeleted: true });
+
+    if (!product) {
+      throw new AppError("Deleted product not found", 404);
+    }
+
+    await this.validateProductAccess(product, userId, role);
+
+    product.isDeleted = false;
+    product.isActive = true;
+    product.updatedBy = userId;
+    await product.save();
+
+    return product;
+  }
+
+  static async updateProductStatus(productId: string, isActive: boolean, userId: string, role?: string) {
+    const product = await Product.findOne({ productId, isDeleted: { $ne: true } });
 
     if (!product) {
       throw new AppError("Product not found", 404);
     }
 
-    const store = await Store.findOne({ ownerId: userId, storeId: product.storeId, status: STORE_STATUS.APPROVED });
-
-    if (!store) {
-      throw new AppError("Only approved store owners can update product status", 403);
-    }
+    await this.validateProductAccess(product, userId, role);
 
     product.isActive = isActive;
     product.updatedBy = userId;
     await product.save();
 
     return product;
+  }
+
+  static async bulkUpdateProducts(data: BulkProductActionInput, userId: string, role?: string) {
+    const { productIds, action } = data;
+    const query: Record<string, unknown> = { productId: { $in: productIds } };
+
+    if (role !== "platform_admin") {
+      const store = await Store.findOne({ ownerId: userId, status: STORE_STATUS.APPROVED });
+      if (!store) {
+        throw new AppError("Unauthorized store access", 403);
+      }
+      query.storeId = store.storeId;
+    }
+
+    let updateFields: Record<string, unknown> = { updatedBy: userId };
+
+    switch (action) {
+      case "activate":
+        updateFields = { ...updateFields, isActive: true, isPublished: true };
+        break;
+      case "deactivate":
+        updateFields = { ...updateFields, isActive: false };
+        break;
+      case "delete":
+        updateFields = { ...updateFields, isDeleted: true, isActive: false };
+        break;
+      case "restore":
+        updateFields = { ...updateFields, isDeleted: false, isActive: true };
+        break;
+      case "feature":
+        updateFields = { ...updateFields, isFeatured: true };
+        break;
+      case "unfeature":
+        updateFields = { ...updateFields, isFeatured: false };
+        break;
+      default:
+        throw new AppError("Invalid bulk action", 400);
+    }
+
+    const result = await Product.updateMany(query, { $set: updateFields });
+    return {
+      matchedCount: result.matchedCount,
+      modifiedCount: result.modifiedCount,
+    };
   }
 
   static async addImages(productId: string, data: AddImagesInput, userId: string, role?: string) {

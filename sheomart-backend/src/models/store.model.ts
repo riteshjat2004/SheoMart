@@ -35,6 +35,8 @@ export interface IStore extends Document {
   pincode: string;
   badge: STORE_BADGE;
   isVerified: boolean;
+  isActive: boolean;
+  isDeleted: boolean;
   status: StoreStatus;
   approvedAt: Date | null;
   approvedBy: string | null;
@@ -156,10 +158,23 @@ const storeSchema = new Schema<IStore>(
       default: false,
     },
 
+    isActive: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
+
+    isDeleted: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
     status: {
       type: String,
       enum: Object.values(STORE_STATUS),
       default: STORE_STATUS.PENDING,
+      index: true,
     },
 
     approvedAt: {

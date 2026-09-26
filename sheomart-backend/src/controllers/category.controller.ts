@@ -20,6 +20,17 @@ export const getCategories = async (
   );
 };
 
+export const getAdminCategories = async (
+  _req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const categories = await CategoryService.getAdminCategories();
+
+  res.status(200).json(
+    new ApiResponse(true, "Admin categories fetched successfully", { categories })
+  );
+};
+
 export const getCategoryById = async (
   req: AuthRequest,
   res: Response
@@ -111,6 +122,18 @@ export const deleteCategory = async (
 
   res.status(200).json(
     new ApiResponse(true, "Category deleted successfully", { category })
+  );
+};
+
+export const restoreCategory = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const categoryId = Array.isArray(req.params.categoryId) ? req.params.categoryId[0] : req.params.categoryId;
+  const category = await CategoryService.restoreCategory(categoryId, req.user?.userId);
+
+  res.status(200).json(
+    new ApiResponse(true, "Category restored successfully", { category })
   );
 };
 

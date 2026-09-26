@@ -1,5 +1,6 @@
 import { AppError } from "../errors/AppError";
 import { Category, CategoryImage } from "../models/category.model";
+import { Product } from "../models/product.model";
 import { CLOUDINARY_FOLDERS } from "../constants/cloudinary";
 import { deleteImageFromCloudinary, uploadBufferToCloudinary } from "../utils/cloudinary";
 import { processProductImage } from "../utils/imageProcessor";
@@ -28,11 +29,48 @@ export class CategoryService {
   }
 
   static async getAllCategories() {
-    return Category.find({ isActive: true }).sort({ sortOrder: 1, createdAt: -1 });
+    return Category.find({ isDeleted: { $ne: true }, isActive: true }).sort({ sortOrder: 1, createdAt: -1 });
+  }
+
+  static async getAdminCategories() {
+    const categories = await Category.find({ isDeleted: { $ne: true } })
+      .sort({ sortOrder: 1, createdAt: -1 })
+      .lean();
+
+    const categoryIds = categories.map((c) => c.categoryId);
+
+    const productCounts = await Product.aggregate([
+      { $match: { categoryId: { $in: categoryIds }, isDeleted: { $ne: true } } },
+      {
+        $group: {
+          _id: "$categoryId",
+          totalProducts: { $sum: 1 },
+          activeProducts: {
+            $sum: { $cond: [{ $eq: ["$isActive", true] }, 1, 0] },
+          },
+        },
+      },
+    ]);
+
+    const countMap = new Map(
+      productCounts.map((item) => [
+        item._id,
+        {
+          total: item.totalProducts,
+          active: item.activeProducts,
+        },
+      ])
+    );
+
+    return categories.map((cat) => ({
+      ...cat,
+      productCount: countMap.get(cat.categoryId)?.total ?? 0,
+      activeProductCount: countMap.get(cat.categoryId)?.active ?? 0,
+    }));
   }
 
   static async getCategoryById(categoryId: string) {
-    const category = await Category.findOne({ categoryId, isActive: true });
+    const category = await Category.findOne({ categoryId, isDeleted: { $ne: true } });
 
     if (!category) {
       throw new AppError("Category not found", 404);
@@ -42,7 +80,7 @@ export class CategoryService {
   }
 
   static async createCategory(data: CreateCategoryInput, userId?: string, imageBuffer?: Buffer) {
-    const existingCategory = await Category.findOne({ name: data.name });
+    const existingCategory = await Category.findOne({ name: data.name, isDeleted: { $ne: true } });
 
     if (existingCategory) {
       throw new AppError("Category name already exists", 409);
@@ -124,14 +162,14 @@ export class CategoryService {
   }
 
   static async updateCategory(categoryId: string, data: UpdateCategoryInput, userId?: string, imageBuffer?: Buffer) {
-    const category = await Category.findOne({ categoryId, isActive: true });
+    const category = await Category.findOne({ categoryId, isDeleted: { $ne: true } });
 
     if (!category) {
       throw new AppError("Category not found", 404);
     }
 
     if (data.name && data.name !== category.name) {
-      const duplicate = await Category.findOne({ name: data.name });
+      const duplicate = await Category.findOne({ name: data.name, isDeleted: { $ne: true } });
 
       if (duplicate && duplicate.categoryId !== categoryId) {
         throw new AppError("Category name already exists", 409);
@@ -182,12 +220,13 @@ export class CategoryService {
   }
 
   static async deleteCategory(categoryId: string, userId?: string) {
-    const category = await Category.findOne({ categoryId, isActive: true });
+    const category = await Category.findOne({ categoryId, isDeleted: { $ne: true } });
 
     if (!category) {
       throw new AppError("Category not found", 404);
     }
 
+    category.isDeleted = true;
     category.isActive = false;
     category.updatedBy = userId || null;
     await category.save();
@@ -195,8 +234,23 @@ export class CategoryService {
     return category;
   }
 
+  static async restoreCategory(categoryId: string, userId?: string) {
+    const category = await Category.findOne({ categoryId, isDeleted: true });
+
+    if (!category) {
+      throw new AppError("Deleted category not found", 404);
+    }
+
+    category.isDeleted = false;
+    category.isActive = true;
+    category.updatedBy = userId || null;
+    await category.save();
+
+    return category;
+  }
+
   static async updateCategoryStatus(categoryId: string, isActive: boolean, userId?: string) {
-    const category = await Category.findOne({ categoryId });
+    const category = await Category.findOne({ categoryId, isDeleted: { $ne: true } });
 
     if (!category) {
       throw new AppError("Category not found", 404);

@@ -21,6 +21,10 @@ export interface IProduct extends Document {
   thumbnail: string;
   isPublished: boolean;
   isActive: boolean;
+  isDeleted: boolean;
+  isFeatured: boolean;
+  isBestseller: boolean;
+  isTrending: boolean;
   rating: number;
   totalReviews: number;
   createdBy: string | null;
@@ -133,6 +137,28 @@ const productSchema = new Schema<IProduct>(
     isActive: {
       type: Boolean,
       default: true,
+    },
+
+    isDeleted: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    isFeatured: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    isBestseller: {
+      type: Boolean,
+      default: false,
+    },
+
+    isTrending: {
+      type: Boolean,
+      default: false,
     },
 
     rating: {

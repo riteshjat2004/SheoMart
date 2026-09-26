@@ -9,6 +9,7 @@ export interface ICategory extends Document {
   image: string | CategoryImage;
   parentCategory: string | null;
   isActive: boolean;
+  isDeleted: boolean;
   sortOrder: number;
   createdBy: string | null;
   updatedBy: string | null;
@@ -66,6 +67,13 @@ const categorySchema = new Schema<ICategory>(
     isActive: {
       type: Boolean,
       default: true,
+      index: true,
+    },
+
+    isDeleted: {
+      type: Boolean,
+      default: false,
+      index: true,
     },
 
     sortOrder: {

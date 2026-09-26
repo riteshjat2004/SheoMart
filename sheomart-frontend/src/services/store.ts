@@ -157,3 +157,26 @@ export async function updateStoreBadge(storeId: string, badge: StoreBadge) {
 
   return store ? normalizeStore(store as unknown as Record<string, unknown>) : null;
 }
+
+export async function updateStoreStatus(storeId: string, status: string) {
+  const response = await api.patch<ApiResponse<{ store: StoreItem }>>(`/api/v1/stores/${storeId}/status`, { status });
+  const store = response.data.data?.store;
+
+  return store ? normalizeStore(store as unknown as Record<string, unknown>) : null;
+}
+
+export async function deleteStore(storeId: string) {
+  const response = await api.delete<ApiResponse<{ store: StoreItem }>>(`/api/v1/stores/${storeId}`);
+  const store = response.data.data?.store;
+
+  return store ? normalizeStore(store as unknown as Record<string, unknown>) : null;
+}
+
+export async function bulkUpdateStoreStatus(storeIds: string[], status: string) {
+  const response = await api.post<ApiResponse<{ modifiedCount: number }>>("/api/v1/stores/admin/bulk-status", {
+    storeIds,
+    status,
+  });
+
+  return response.data.data ?? { modifiedCount: 0 };
+}

@@ -18,6 +18,11 @@ export const adminProductListQuerySchema = z.object({
   categoryId: z.string().trim().min(1).optional(),
   isActive: booleanQueryParam.optional(),
   isPublished: booleanQueryParam.optional(),
+  isDeleted: booleanQueryParam.optional(),
+  isFeatured: booleanQueryParam.optional(),
+  status: z.enum(["all", "active", "inactive", "draft", "out_of_stock", "featured", "deleted"]).optional(),
+  minPrice: z.coerce.number().min(0).optional(),
+  maxPrice: z.coerce.number().min(0).optional(),
   inventoryStatus: z.enum([
     INVENTORY_STATUS.IN_STOCK,
     INVENTORY_STATUS.LOW_STOCK,
@@ -34,6 +39,7 @@ export const adminProductListQuerySchema = z.object({
 export type AdminProductListQuery = z.infer<typeof adminProductListQuerySchema>;
 
 export const createProductSchema = z.object({
+  storeId: z.string().trim().min(1).optional(),
   name: z.string().trim().min(2, "Product name must be at least 2 characters").max(120),
   description: z.string().trim().max(2000).optional().default(""),
   brand: z.string().trim().max(100).optional().default(""),
@@ -45,6 +51,10 @@ export const createProductSchema = z.object({
   images: z.array(z.string().trim().min(1)).optional().default([]),
   imageUrl: optionalImageUrl,
   isPublished: multipartBoolean.optional().default(false),
+  isActive: multipartBoolean.optional().default(true),
+  isFeatured: multipartBoolean.optional().default(false),
+  isBestseller: multipartBoolean.optional().default(false),
+  isTrending: multipartBoolean.optional().default(false),
 }).strict();
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;
@@ -55,6 +65,7 @@ export const bulkCreateProductSchema = z.array(createProductSchema)
 export type BulkCreateProductInput = z.infer<typeof bulkCreateProductSchema>;
 
 export const updateProductSchema = z.object({
+  storeId: z.string().trim().min(1).optional(),
   name: z.string().trim().min(2, "Product name must be at least 2 characters").max(120).optional(),
   description: z.string().trim().max(2000).optional(),
   brand: z.string().trim().max(100).optional(),
@@ -67,9 +78,19 @@ export const updateProductSchema = z.object({
   imageUrl: optionalImageUrl,
   isPublished: multipartBoolean.optional(),
   isActive: multipartBoolean.optional(),
+  isFeatured: multipartBoolean.optional(),
+  isBestseller: multipartBoolean.optional(),
+  isTrending: multipartBoolean.optional(),
 }).strict();
 
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
+
+export const bulkProductActionSchema = z.object({
+  productIds: z.array(z.string().trim().min(1)).min(1, "At least one product must be selected"),
+  action: z.enum(["activate", "deactivate", "delete", "restore", "feature", "unfeature"]),
+}).strict();
+
+export type BulkProductActionInput = z.infer<typeof bulkProductActionSchema>;
 
 export const addImagesSchema = z.object({
   images: z.array(z.string().trim().min(1, "Image URL cannot be empty")).min(1, "At least one image is required"),

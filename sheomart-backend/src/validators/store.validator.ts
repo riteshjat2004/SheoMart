@@ -125,3 +125,36 @@ export const updateStoreBadgeSchema = z
   .strict();
 
 export type UpdateStoreBadgeInput = z.infer<typeof updateStoreBadgeSchema>;
+
+export const updateStoreStatusSchema = z
+  .object({
+    status: z.enum([
+      "pending",
+      "approved",
+      "rejected",
+      "active",
+      "inactive",
+      "suspended",
+    ]),
+  })
+  .strict();
+
+export type UpdateStoreStatusInput = z.infer<typeof updateStoreStatusSchema>;
+
+export const bulkStoreStatusSchema = z
+  .object({
+    storeIds: z.array(z.string().min(1)).min(1, "At least one storeId is required"),
+    status: z.enum([
+      "pending",
+      "approved",
+      "rejected",
+      "active",
+      "inactive",
+      "suspended",
+      "delete",
+    ]),
+  })
+  .strict();
+
+export type BulkStoreStatusInput = z.infer<typeof bulkStoreStatusSchema>;
+
