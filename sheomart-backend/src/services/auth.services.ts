@@ -109,7 +109,7 @@ export class AuthService {
         return { message: "Password updated successfully" };
     }
 
-  static async register(data: RegisterInput) {
+  static async register(data: RegisterInput, meta?: { userAgent?: string; ipAddress?: string }) {
         const existingEmail = await User.findOne({
         email: data.email,
         });
@@ -149,8 +149,8 @@ export class AuthService {
         user.sessions.push({
         sessionId,
         refreshToken: await hashToken(refreshToken),
-        userAgent: "",
-        ipAddress: "",
+        userAgent: meta?.userAgent || "",
+        ipAddress: meta?.ipAddress || "",
         createdAt: new Date(),
         lastUsedAt: new Date(),
         });
@@ -174,7 +174,7 @@ export class AuthService {
         };
     }
 
-    static async login(data: LoginInput) {
+    static async login(data: LoginInput, meta?: { userAgent?: string; ipAddress?: string }) {
         const isEmail = data.identifier.includes("@");
 
         const user = await User.findOne(
@@ -216,12 +216,13 @@ export class AuthService {
         user.sessions.push({
         sessionId,
         refreshToken: await hashToken(refreshToken),
-        userAgent: "",
-        ipAddress: "",
+        userAgent: meta?.userAgent || "",
+        ipAddress: meta?.ipAddress || "",
         createdAt: new Date(),
         lastUsedAt: new Date(),
         });
 
+        user.lastLoginAt = new Date();
         await user.save();
 
         return {
@@ -239,7 +240,7 @@ export class AuthService {
         accessToken,
         refreshToken,
         };
-   }
+    }
     static async refresh(refreshToken: string) {
         let payload: { userId: string; sessionId: string };
 

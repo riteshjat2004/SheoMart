@@ -3,4 +3,6 @@ export const CLOUDINARY_FOLDERS = {
   STORES: "sheomart/store_assets",
   AVATARS: "sheomart/user_avatars",
   CATEGORIES: "sheomart/category_icons",
+  PROMOTIONS: "sheomart/promotions",
+  BRANDING: "sheomart/branding",
 } as const;

@@ -23,11 +23,25 @@ export interface IUser extends Document {
   emailVerified: boolean;
   phoneVerified: boolean;
   isActive: boolean;
+  isVerifiedCustomer: boolean;
+  verifiedAt: Date | null;
+  verifiedBy: string | null;
+  isSuspended: boolean;
+  suspendedReason: string | null;
+  suspendedAt: Date | null;
+  suspendedBy: string | null;
+  isDeleted: boolean;
+  deletedAt: Date | null;
+  deletedBy: string | null;
   avatar: string;
   address: string;
   city: string;
+  district: string;
   state: string;
   pincode: string;
+  gender: string;
+  dob: Date | null;
+  lastLoginAt: Date | null;
   // refreshToken?: string;
   sessions: IUserSession[];
   createdAt: Date;
@@ -117,6 +131,7 @@ const userSchema = new Schema<IUser>(
       type: String,
       enum: Object.values(USER_ROLES),
       default: USER_ROLES.CUSTOMER,
+      index: true,
     },
 
     isCreditApproved: {
@@ -137,6 +152,60 @@ const userSchema = new Schema<IUser>(
     isActive: {
       type: Boolean,
       default: true,
+      index: true,
+    },
+
+    isVerifiedCustomer: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    verifiedAt: {
+      type: Date,
+      default: null,
+    },
+
+    verifiedBy: {
+      type: String,
+      default: null,
+    },
+
+    isSuspended: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    suspendedReason: {
+      type: String,
+      default: null,
+    },
+
+    suspendedAt: {
+      type: Date,
+      default: null,
+    },
+
+    suspendedBy: {
+      type: String,
+      default: null,
+    },
+
+    isDeleted: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
+
+    deletedBy: {
+      type: String,
+      default: null,
     },
 
     avatar: {
@@ -154,6 +223,11 @@ const userSchema = new Schema<IUser>(
       default: "",
     },
 
+    district: {
+      type: String,
+      default: "",
+    },
+
     state: {
       type: String,
       default: "",
@@ -162,6 +236,21 @@ const userSchema = new Schema<IUser>(
     pincode: {
       type: String,
       default: "",
+    },
+
+    gender: {
+      type: String,
+      default: "",
+    },
+
+    dob: {
+      type: Date,
+      default: null,
+    },
+
+    lastLoginAt: {
+      type: Date,
+      default: null,
     },
 
     sessions: {

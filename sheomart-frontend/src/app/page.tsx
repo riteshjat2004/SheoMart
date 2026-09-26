@@ -43,8 +43,6 @@ export default function Home() {
   const storesQuery = useStores(isCustomer && defaultAddress ? { pincode: defaultAddress.pincode } : undefined);
   const offersQuery = useOffers();
   const couponsQuery = useCoupons();
-  const [copiedCoupon, setCopiedCoupon] = useState<string | null>(null);
-
   const categories = Array.isArray(categoriesQuery.data) ? categoriesQuery.data : [];
   const products = Array.isArray(productsQuery.data) ? productsQuery.data : [];
   const stores = Array.isArray(storesQuery.data) ? storesQuery.data : [];
@@ -53,18 +51,10 @@ export default function Home() {
   const featuredProducts = products.slice(0, 8);
   const allOffers = offersQuery.data ?? [];
   const allCoupons = couponsQuery.data ?? [];
-  const offers: typeof allOffers = [];
-  const coupons: typeof allCoupons = [];
   const categoryLookup = useMemo(() => new Map(categories.flatMap((category) => {
     const categoryId = category.categoryId ?? category._id;
     return categoryId ? [[categoryId, { categoryId, name: category.name, slug: category.slug ?? categoryId }] as const] : [];
   })), [categories]);
-
-  const copyCoupon = async (code: string) => {
-    await navigator.clipboard?.writeText(code);
-    setCopiedCoupon(code);
-    window.setTimeout(() => setCopiedCoupon(null), 1800);
-  };
 
   const handleSearchSubmit = () => {
     const trimmedQuery = searchQuery.trim();
@@ -120,10 +110,6 @@ export default function Home() {
           </section>
 
           <HomepagePromotions offers={allOffers} coupons={allCoupons} categoryLookup={categoryLookup} />
-
-          {offers.length ? <section className="space-y-5"><SectionHeading eyebrow="Festival offers" title="Fresh savings from our stores" description="Live offers curated by the SheoMart team." /><div className="grid gap-4 lg:grid-cols-2">{offers.map((offer) => { const categoryIds = offer.categoryIds ?? []; return <article key={offer.offerId} className="overflow-hidden rounded-[1.75rem] border border-stone-200 bg-white shadow-sm dark:border-stone-800 dark:bg-zinc-900"><div className="h-48 bg-stone-100 dark:bg-stone-800">{offer.bannerImage ? <img src={offer.bannerImage} alt={offer.title} className="h-full w-full object-cover" /> : null}</div><div className="p-5"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600">{offer.festivalName}</p><h3 className="mt-2 text-xl font-semibold text-stone-900 dark:text-stone-50">{offer.title}</h3></div><span className="rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">{offer.discountType === "percentage" ? `${offer.discountValue}% off` : `${money(offer.discountValue)} off`}</span></div><div className="mt-4 flex flex-wrap gap-2">{categoryIds.length ? categoryIds.map((categoryId) => { const category = categoryLookup.get(categoryId); return <Link key={categoryId} href={category ? `/category/${category.categoryId ?? category.slug}` : "/categories"} className="cursor-pointer rounded-full bg-stone-100 px-2.5 py-1 text-xs text-stone-600 transition hover:scale-105 hover:bg-emerald-100 hover:text-emerald-700 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-emerald-950/60 dark:hover:text-emerald-300">{category?.name ?? "Unknown Category"}</Link>; }) : <span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs text-stone-600 dark:bg-stone-800 dark:text-stone-300">All categories</span>}</div><p className="mt-4 text-xs text-stone-500 dark:text-stone-400">Valid until {expiry(offer.endsAt)}</p></div></article>; })}</div></section> : null}
-
-          {coupons.length ? <section className="space-y-5"><SectionHeading eyebrow="Coupons" title="Extra savings for your basket" description="Copy a live code and apply it during checkout." /><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{coupons.map((coupon) => <article key={coupon.couponId} className="rounded-[1.75rem] border border-dashed border-emerald-300 bg-emerald-50/70 p-5 dark:border-emerald-900/70 dark:bg-emerald-950/20"><div className="flex items-start justify-between gap-3"><div><h3 className="font-semibold text-stone-900 dark:text-stone-50">{coupon.title}</h3><p className="mt-2 text-lg font-semibold text-emerald-700 dark:text-emerald-300">{coupon.discountType === "percentage" ? `${coupon.discountValue}% off` : `${money(coupon.discountValue)} off`}</p></div><span className="rounded-full bg-white/80 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-stone-900/80 dark:text-emerald-300">Min {money(coupon.minimumCartValue)}</span></div><div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-white/80 px-3 py-2 dark:border-emerald-900/70 dark:bg-stone-950/60"><code className="font-semibold tracking-wider text-emerald-800 dark:text-emerald-200">{coupon.code}</code><button type="button" onClick={() => copyCoupon(coupon.code)} className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-300" aria-label={`Copy coupon ${coupon.code}`}>{copiedCoupon === coupon.code ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}{copiedCoupon === coupon.code ? "Copied" : "Copy code"}</button></div><p className="mt-3 text-xs text-stone-500 dark:text-stone-400">Expires {expiry(coupon.endsAt)}</p></article>)}</div></section> : null}
 
           <section className="space-y-5">
             <SectionHeading eyebrow="Trending products" title="Popular picks this week" description="Handpicked favorites prepared for fast browsing and smooth checkout later." />

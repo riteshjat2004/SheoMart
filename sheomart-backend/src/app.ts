@@ -30,6 +30,9 @@ import promotionRoutes from "./routes/promotion.routes";
 import platformFeeRoutes from "./routes/platformFee.routes";
 import sellerPasswordResetRoutes from "./routes/seller-password-reset.routes";
 import adminPasswordResetRoutes from "./routes/admin-password-reset.routes";
+import settingsRoutes from "./routes/settings.routes";
+import securityRoutes from "./routes/security.routes";
+import { checkMaintenanceMode } from "./middleware/maintenance.middleware";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -59,6 +62,11 @@ app.use(
 );
 
 app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/settings", settingsRoutes);
+app.use("/api/v1/admin/security", securityRoutes);
+
+// Maintenance Mode Checker (Blocks public traffic when maintenance mode is active)
+app.use(checkMaintenanceMode);
 
 // Health Route
 app.get("/", (_req, res) => {

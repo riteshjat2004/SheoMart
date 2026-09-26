@@ -3,7 +3,15 @@ import { AppError } from "../errors/AppError";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { ApiResponse } from "../utils/apiResponse";
 import { ReviewService } from "../services/review.service";
-import { adminReviewListQuerySchema, createReviewSchema, updateReviewSchema, visibilitySchema } from "../validators/review.validator";
+import {
+  adminReviewListQuerySchema,
+  bulkReviewActionSchema,
+  createReviewSchema,
+  moderateReviewSchema,
+  reportReviewSchema,
+  updateReviewSchema,
+  visibilitySchema,
+} from "../validators/review.validator";
 
 export const getAdminReviews = async (
   req: AuthRequest,
@@ -14,6 +22,104 @@ export const getAdminReviews = async (
 
   res.status(200).json(
     new ApiResponse(true, "Reviews fetched successfully", result)
+  );
+};
+
+export const getAdminReviewStats = async (
+  _req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const stats = await ReviewService.getAdminReviewStats();
+
+  res.status(200).json(
+    new ApiResponse(true, "Review statistics fetched successfully", stats)
+  );
+};
+
+export const getAdminReviewDetails = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const reviewId = Array.isArray(req.params.reviewId) ? req.params.reviewId[0] : req.params.reviewId;
+  const result = await ReviewService.getReviewDetails(reviewId);
+
+  res.status(200).json(
+    new ApiResponse(true, "Review details fetched successfully", result)
+  );
+};
+
+export const moderateReview = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const reviewId = Array.isArray(req.params.reviewId) ? req.params.reviewId[0] : req.params.reviewId;
+  const data = moderateReviewSchema.parse(req.body);
+  const review = await ReviewService.moderateReview(reviewId, data, req.user?.userId as string);
+
+  res.status(200).json(
+    new ApiResponse(true, `Review marked as ${data.status} successfully`, { review })
+  );
+};
+
+export const softDeleteAdminReview = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const reviewId = Array.isArray(req.params.reviewId) ? req.params.reviewId[0] : req.params.reviewId;
+  const result = await ReviewService.softDeleteReview(reviewId, req.user?.userId as string);
+
+  res.status(200).json(
+    new ApiResponse(true, result.message, result)
+  );
+};
+
+export const restoreAdminReview = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const reviewId = Array.isArray(req.params.reviewId) ? req.params.reviewId[0] : req.params.reviewId;
+  const review = await ReviewService.restoreReview(reviewId, req.user?.userId as string);
+
+  res.status(200).json(
+    new ApiResponse(true, "Review restored successfully", { review })
+  );
+};
+
+export const markSpamOrAbuse = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const reviewId = Array.isArray(req.params.reviewId) ? req.params.reviewId[0] : req.params.reviewId;
+  const type = req.body?.type === "abuse" ? "abuse" : "spam";
+  const review = await ReviewService.markSpamOrAbuse(reviewId, type, req.user?.userId as string);
+
+  res.status(200).json(
+    new ApiResponse(true, `Review flagged as ${type}`, { review })
+  );
+};
+
+export const reportReview = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const reviewId = Array.isArray(req.params.reviewId) ? req.params.reviewId[0] : req.params.reviewId;
+  const data = reportReviewSchema.parse(req.body);
+  const review = await ReviewService.reportReview(reviewId, data.reason);
+
+  res.status(200).json(
+    new ApiResponse(true, "Review reported successfully", { review })
+  );
+};
+
+export const bulkReviewAction = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const data = bulkReviewActionSchema.parse(req.body);
+  const result = await ReviewService.bulkReviewAction(data, req.user?.userId as string);
+
+  res.status(200).json(
+    new ApiResponse(true, result.message, result)
   );
 };
 
@@ -112,3 +218,4 @@ export const updateVisibility = async (
     new ApiResponse(true, "Review visibility updated successfully", { review })
   );
 };
+

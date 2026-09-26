@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getAdminAnalyticsOverview } from "../controllers/analytics.controller";
+import { exportAnalytics, getAdminAnalyticsOverview } from "../controllers/analytics.controller";
 import { authenticate } from "../middleware/auth.middleware";
 import { authorize } from "../middleware/role.middleware";
 import { asyncHandler } from "../utils/asyncHandler";
@@ -14,4 +14,12 @@ router.get(
   asyncHandler(getAdminAnalyticsOverview)
 );
 
+router.get(
+  "/admin/export",
+  authenticate,
+  authorize(USER_ROLES.PLATFORM_ADMIN),
+  asyncHandler(exportAnalytics)
+);
+
 export default router;
+

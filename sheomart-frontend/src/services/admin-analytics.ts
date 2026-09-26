@@ -12,3 +12,28 @@ export async function fetchAdminAnalyticsOverview(filters: AdminAnalyticsFilters
   const response = await api.get<ApiResponse<AdminAnalyticsOverview>>(`/api/v1/analytics/admin/overview?${params.toString()}`);
   return response.data.data as AdminAnalyticsOverview;
 }
+
+export async function downloadAnalyticsExport(
+  type: "revenue" | "orders" | "users" | "reviews" | "coupons",
+  from?: string,
+  to?: string
+): Promise<void> {
+  const params = new URLSearchParams();
+  params.set("type", type);
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+
+  const response = await api.get(`/api/v1/analytics/admin/export?${params.toString()}`, {
+    responseType: "blob",
+  });
+
+  const blob = new Blob([response.data], { type: "text/csv;charset=utf-8;" });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", `sheomart-${type}-analytics-${new Date().toISOString().slice(0, 10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}

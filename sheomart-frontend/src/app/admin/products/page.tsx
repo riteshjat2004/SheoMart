@@ -224,7 +224,11 @@ export default function AdminProductsPage() {
 
   // Filter Helpers
   const updateFilters = (updates: Partial<AdminProductFilters>) => {
-    setFilters((current) => ({ ...current, ...updates, page: 1 }));
+    setFilters((current) => ({
+      ...current,
+      ...updates,
+      page: updates.page !== undefined ? updates.page : 1,
+    }));
   };
 
   const clearFilters = () => {
@@ -811,24 +815,76 @@ export default function AdminProductsPage() {
 
         {/* Pagination Bar */}
         {pagination && pagination.totalPages > 0 && (
-          <div className="mt-5 flex flex-col gap-3 border-t border-stone-200 pt-4 text-sm text-stone-600 dark:border-stone-800 dark:text-stone-300 sm:flex-row sm:items-center sm:justify-between">
-            <span>
-              Page {pagination.page} of {pagination.totalPages} — {pagination.total} total products
-            </span>
-            <div className="flex gap-2">
+          <div className="mt-5 flex flex-col gap-3 border-t border-stone-200 pt-4 text-xs text-stone-600 dark:border-stone-800 dark:text-stone-300 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <span>
+                Page <strong className="text-stone-900 dark:text-stone-100">{pagination.page}</strong> of{" "}
+                <strong className="text-stone-900 dark:text-stone-100">{pagination.totalPages}</strong> —{" "}
+                {pagination.total} total products
+              </span>
+              <div className="hidden sm:flex items-center gap-1.5 border-l border-stone-200 pl-3 dark:border-stone-800">
+                <span className="text-stone-400">Rows:</span>
+                <select
+                  value={filters.limit ?? 25}
+                  onChange={(e) => updateFilters({ limit: Number(e.target.value), page: 1 })}
+                  className="rounded-lg border border-stone-200 bg-white px-2 py-1 text-xs text-stone-700 outline-none transition focus:border-emerald-500 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
+                className="h-8 px-3 text-xs"
                 disabled={pagination.page <= 1 || productsQuery.isFetching}
                 onClick={() => updateFilters({ page: pagination.page - 1 })}
               >
                 Previous
               </Button>
+
+              {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+                .filter((p) => {
+                  return (
+                    p === 1 ||
+                    p === pagination.totalPages ||
+                    Math.abs(p - pagination.page) <= 1
+                  );
+                })
+                .map((p, idx, arr) => {
+                  const prev = arr[idx - 1];
+                  const showEllipsis = prev && p - prev > 1;
+
+                  return (
+                    <span key={p} className="flex items-center">
+                      {showEllipsis && <span className="px-1 text-stone-400">...</span>}
+                      <button
+                        type="button"
+                        onClick={() => updateFilters({ page: p })}
+                        disabled={productsQuery.isFetching}
+                        className={`h-8 min-w-[2rem] rounded-lg px-2 text-xs font-medium transition ${
+                          pagination.page === p
+                            ? "bg-emerald-600 text-white font-bold"
+                            : "border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300 dark:hover:bg-stone-800"
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    </span>
+                  );
+                })}
+
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
+                className="h-8 px-3 text-xs"
                 disabled={pagination.page >= pagination.totalPages || productsQuery.isFetching}
                 onClick={() => updateFilters({ page: pagination.page + 1 })}
               >

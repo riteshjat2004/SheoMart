@@ -18,3 +18,13 @@ export const adminAnalyticsOverviewQuerySchema = z.object({
 }).strict();
 
 export type AdminAnalyticsOverviewQuery = z.infer<typeof adminAnalyticsOverviewQuerySchema>;
+
+export const analyticsExportQuerySchema = z.object({
+  type: z.enum(["revenue", "orders", "users", "reviews", "coupons"]),
+  from: dateParameter.optional(),
+  to: dateParameter.optional(),
+  timezone: z.string().trim().min(1).default("UTC").refine(isValidTimezone, "Timezone must be a valid IANA timezone"),
+}).strict();
+
+export type AnalyticsExportQuery = z.infer<typeof analyticsExportQuerySchema>;
+

@@ -23,7 +23,10 @@ export const login = async (
 ): Promise<void> => {
   const data = loginSchema.parse(req.body);
 
-  const result = await AuthService.login(data);
+  const userAgent = req.headers["user-agent"] || "";
+  const ipAddress = req.ip || req.socket.remoteAddress || "";
+
+  const result = await AuthService.login(data, { userAgent, ipAddress });
 
   res.status(200).json(
     new ApiResponse(true, "Login successful", result)

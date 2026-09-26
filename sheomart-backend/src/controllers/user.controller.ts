@@ -2,7 +2,17 @@ import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { ApiResponse } from "../utils/apiResponse";
 import { UserService } from "../services/user.service";
-import { adminUserListQuerySchema, changePasswordSchema, updateProfileSchema } from "../validators/user.validator";
+import {
+  adminUserListQuerySchema,
+  createAdminUserSchema,
+  updateAdminUserSchema,
+  changeRoleSchema,
+  suspendUserSchema,
+  verifyCustomerSchema,
+  bulkUserActionSchema,
+  changePasswordSchema,
+  updateProfileSchema,
+} from "../validators/user.validator";
 
 export const getAdminUsers = async (
   req: AuthRequest,
@@ -13,6 +23,129 @@ export const getAdminUsers = async (
 
   res.status(200).json(
     new ApiResponse(true, "Users fetched successfully", result)
+  );
+};
+
+export const getAdminUserStats = async (
+  _req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const stats = await UserService.getAdminUserStats();
+
+  res.status(200).json(
+    new ApiResponse(true, "User statistics fetched successfully", stats)
+  );
+};
+
+export const getAdminUserDetails = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const userId = Array.isArray(req.params.userId) ? req.params.userId[0] : req.params.userId;
+  const result = await UserService.getAdminUserDetails(userId);
+
+  res.status(200).json(
+    new ApiResponse(true, "User details fetched successfully", result)
+  );
+};
+
+export const createAdminUser = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const data = createAdminUserSchema.parse(req.body);
+  const user = await UserService.createAdminUser(data, req.user?.userId as string);
+
+  res.status(201).json(
+    new ApiResponse(true, "User created successfully", { user })
+  );
+};
+
+export const updateAdminUser = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const userId = Array.isArray(req.params.userId) ? req.params.userId[0] : req.params.userId;
+  const data = updateAdminUserSchema.parse(req.body);
+  const user = await UserService.updateAdminUser(userId, data, req.user?.userId as string);
+
+  res.status(200).json(
+    new ApiResponse(true, "User updated successfully", { user })
+  );
+};
+
+export const updateUserStatus = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const userId = Array.isArray(req.params.userId) ? req.params.userId[0] : req.params.userId;
+  const data = suspendUserSchema.parse(req.body);
+  const user = await UserService.updateUserStatus(userId, data, req.user?.userId as string);
+
+  res.status(200).json(
+    new ApiResponse(true, "User status updated successfully", { user })
+  );
+};
+
+export const updateUserRole = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const userId = Array.isArray(req.params.userId) ? req.params.userId[0] : req.params.userId;
+  const data = changeRoleSchema.parse(req.body);
+  const user = await UserService.updateUserRole(userId, data.role, req.user?.userId as string);
+
+  res.status(200).json(
+    new ApiResponse(true, "User role updated successfully", { user })
+  );
+};
+
+export const verifyCustomer = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const userId = Array.isArray(req.params.userId) ? req.params.userId[0] : req.params.userId;
+  const data = verifyCustomerSchema.parse(req.body);
+  const user = await UserService.verifyCustomer(userId, data.isVerifiedCustomer, req.user?.userId as string);
+
+  res.status(200).json(
+    new ApiResponse(true, "Customer verification status updated successfully", { user })
+  );
+};
+
+export const deleteAdminUser = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const userId = Array.isArray(req.params.userId) ? req.params.userId[0] : req.params.userId;
+  const result = await UserService.deleteUser(userId, req.user?.userId as string);
+
+  res.status(200).json(
+    new ApiResponse(true, "User deleted successfully", result)
+  );
+};
+
+export const restoreAdminUser = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const userId = Array.isArray(req.params.userId) ? req.params.userId[0] : req.params.userId;
+  const user = await UserService.restoreUser(userId, req.user?.userId as string);
+
+  res.status(200).json(
+    new ApiResponse(true, "User restored successfully", { user })
+  );
+};
+
+export const bulkUserAction = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const data = bulkUserActionSchema.parse(req.body);
+  const result = await UserService.bulkUserAction(data, req.user?.userId as string);
+
+  res.status(200).json(
+    new ApiResponse(true, result.message, result)
   );
 };
 

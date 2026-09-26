@@ -158,8 +158,18 @@ export function PromotionsManager({ kind }: { kind: PromotionKind }) {
   const [editing, setEditing] = useState<Promotion | null | undefined>(undefined);
   const [pendingDelete, setPendingDelete] = useState<Promotion | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
-  const { data: items = [], isLoading, isError, error } = useQuery<Promotion[], Error>({ queryKey, queryFn: isCoupon ? fetchAdminCoupons : fetchAdminOffers });
   const { data: categories = [] } = useQuery({ queryKey: ["categories"], queryFn: fetchCategories, staleTime: 300000, enabled: !isCoupon });
+  const { data: items = [], isLoading, isError, error } = useQuery<Promotion[], Error>({
+    queryKey,
+    queryFn: async () => {
+      if (isCoupon) {
+        const res = await fetchAdminCoupons();
+        return res.coupons;
+      }
+      const res = await fetchAdminOffers();
+      return res.offers;
+    },
+  });
 
   const saveMutation = useMutation({
     mutationFn: async (form: FormState) => {
