@@ -709,6 +709,47 @@ export class ProductService {
     return product;
   }
 
+  static async toggleProductFeatured(
+    productId: string,
+    isFeatured: boolean,
+    userId: string,
+    priority?: number
+  ) {
+    const product = await Product.findOne({ productId, isDeleted: { $ne: true } });
+
+    if (!product) {
+      throw new AppError("Product not found", 404);
+    }
+
+    product.isFeatured = isFeatured;
+    product.featuredAt = isFeatured ? new Date() : null;
+    if (typeof priority === "number") {
+      product.featuredPriority = priority;
+    }
+    product.updatedBy = userId;
+    await product.save();
+
+    return product;
+  }
+
+  static async updateProductFeaturedPriority(
+    productId: string,
+    priority: number,
+    userId: string
+  ) {
+    const product = await Product.findOne({ productId, isDeleted: { $ne: true } });
+
+    if (!product) {
+      throw new AppError("Product not found", 404);
+    }
+
+    product.featuredPriority = priority;
+    product.updatedBy = userId;
+    await product.save();
+
+    return product;
+  }
+
   static async bulkUpdateProducts(data: BulkProductActionInput, userId: string, role?: string) {
     const { productIds, action } = data;
     const query: Record<string, unknown> = { productId: { $in: productIds } };
@@ -737,10 +778,10 @@ export class ProductService {
         updateFields = { ...updateFields, isDeleted: false, isActive: true };
         break;
       case "feature":
-        updateFields = { ...updateFields, isFeatured: true };
+        updateFields = { ...updateFields, isFeatured: true, featuredAt: new Date() };
         break;
       case "unfeature":
-        updateFields = { ...updateFields, isFeatured: false };
+        updateFields = { ...updateFields, isFeatured: false, featuredAt: null, featuredPriority: 0 };
         break;
       default:
         throw new AppError("Invalid bulk action", 400);

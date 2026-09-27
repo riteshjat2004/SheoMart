@@ -102,4 +102,28 @@ button {
   100% { opacity: 1; transform: translateY(0); }
 }
 
+/* Custom Dashboard Scrollbar */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(168, 162, 158, 0.35) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(168, 162, 158, 0.35);
+  border-radius: 9999px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(168, 162, 158, 0.55);
+}
+
 

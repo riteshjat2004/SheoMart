@@ -26,6 +26,7 @@ import {
   BadgeCheck,
   Crown,
   LucideIcon,
+  LifeBuoy,
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { useAppStore } from "@/store/app-store";
@@ -75,6 +76,7 @@ const ADMIN_NAV_GROUPS: NavGroup[] = [
     label: "Platform",
     items: [
       { id: "admin-reviews", title: "Reviews", href: "/admin/reviews", icon: ShoppingBag },
+      { id: "admin-support", title: "Support Center", href: "/admin/support", icon: LifeBuoy },
       { id: "admin-security", title: "Security", href: "/admin/security", icon: Shield },
     ],
   },
@@ -374,14 +376,14 @@ export function Sidebar({ role }: SidebarProps) {
         </div>
       )}
 
-      {/* Desktop Sticky Aside */}
+      {/* Desktop Fixed Aside */}
       <aside
-        className={`hidden h-screen shrink-0 border-r border-stone-200/80 bg-white/95 backdrop-blur-md transition-all duration-300 ease-in-out lg:flex lg:flex-col dark:border-stone-800/80 dark:bg-stone-950/95 ${
+        className={`fixed inset-y-0 left-0 z-30 hidden h-screen border-r border-stone-200/80 bg-white/95 backdrop-blur-md transition-all duration-300 ease-in-out lg:flex lg:flex-col dark:border-stone-800/80 dark:bg-stone-950/95 ${
           isSidebarCollapsed ? "w-20" : "w-64"
         }`}
       >
         {/* Desktop Brand Header */}
-        <div className="flex h-[60px] items-center justify-between border-b border-stone-200/80 px-4 dark:border-stone-800/80">
+        <div className="flex h-[60px] shrink-0 items-center justify-between border-b border-stone-200/80 px-4 dark:border-stone-800/80">
           <Link
             href={brandHref}
             className={`flex items-center gap-3 transition-opacity ${
@@ -457,7 +459,7 @@ export function Sidebar({ role }: SidebarProps) {
 
         {/* Collapsed expand trigger button */}
         {isSidebarCollapsed && (
-          <div className="flex justify-center py-2 border-b border-stone-200/50 dark:border-stone-800/50">
+          <div className="flex shrink-0 justify-center py-2 border-b border-stone-200/50 dark:border-stone-800/50">
             <button
               type="button"
               onClick={toggleSidebarCollapse}
@@ -476,7 +478,7 @@ export function Sidebar({ role }: SidebarProps) {
         </nav>
 
         {/* Desktop Sidebar Footer */}
-        <div className="border-t border-stone-200/80 p-3 dark:border-stone-800/80">
+        <div className="shrink-0 border-t border-stone-200/80 p-3 dark:border-stone-800/80">
           {isSidebarCollapsed ? (
             <div className="flex flex-col items-center gap-2">
               <div

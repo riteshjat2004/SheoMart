@@ -23,6 +23,8 @@ export interface IProduct extends Document {
   isActive: boolean;
   isDeleted: boolean;
   isFeatured: boolean;
+  featuredPriority: number;
+  featuredAt: Date | null;
   isBestseller: boolean;
   isTrending: boolean;
   rating: number;
@@ -149,6 +151,17 @@ const productSchema = new Schema<IProduct>(
       type: Boolean,
       default: false,
       index: true,
+    },
+
+    featuredPriority: {
+      type: Number,
+      default: 0,
+      index: true,
+    },
+
+    featuredAt: {
+      type: Date,
+      default: null,
     },
 
     isBestseller: {

@@ -5,4 +5,5 @@ export const CLOUDINARY_FOLDERS = {
   CATEGORIES: "sheomart/category_icons",
   PROMOTIONS: "sheomart/promotions",
   BRANDING: "sheomart/branding",
+  SUPPORT: "sheomart/support_attachments",
 } as const;

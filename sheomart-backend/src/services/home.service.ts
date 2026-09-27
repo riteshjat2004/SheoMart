@@ -17,9 +17,212 @@ export interface HeroShowcaseItem {
 }
 
 export class HomeService {
+  /**
+   * Homepage Trending Products (Admin Featured Products as ONLY Source of Truth)
+   * Displays products marked as isFeatured: true by Admin.
+   * Enforces business rules:
+   * - Must be active, published, not deleted
+   * - Must have available stock (quantity > 0)
+   * - Must belong to an active, approved, non-suspended store
+   * - Ordered by featuredPriority DESC, featuredAt DESC, updatedAt DESC
+   */
   static async getTrendingProducts() {
-    const products = await Product.find({ isActive: true, isPublished: true }).sort({ createdAt: -1 });
-    return products.slice(0, 8);
+    const featuredProducts = await Product.aggregate([
+      {
+        $match: {
+          isFeatured: true,
+          isActive: true,
+          isPublished: true,
+          isDeleted: { $ne: true },
+        },
+      },
+      {
+        $lookup: {
+          from: "stores",
+          localField: "storeId",
+          foreignField: "storeId",
+          as: "storeData",
+        },
+      },
+      {
+        $unwind: "$storeData",
+      },
+      {
+        $match: {
+          "storeData.status": STORE_STATUS.APPROVED,
+          "storeData.isActive": { $ne: false },
+          "storeData.isDeleted": { $ne: true },
+        },
+      },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "categoryId",
+          foreignField: "categoryId",
+          as: "categoryData",
+        },
+      },
+      {
+        $unwind: {
+          path: "$categoryData",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $addFields: {
+          inStock: { $cond: [{ $gt: ["$quantity", 0] }, 1, 0] },
+        },
+      },
+      {
+        $sort: {
+          inStock: -1,
+          featuredPriority: -1,
+          featuredAt: -1,
+          updatedAt: -1,
+          createdAt: -1,
+        },
+      },
+      {
+        $limit: 12,
+      },
+      {
+        $project: {
+          _id: 1,
+          productId: 1,
+          storeId: 1,
+          categoryId: 1,
+          name: 1,
+          slug: 1,
+          description: 1,
+          brand: 1,
+          sku: 1,
+          price: 1,
+          discountPrice: 1,
+          quantity: 1,
+          thumbnail: 1,
+          images: 1,
+          image: 1,
+          isActive: 1,
+          isPublished: 1,
+          isFeatured: 1,
+          featuredPriority: 1,
+          featuredAt: 1,
+          isBestseller: 1,
+          isTrending: 1,
+          rating: 1,
+          totalReviews: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          store: "$storeData.storeName",
+          storeBadge: "$storeData.badge",
+          category: "$categoryData.name",
+        },
+      },
+    ]);
+
+    let finalProducts = [...featuredProducts];
+
+    // Ensure at least 8 trending products are always visible on the homepage
+    if (finalProducts.length < 8) {
+      const existingProductIds = finalProducts.map((p) => p.productId).filter(Boolean);
+      const needed = 8 - finalProducts.length;
+
+      const fallbackProducts = await Product.aggregate([
+        {
+          $match: {
+            productId: { $nin: existingProductIds },
+            isActive: true,
+            isPublished: true,
+            isDeleted: { $ne: true },
+          },
+        },
+        {
+          $lookup: {
+            from: "stores",
+            localField: "storeId",
+            foreignField: "storeId",
+            as: "storeData",
+          },
+        },
+        {
+          $unwind: "$storeData",
+        },
+        {
+          $match: {
+            "storeData.status": STORE_STATUS.APPROVED,
+            "storeData.isActive": { $ne: false },
+            "storeData.isDeleted": { $ne: true },
+          },
+        },
+        {
+          $lookup: {
+            from: "categories",
+            localField: "categoryId",
+            foreignField: "categoryId",
+            as: "categoryData",
+          },
+        },
+        {
+          $unwind: {
+            path: "$categoryData",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+        {
+          $addFields: {
+            inStock: { $cond: [{ $gt: ["$quantity", 0] }, 1, 0] },
+          },
+        },
+        {
+          $sort: {
+            inStock: -1,
+            quantity: -1,
+            rating: -1,
+            createdAt: -1,
+          },
+        },
+        {
+          $limit: needed,
+        },
+        {
+          $project: {
+            _id: 1,
+            productId: 1,
+            storeId: 1,
+            categoryId: 1,
+            name: 1,
+            slug: 1,
+            description: 1,
+            brand: 1,
+            sku: 1,
+            price: 1,
+            discountPrice: 1,
+            quantity: 1,
+            thumbnail: 1,
+            images: 1,
+            image: 1,
+            isActive: 1,
+            isPublished: 1,
+            isFeatured: 1,
+            featuredPriority: 1,
+            featuredAt: 1,
+            isBestseller: 1,
+            isTrending: 1,
+            rating: 1,
+            totalReviews: 1,
+            createdAt: 1,
+            updatedAt: 1,
+            store: "$storeData.storeName",
+            storeBadge: "$storeData.badge",
+            category: "$categoryData.name",
+          },
+        },
+      ]);
+
+      finalProducts = [...finalProducts, ...fallbackProducts];
+    }
+
+    return finalProducts;
   }
 
   static async getHeroCarousel(): Promise<HeroShowcaseItem[]> {

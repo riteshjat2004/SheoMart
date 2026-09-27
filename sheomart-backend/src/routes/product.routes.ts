@@ -15,6 +15,8 @@ import {
   updateProduct,
   updateProductStatus,
   updateThumbnail,
+  toggleProductFeatured,
+  updateProductFeaturedPriority,
 } from "../controllers/product.controller";
 import { authenticate } from "../middleware/auth.middleware";
 import { authorize } from "../middleware/role.middleware";
@@ -35,6 +37,18 @@ router.post(
   authenticate,
   authorize(USER_ROLES.PLATFORM_ADMIN),
   asyncHandler(bulkProductAction)
+);
+router.patch(
+  "/admin/:productId/feature",
+  authenticate,
+  authorize(USER_ROLES.PLATFORM_ADMIN),
+  asyncHandler(toggleProductFeatured)
+);
+router.patch(
+  "/admin/:productId/featured-priority",
+  authenticate,
+  authorize(USER_ROLES.PLATFORM_ADMIN),
+  asyncHandler(updateProductFeaturedPriority)
 );
 router.get("/", asyncHandler(getProducts));
 router.get(

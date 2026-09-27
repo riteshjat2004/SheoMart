@@ -15,9 +15,10 @@ import type { UserRole } from "@/types/auth";
 
 interface TopbarProps {
   role?: UserRole;
+  isScrolled?: boolean;
 }
 
-export function Topbar({ role }: TopbarProps) {
+export function Topbar({ role, isScrolled = false }: TopbarProps) {
   const pathname = usePathname();
   const { setMobileMenuOpen } = useAppStore();
   const { data: settings } = useAdminSettings();
@@ -28,7 +29,13 @@ export function Topbar({ role }: TopbarProps) {
   const isHealthy = health?.status === "healthy";
 
   return (
-    <header className="sticky top-0 z-20 border-b border-stone-200/80 bg-white/85 backdrop-blur-md dark:border-stone-800/80 dark:bg-stone-950/85 transition-colors">
+    <header
+      className={`shrink-0 sticky top-0 z-20 border-b bg-white/85 backdrop-blur-md dark:bg-stone-950/85 transition-all duration-200 ${
+        isScrolled
+          ? "border-stone-200/90 shadow-xs dark:border-stone-800/90 dark:shadow-stone-950/40"
+          : "border-stone-200/80 dark:border-stone-800/80"
+      }`}
+    >
       <div className="flex h-[60px] items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Left Section: Mobile Menu Trigger on small screens */}
         <div className="flex items-center">

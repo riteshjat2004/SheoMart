@@ -41,6 +41,7 @@ import {
   restoreAdminProduct,
   updateAdminProductStatus,
   bulkAdminProductAction,
+  toggleAdminProductFeatured,
 } from "@/services/admin-products";
 import type {
   AdminProduct,
@@ -134,9 +135,23 @@ export default function AdminProductsPage() {
   const invalidateProductQueries = () => {
     queryClient.invalidateQueries({ queryKey: ["admin-products"] });
     queryClient.invalidateQueries({ queryKey: ["admin-categories"] });
+    queryClient.invalidateQueries({ queryKey: ["trending-products"] });
+    queryClient.invalidateQueries({ queryKey: ["hero-carousel"] });
   };
 
   // Mutations
+  const featureToggleMutation = useMutation({
+    mutationFn: ({ productId, isFeatured }: { productId: string; isFeatured: boolean }) =>
+      toggleAdminProductFeatured(productId, isFeatured),
+    onSuccess: (resProd) => {
+      invalidateProductQueries();
+      const actionText = resProd?.isFeatured ? "featured on homepage" : "removed from homepage featured";
+      setFeedback({ type: "success", message: `Product "${resProd?.name ?? ""}" ${actionText}.` });
+    },
+    onError: (err: unknown) => {
+      setFeedback({ type: "error", message: err instanceof Error ? err.message : "Failed to update featured status." });
+    },
+  });
   const createMutation = useMutation({
     mutationFn: (formData: FormData) => createAdminProduct(formData),
     onSuccess: (newProduct) => {
@@ -513,6 +528,14 @@ export default function AdminProductsPage() {
               <Button
                 size="sm"
                 variant="outline"
+                onClick={() => setPendingBulkAction("unfeature")}
+                className="h-8 text-xs bg-white dark:bg-stone-900"
+              >
+                Unfeature
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
                 onClick={() => setPendingBulkAction("delete")}
                 className="h-8 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 bg-white dark:bg-stone-900"
               >
@@ -743,6 +766,27 @@ export default function AdminProductsPage() {
                           {/* Actions */}
                           <td className="py-3 pl-3 pr-4 text-right">
                             <div className="flex items-center justify-end gap-1">
+                              {/* Feature Toggle */}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  featureToggleMutation.mutate({
+                                    productId: product.productId!,
+                                    isFeatured: !product.isFeatured,
+                                  })
+                                }
+                                disabled={featureToggleMutation.isPending}
+                                className={`h-8 w-8 p-0 transition-colors ${
+                                  product.isFeatured
+                                    ? "border-amber-400 bg-amber-50 text-amber-500 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-950/40"
+                                    : "text-stone-300 hover:text-amber-500 hover:border-amber-300"
+                                }`}
+                                title={product.isFeatured ? "Featured on Homepage (Click to Unfeature)" : "Feature on Homepage"}
+                              >
+                                <Sparkles className={`h-3.5 w-3.5 ${product.isFeatured ? "fill-amber-400 text-amber-500" : ""}`} />
+                              </Button>
+
                               {/* View Details */}
                               <Button
                                 variant="outline"

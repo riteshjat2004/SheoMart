@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Crown, Heart, ShieldCheck, Star, Store } from "lucide-react";
+import { Crown, Heart, ShieldCheck, Sparkles, Star, Store } from "lucide-react";
 
 import { useAuthStore } from "@/store/auth-store";
 import { useAddCartItem } from "@/hooks/use-cart";
@@ -137,6 +137,13 @@ export function ProductCard({ product, storeBadge }: ProductCardProps) {
             }`}
           >
             {discountPercent}% off
+          </span>
+        ) : null}
+
+        {product.isFeatured ? (
+          <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full border border-amber-400/50 bg-stone-950/85 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-300 shadow-md backdrop-blur-sm dark:bg-stone-900/90">
+            <Sparkles className="h-3 w-3 fill-amber-400 text-amber-400" />
+            Trending
           </span>
         ) : null}
 

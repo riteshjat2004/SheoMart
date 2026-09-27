@@ -1,9 +1,11 @@
+import http from "http";
 import app from "./app";
 import { env } from "./config/env";
 import { connectDB } from "./config/database";
 import { logger } from "./utils/logger";
 import { verifyEmailTransport } from "./services/mail.service";
 import { SellerPasswordResetService } from "./services/seller-password-reset.service";
+import { initSocketServer } from "./sockets/support.socket";
 
 const startServer = async () => {
   logger.info(`Trust proxy enabled: ${String(app.get("trust proxy"))}`);
@@ -17,8 +19,11 @@ const startServer = async () => {
   const cleanupTimer = setInterval(() => { void SellerPasswordResetService.cleanupResolvedRequests().catch((error) => logger.error("Seller password reset cleanup failed", error)); }, 60 * 60 * 1000);
   cleanupTimer.unref();
 
-  app.listen(env.PORT, () => {
-    logger.info(`Server running on port ${env.PORT}`);
+  const server = http.createServer(app);
+  initSocketServer(server);
+
+  server.listen(env.PORT, () => {
+    logger.info(`Server running on port ${env.PORT} with Socket.IO enabled 🚀`);
   });
 };
 

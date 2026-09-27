@@ -257,3 +257,41 @@ export const duplicateProduct = async (
     new ApiResponse(true, "Product duplicated successfully", { product })
   );
 };
+
+export const toggleProductFeatured = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const productId = Array.isArray(req.params.productId) ? req.params.productId[0] : req.params.productId;
+  const isFeatured = req.body?.isFeatured !== undefined ? Boolean(req.body.isFeatured) : true;
+  const priority = typeof req.body?.priority === "number" ? req.body.priority : undefined;
+
+  const product = await ProductService.toggleProductFeatured(
+    productId,
+    isFeatured,
+    req.user?.userId as string,
+    priority
+  );
+
+  res.status(200).json(
+    new ApiResponse(true, `Product featured status updated to ${isFeatured}`, { product })
+  );
+};
+
+export const updateProductFeaturedPriority = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const productId = Array.isArray(req.params.productId) ? req.params.productId[0] : req.params.productId;
+  const priority = typeof req.body?.priority === "number" ? req.body.priority : 0;
+
+  const product = await ProductService.updateProductFeaturedPriority(
+    productId,
+    priority,
+    req.user?.userId as string
+  );
+
+  res.status(200).json(
+    new ApiResponse(true, "Product featured priority updated successfully", { product })
+  );
+};

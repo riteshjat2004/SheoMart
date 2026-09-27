@@ -41,6 +41,7 @@ export default function Home() {
   const categoriesQuery = useCategories();
   const productsQuery = useTrendingProducts();
   const isCustomer = useAuthStore((state) => state.user?.role === "customer");
+  const isPlatformAdmin = useAuthStore((state) => state.user?.role === "platform_admin");
   const addressesQuery = useAddresses(isCustomer);
   const defaultAddress = addressesQuery.data?.find((address) => address.isDefault) ?? addressesQuery.data?.[0];
   const storesQuery = useStores(isCustomer && defaultAddress ? { pincode: defaultAddress.pincode } : undefined);
@@ -165,7 +166,22 @@ export default function Home() {
                 <TrendingProducts products={featuredProducts} />
               </div>
             ) : (
-              <EmptyState title="No products available yet." description="Check back soon for fresh SheoMart arrivals." />
+              <div className="rounded-3xl border border-stone-800 bg-stone-900/40 p-8 text-center space-y-3">
+                <EmptyState
+                  title="No featured products yet."
+                  description="Curated daily essentials and trending products will appear here once featured by admin."
+                />
+                {isPlatformAdmin && (
+                  <div className="pt-2">
+                    <Button asChild size="sm" className="bg-amber-500 hover:bg-amber-600 text-stone-950 font-medium">
+                      <Link href="/admin/products">
+                        <Sparkles className="mr-1.5 h-3.5 w-3.5 fill-current" />
+                        Manage Featured Products
+                      </Link>
+                    </Button>
+                  </div>
+                )}
+              </div>
             )}
           </section>
 

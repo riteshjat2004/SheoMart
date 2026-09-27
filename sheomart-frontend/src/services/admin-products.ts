@@ -63,3 +63,27 @@ export async function bulkAdminProductAction(
   );
   return response.data.data;
 }
+
+export async function toggleAdminProductFeatured(
+  productId: string,
+  isFeatured: boolean,
+  priority?: number
+) {
+  const response = await api.patch<ApiResponse<{ product: import("@/types/marketplace").ProductItem }>>(
+    `/api/v1/products/admin/${productId}/feature`,
+    { isFeatured, priority }
+  );
+  return response.data.data?.product;
+}
+
+export async function updateAdminProductFeaturedPriority(
+  productId: string,
+  priority: number
+) {
+  const response = await api.patch<ApiResponse<{ product: import("@/types/marketplace").ProductItem }>>(
+    `/api/v1/products/admin/${productId}/featured-priority`,
+    { priority }
+  );
+  return response.data.data?.product;
+}
+
