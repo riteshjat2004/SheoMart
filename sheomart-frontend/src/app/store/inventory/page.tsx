@@ -30,8 +30,10 @@ import { InventoryManagementTable } from "@/components/dashboard/store/Inventory
 import { fetchStoreProducts } from "@/services/product";
 import { fetchCategories } from "@/services/category";
 import { syncStoreInventory, updateInventory } from "@/services/inventory";
+import { useInvalidatePosCatalog } from "@/hooks/use-pos-catalog";
 import type { CategoryItem, ProductItem } from "@/types/marketplace";
 import type { InventoryItem } from "@/types/inventory";
+
 
 const PAGE_SIZE = 8;
 type InventoryStatus = "in_stock" | "low_stock" | "out_of_stock" | "discontinued";
@@ -47,7 +49,9 @@ function getInventoryStatus(inventory: InventoryItem | null): InventoryStatus {
 
 export default function StoreInventoryPage() {
   const queryClient = useQueryClient();
+  const invalidatePosCatalog = useInvalidatePosCatalog();
   const [query, setQuery] = useState("");
+
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("stock_asc");
@@ -193,8 +197,10 @@ export default function StoreInventoryPage() {
       queryClient.invalidateQueries({ queryKey: ["products"] }),
       queryClient.invalidateQueries({ queryKey: ["product"] }),
       queryClient.invalidateQueries({ queryKey: ["inventory-ledger"] }),
+      invalidatePosCatalog(), // Keep POS Billing catalog in sync
     ]);
   };
+
 
   const updateMutation = useMutation({
     mutationFn: ({

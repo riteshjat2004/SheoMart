@@ -37,3 +37,48 @@ export async function createOfflineInvoice(payload: CreateOfflineInvoicePayload)
 
   return invoice;
 }
+
+export type StockStatus = "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK";
+
+export interface PosCatalogProduct {
+  productId: string;
+  name: string;
+  sku: string;
+  brand: string;
+  price: number;
+  discountPrice: number;
+  availableQuantity: number;
+  lowStockThreshold: number;
+  stockStatus: StockStatus;
+  categoryId: string;
+  categoryName: string;
+  thumbnail: string;
+  images: string[];
+}
+
+export interface PosCatalogCategory {
+  categoryId: string;
+  name: string;
+}
+
+export interface PosCatalogResponse {
+  products: PosCatalogProduct[];
+  categories: PosCatalogCategory[];
+  store: {
+    storeId: string;
+    storeName: string;
+  };
+}
+
+export async function fetchPosCatalog(): Promise<PosCatalogResponse> {
+  const response = await api.get<ApiResponse<PosCatalogResponse>>(
+    "/api/v1/billing/pos-catalog"
+  );
+
+  const data = response.data.data;
+  if (!data) {
+    throw new Error("POS catalog response was incomplete.");
+  }
+
+  return data;
+}

@@ -1,7 +1,35 @@
-import { ArrowRight, BadgePercent, Sparkles } from "lucide-react";
+import { ArrowRight, BadgePercent, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { verifiedTheme } from "@/themes/verifiedTheme";
 
 export function VerifiedOfferBanner() {
-  return <section className={`relative isolate overflow-hidden rounded-[2rem] border p-6 sm:p-8 ${verifiedTheme.hero}`} aria-labelledby="verified-weekend-sale-heading"><div className="absolute -right-8 -top-14 -z-10 h-44 w-44 rounded-full border border-[#E7C873]/20 bg-[#E7C873]/10 blur-2xl" /><div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between"><div><p className={`flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] ${verifiedTheme.accent}`}><Sparkles className="h-4 w-4" /> Verified exclusive</p><h2 id="verified-weekend-sale-heading" className="mt-2 text-2xl font-semibold text-white sm:text-3xl">Verified Weekend Sale</h2><p className="mt-2 text-sm text-emerald-100">Up to 40% OFF on selected essentials. Offer timing to be announced.</p></div><Button type="button" className={verifiedTheme.primaryButton}><BadgePercent className="h-4 w-4" /> Shop Offers <ArrowRight className="h-4 w-4" /></Button></div></section>;
+  return (
+    <section
+      className={`relative isolate overflow-hidden rounded-[2rem] border p-6 sm:p-8 ${verifiedTheme.hero}`}
+      aria-labelledby="verified-savings-heading"
+    >
+      <div className="absolute -right-8 -top-14 -z-10 h-48 w-48 rounded-full border border-emerald-400/20 bg-emerald-400/10 blur-2xl" />
+      <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">
+            <Tag className="h-4 w-4" /> Verified Store Savings
+          </p>
+          <h2 id="verified-savings-heading" className="mt-2 text-2xl font-bold text-white sm:text-3xl">
+            Fresh Value Deals &amp; Steals
+          </h2>
+          <p className="mt-2 text-sm text-emerald-100 max-w-xl">
+            Save up to 40% on fresh everyday grocery essentials, daily vegetables, and household staples from this verified seller.
+          </p>
+        </div>
+        <Button
+          type="button"
+          className="h-11 shrink-0 rounded-full bg-white px-6 font-semibold text-emerald-900 shadow-md transition hover:bg-emerald-50"
+        >
+          <BadgePercent className="mr-2 h-4 w-4 text-emerald-600" />
+          Shop Offers
+          <ArrowRight className="ml-2 h-4 w-4" />
+        </Button>
+      </div>
+    </section>
+  );
 }

@@ -42,6 +42,9 @@ export interface IUser extends Document {
   gender: string;
   dob: Date | null;
   lastLoginAt: Date | null;
+  failedLoginAttempts: number;
+  lockUntil: Date | null;
+  tokenVersion: number;
   // refreshToken?: string;
   sessions: IUserSession[];
   createdAt: Date;
@@ -251,6 +254,22 @@ const userSchema = new Schema<IUser>(
     lastLoginAt: {
       type: Date,
       default: null,
+    },
+
+    failedLoginAttempts: {
+      type: Number,
+      default: 0,
+    },
+
+    lockUntil: {
+      type: Date,
+      default: null,
+    },
+
+    tokenVersion: {
+      type: Number,
+      default: 0,
+      index: true,
     },
 
     sessions: {

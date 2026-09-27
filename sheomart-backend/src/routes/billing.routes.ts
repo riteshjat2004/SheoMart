@@ -6,6 +6,7 @@ import {
   completePickupPayment,
   createOfflineInvoice,
   getInvoiceById,
+  getPosCatalog,
   getStoreCustomer,
   getStoreCustomerOrders,
   getStoreCustomersAnalytics,
@@ -21,6 +22,14 @@ import { authorize } from "../middleware/role.middleware";
 import { asyncHandler } from "../utils/asyncHandler";
 
 const router = Router();
+
+// POS Catalog — single aggregated endpoint replacing N+1 inventory calls
+router.get(
+  "/pos-catalog",
+  authenticate,
+  authorize(USER_ROLES.STORE_OWNER),
+  asyncHandler(getPosCatalog)
+);
 
 router.post(
   "/invoices",

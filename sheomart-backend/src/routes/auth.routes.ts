@@ -1,23 +1,44 @@
 import { Router } from "express";
 import {
-    register,
-    login,
-    refresh,
+  register,
+  login,
+  refresh,
+  logout,
+  logoutAll,
+  getUserSessions,
+  revokeUserSession,
+  forgotPassword,
+  verifyResetOtp,
+  resetPassword,
+  resendResetOtp,
 } from "../controllers/auth.controller";
 import { asyncHandler } from "../utils/asyncHandler";
-import { forgotPassword, verifyResetOtp, resetPassword, resendResetOtp } from "../controllers/auth.controller";
-import rateLimit from "express-rate-limit";
+import { authenticate } from "../middleware/auth.middleware";
+import {
+  authLoginLimiter,
+  authRegisterLimiter,
+  authRefreshLimiter,
+  authPasswordResetLimiter,
+  authOtpLimiter,
+} from "../middleware/rate-limit.middleware";
 
 const router = Router();
 
-const passwordResetIpRateLimit = rateLimit({ windowMs: 60 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false, message: { success: false, message: "Too many password reset requests. Try again later." } });
+// ── Public Auth Endpoints ───────────────────────────────────────────────────
+router.post("/register", authRegisterLimiter, asyncHandler(register));
+router.post("/login", authLoginLimiter, asyncHandler(login));
+router.post("/refresh", authRefreshLimiter, asyncHandler(refresh));
 
-router.post("/register", asyncHandler(register));
-router.post("/login", asyncHandler(login));
-router.post("/refresh", asyncHandler(refresh));
-router.post("/forgot-password", passwordResetIpRateLimit, asyncHandler(forgotPassword));
-router.post("/verify-reset-otp", passwordResetIpRateLimit, asyncHandler(verifyResetOtp));
-router.post("/resend-reset-otp", passwordResetIpRateLimit, asyncHandler(resendResetOtp));
-router.post("/reset-password", passwordResetIpRateLimit, asyncHandler(resetPassword));
+// ── Session Management Endpoints ────────────────────────────────────────────
+router.post("/logout", authenticate, asyncHandler(logout));
+router.post("/logout-all", authenticate, asyncHandler(logoutAll));
+router.get("/sessions", authenticate, asyncHandler(getUserSessions));
+router.delete("/sessions/:sessionId", authenticate, asyncHandler(revokeUserSession));
+
+// ── Password Reset Endpoints ────────────────────────────────────────────────
+router.post("/forgot-password", authPasswordResetLimiter, asyncHandler(forgotPassword));
+router.post("/verify-reset-otp", authOtpLimiter, asyncHandler(verifyResetOtp));
+router.post("/resend-reset-otp", authOtpLimiter, asyncHandler(resendResetOtp));
+router.post("/reset-password", authPasswordResetLimiter, asyncHandler(resetPassword));
 
 export default router;

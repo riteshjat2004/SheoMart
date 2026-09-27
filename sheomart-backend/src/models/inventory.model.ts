@@ -35,7 +35,6 @@ const inventorySchema = new Schema<IInventory>(
       type: String,
       required: true,
       unique: true,
-      index: true,
     },
 
     // Inventory.availableQuantity is the canonical stock source for store inventory updates.

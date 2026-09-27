@@ -6,12 +6,15 @@ export function StoreDeliveryInfo({ deliveryEnabled, variant, eta, city }: { del
 
   const isRoyal = variant === "royal";
   const Icon = isRoyal ? Zap : Truck;
-  const label = isRoyal ? "Same-Day Delivery Available" : `Delivery Available${city ? ` in ${city}` : ""}`;
+  const label = isRoyal ? "Royal Express Same-Day Delivery" : `Delivery Available${city ? ` in ${city}` : ""}`;
 
   return (
-    <div className={`mt-2 ${isRoyal ? "text-amber-100" : "text-emerald-100"}`}>
-      <p className="flex items-center gap-1.5 text-sm font-medium"><Icon className="h-4 w-4 shrink-0" />{label}</p>
-      {eta ? <p className="mt-1 pl-5.5 text-xs text-white/65">Delivery ETA: {eta}</p> : null}
+    <div className={`mt-2 ${isRoyal ? "text-amber-200" : "text-emerald-100"}`}>
+      <p className="flex items-center gap-1.5 text-sm font-medium">
+        <Icon className={`h-4 w-4 shrink-0 ${isRoyal ? "text-amber-400 fill-amber-400/30" : "text-emerald-300"}`} />
+        {label}
+      </p>
+      {eta ? <p className={`mt-1 pl-5.5 text-xs ${isRoyal ? "text-amber-200/70" : "text-white/65"}`}>Delivery ETA: {eta}</p> : null}
     </div>
   );
 }

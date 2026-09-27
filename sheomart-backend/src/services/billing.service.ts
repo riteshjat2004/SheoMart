@@ -2,7 +2,8 @@ import { AppError } from "../errors/AppError";
 import mongoose from "mongoose";
 
 import { STORE_STATUS } from "../constants/store";
-import { Inventory } from "../models/inventory.model";
+import { Category } from "../models/category.model";
+import { Inventory, INVENTORY_STATUS } from "../models/inventory.model";
 import { InventoryLedger } from "../models/inventoryLedger.model";
 import { OfflineInvoice } from "../models/offlineInvoice.model";
 import { OfflineInvoiceItem } from "../models/offlineInvoiceItem.model";
@@ -1346,4 +1347,123 @@ export const removePlusMember = async (ownerId: string, storeCustomerId: string)
   const member = await StoreCustomer.findOneAndUpdate({ storeId: store.storeId, storeCustomerId }, { $set: { isPlusCustomer: false } }, { new: true }).lean();
   if (!member) throw new AppError("Plus member not found", 404);
   return member;
+};
+
+export const getPosCatalog = async (ownerId: string) => {
+  const store = await Store.findOne({
+    ownerId,
+    status: STORE_STATUS.APPROVED,
+    isDeleted: { $ne: true },
+  })
+    .select("storeId storeName")
+    .lean();
+
+  if (!store) {
+    throw new AppError("Only approved store owners can access POS catalog", 403);
+  }
+
+  const products = await Product.find({
+    storeId: store.storeId,
+    isActive: true,
+    isDeleted: { $ne: true },
+  })
+    .select("productId name sku brand price discountPrice quantity thumbnail images categoryId")
+    .lean();
+
+  const productIds = products.map((p) => p.productId);
+
+  const inventories = await Inventory.find({
+    productId: { $in: productIds },
+  })
+    .select("productId availableQuantity lowStockThreshold status")
+    .lean();
+
+  const inventoryMap = new Map(
+    inventories.map((inv) => [inv.productId, inv])
+  );
+
+  const missingProducts = products.filter((p) => !inventoryMap.has(p.productId));
+  if (missingProducts.length > 0) {
+    try {
+      const createdInventories = await Promise.all(
+        missingProducts.map((p) => {
+          const initialQty = Math.max(0, p.quantity ?? 0);
+          return Inventory.create({
+            productId: p.productId,
+            availableQuantity: initialQty,
+            reservedQuantity: 0,
+            soldQuantity: 0,
+            lowStockThreshold: 5,
+            status:
+              initialQty > 5
+                ? INVENTORY_STATUS.IN_STOCK
+                : initialQty > 0
+                ? INVENTORY_STATUS.LOW_STOCK
+                : INVENTORY_STATUS.OUT_OF_STOCK,
+            createdBy: ownerId,
+            updatedBy: ownerId,
+          });
+        })
+      );
+      createdInventories.forEach((inv) => inventoryMap.set(inv.productId, inv));
+    } catch {
+      // Ignore conflict if created concurrently
+    }
+  }
+
+  const categoryIds = Array.from(new Set(products.map((p) => p.categoryId).filter(Boolean)));
+  const categories = await Category.find({
+    categoryId: { $in: categoryIds },
+    isDeleted: { $ne: true },
+  })
+    .select("categoryId name")
+    .lean();
+
+  const categoryMap = new Map(categories.map((c) => [c.categoryId, c.name]));
+
+  const mappedProducts = products.map((product) => {
+    const inv = inventoryMap.get(product.productId);
+    const availableQuantity =
+      inv !== undefined ? (inv.availableQuantity ?? 0) : Math.max(0, product.quantity ?? 0);
+    const lowStockThreshold = inv?.lowStockThreshold ?? 5;
+
+    let stockStatus: "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK" = "OUT_OF_STOCK";
+    if (availableQuantity > lowStockThreshold) {
+      stockStatus = "IN_STOCK";
+    } else if (availableQuantity > 0) {
+      stockStatus = "LOW_STOCK";
+    } else {
+      stockStatus = "OUT_OF_STOCK";
+    }
+
+    return {
+      productId: product.productId,
+      name: product.name,
+      sku: product.sku || "",
+      brand: product.brand || "",
+      price: product.price,
+      discountPrice: product.discountPrice ?? 0,
+      availableQuantity,
+      lowStockThreshold,
+      stockStatus,
+      categoryId: product.categoryId,
+      categoryName: categoryMap.get(product.categoryId) || "Uncategorized",
+      thumbnail: product.thumbnail || (product.images && product.images[0]) || "",
+      images: product.images || [],
+    };
+  });
+
+  const categoryList = categories.map((cat) => ({
+    categoryId: cat.categoryId,
+    name: cat.name,
+  }));
+
+  return {
+    products: mappedProducts,
+    categories: categoryList,
+    store: {
+      storeId: store.storeId,
+      storeName: store.storeName,
+    },
+  };
 };

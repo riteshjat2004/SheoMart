@@ -3,12 +3,20 @@ import cors from "cors";
 import helmet from "helmet";
 import compression from "compression";
 import cookieParser from "cookie-parser";
-import rateLimit from "express-rate-limit";
 import hpp from "hpp";
 
 import { env } from "./config/env";
 import { ApiResponse } from "./utils/apiResponse";
 import { errorHandler } from "./handlers/errorHandler";
+import { mongoSanitize, enforceContentType } from "./middleware/sanitize.middleware";
+import { csrfProtection } from "./middleware/csrf.middleware";
+import {
+  apiGeneralLimiter,
+  billingPosLimiter,
+  searchLimiter,
+  analyticsLimiter,
+} from "./middleware/rate-limit.middleware";
+
 import authRoutes from "./routes/auth.routes";
 import userRoutes from "./routes/user.routes";
 import storeRoutes from "./routes/store.routes";
@@ -38,7 +46,7 @@ import { checkMaintenanceMode } from "./middleware/maintenance.middleware";
 const app = express();
 app.set("trust proxy", 1);
 
-// Security Middleware
+// ── Security & Header Hardening ──────────────────────────────────────────────
 app.use(
   cors({
     origin: env.CORS_ORIGIN,
@@ -46,22 +54,59 @@ app.use(
   })
 );
 
-app.use(helmet());
-app.use(compression());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
-app.use(hpp());
-
-// Rate Limiter
 app.use(
-  rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 100,
-    standardHeaders: true,
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "blob:", "https://res.cloudinary.com", "https://*.razorpay.com"],
+        connectSrc: ["'self'", env.CORS_ORIGIN || "*", "https://api.razorpay.com"],
+        frameAncestors: ["'none'"],
+        objectSrc: ["'none'"],
+        upgradeInsecureRequests: env.NODE_ENV === "production" ? [] : null,
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    hsts: {
+      maxAge: 31536000,
+      includeSubDomains: true,
+      preload: true,
+    },
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+    frameguard: { action: "deny" },
+    noSniff: true,
   })
 );
 
+// Mozilla Observatory-ready Permissions & Cross-Domain headers
+app.use((_req, res, next) => {
+  res.setHeader(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=(), payment=(self 'https://api.razorpay.com')"
+  );
+  res.setHeader("X-Permitted-Cross-Domain-Policies", "none");
+  next();
+});
+
+app.use(compression());
+app.use(express.json({ limit: "2mb" }));
+app.use(express.urlencoded({ extended: true, limit: "2mb" }));
+app.use(cookieParser());
+app.use(mongoSanitize);
+app.use(enforceContentType);
+app.use(csrfProtection);
+app.use(hpp());
+
+// ── Route-Specific Rate Limiters (replaces restrictive global 100 limiter) ─────
+app.use("/api/v1/search", searchLimiter);
+app.use("/api/v1/billing", billingPosLimiter);
+app.use("/api/v1/analytics", analyticsLimiter);
+app.use(apiGeneralLimiter);
+
+// ── API Routes ───────────────────────────────────────────────────────────────
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/settings", settingsRoutes);
 app.use("/api/v1/admin/security", securityRoutes);
@@ -95,6 +140,7 @@ app.use("/api/v1/platform-fee", platformFeeRoutes);
 app.use("/api/v1", sellerPasswordResetRoutes);
 app.use("/api/v1/admin", adminPasswordResetRoutes);
 app.use("/api/home", homeRoutes);
+
 // Global Error Handler (Always Last)
 app.use(errorHandler);
 

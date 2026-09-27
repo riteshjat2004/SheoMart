@@ -1,6 +1,39 @@
-import { Crown, ShieldCheck } from "lucide-react";
+import { Crown, ShieldCheck, Sparkles, CheckCircle2 } from "lucide-react";
 import { royalTheme } from "./royalTheme";
 
 export function RoyalAuthenticityBanner() {
-  return <section className={`rounded-[2rem] border p-5 sm:p-6 ${royalTheme.panel} ${royalTheme.hover}`} aria-labelledby="royal-authenticity-heading"><div className="flex items-start gap-4"><div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full border ${royalTheme.badge}`}><Crown className="h-6 w-6" /></div><div><h2 id="royal-authenticity-heading" className={`text-xl font-semibold ${royalTheme.panelText}`}>100% Royal Authenticity Guarantee</h2><p className={`mt-2 text-sm leading-6 ${royalTheme.panelMutedText}`}>Genuine luxury products, hand-verified sellers, and a premium packaging guarantee.</p></div></div><div className="mt-5 border-t border-[#D4AF37]/30 pt-3 text-xs uppercase tracking-[0.16em] text-[#E7C873]"><ShieldCheck className="mr-2 inline h-4 w-4" /> SheoMart certificate of confidence</div></section>;
+  return (
+    <section
+      className={`rounded-[2rem] border border-amber-400/40 p-6 sm:p-7 shadow-lg shadow-black/40 transition-all duration-300 ${royalTheme.panel} ${royalTheme.hover}`}
+      aria-labelledby="royal-authenticity-heading"
+    >
+      <div className="flex items-start gap-4">
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-amber-400/60 bg-amber-500/10 text-amber-300 shadow-[0_0_20px_rgba(212,175,55,0.25)]">
+          <Crown className="h-7 w-7 fill-amber-400/30 text-amber-400" />
+        </div>
+        <div>
+          <p className={`flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] ${royalTheme.accent}`}>
+            <Sparkles className="h-4 w-4" />
+            Provenance Verified
+          </p>
+          <h2 id="royal-authenticity-heading" className={`mt-1.5 text-xl font-bold tracking-tight text-white`}>
+            100% Royal Authenticity Guarantee
+          </h2>
+        </div>
+      </div>
+
+      <p className="mt-4 text-sm leading-6 text-stone-300">
+        Direct from verified origin producers. Each item carries our guarantee of peak freshness, unadulterated provenance, and pristine packaging.
+      </p>
+
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-amber-400/20 pt-4 text-xs">
+        <div className="flex items-center gap-2 text-amber-300 font-semibold uppercase tracking-[0.14em]">
+          <ShieldCheck className="h-4 w-4 text-amber-400" /> SheoMart Seal of Excellence
+        </div>
+        <span className="flex items-center gap-1.5 text-stone-400">
+          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> Hand-Inspected
+        </span>
+      </div>
+    </section>
+  );
 }

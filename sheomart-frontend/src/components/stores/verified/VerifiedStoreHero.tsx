@@ -1,85 +1,257 @@
 "use client";
 
 import Image from "next/image";
-import { Clock3, Heart, MapPin, Phone, Share2, ShieldCheck, Sparkles, Star, Users } from "lucide-react";
+import { Clock3, Heart, MapPin, Phone, Share2, ShieldCheck, Star, Truck, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { verifiedTheme, type StoreTheme } from "@/themes/verifiedTheme";
-import type { StoreItem } from "@/types/marketplace";
-import type { ProductItem } from "@/types/marketplace";
-import type { StoreBadge } from "@/types/marketplace";
+import type { StoreItem, ProductItem, StoreBadge } from "@/types/marketplace";
 import { StoreSearchBar } from "@/components/store/shared/StoreSearchBar";
 import { StoreDeliveryInfo } from "@/components/store/StoreDeliveryInfo";
 import type { RefObject } from "react";
 
-function Stat({ icon: Icon, label, value, theme }: { icon: typeof Star; label: string; value: string; theme: StoreTheme }) {
+function VerifiedStat({
+  icon: Icon,
+  label,
+  value,
+  theme,
+}: {
+  icon: typeof Star;
+  label: string;
+  value: string;
+  theme: StoreTheme;
+}) {
   return (
-    <div className={`min-w-[132px] rounded-2xl border p-3 transition ${theme.stat}`}>
+    <div className={`min-w-[136px] rounded-2xl border border-emerald-300/20 bg-emerald-950/40 p-3.5 backdrop-blur-md transition-all duration-200 hover:border-emerald-300/50 hover:bg-emerald-950/60`}>
       <Icon className={`h-4 w-4 ${theme.accent}`} />
-      <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-100/70">{label}</p>
-      <p className="mt-1 text-sm font-semibold">{value}</p>
+      <p className="mt-2.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-100/70">{label}</p>
+      <p className="mt-1 text-sm font-bold text-white">{value}</p>
     </div>
   );
 }
 
-export function VerifiedStoreHero({ store, theme = verifiedTheme, badgeLabel = "Verified Store", BadgeIcon = ShieldCheck, identityBanner = "Fresh essentials", deliveryVariant = "verified", search, stickySearchRef, scrollToStickySearch }: { store: StoreItem; theme?: StoreTheme; badgeLabel?: string; BadgeIcon?: typeof ShieldCheck; identityBanner?: string; deliveryVariant?: StoreBadge; search?: { value: string; onChange: (value: string) => void; onClear: () => void; results: ProductItem[]; onSelect: (product: ProductItem) => void }; stickySearchRef?: RefObject<HTMLInputElement | null>; scrollToStickySearch?: () => void }) {
+export function VerifiedStoreHero({
+  store,
+  theme = verifiedTheme,
+  badgeLabel = "Verified Store",
+  BadgeIcon = ShieldCheck,
+  identityBanner = "Quality Local Grocery & Daily Essentials",
+  deliveryVariant = "verified",
+  search,
+  stickySearchRef,
+  scrollToStickySearch,
+}: {
+  store: StoreItem;
+  theme?: StoreTheme;
+  badgeLabel?: string;
+  BadgeIcon?: typeof ShieldCheck;
+  identityBanner?: string;
+  deliveryVariant?: StoreBadge;
+  search?: {
+    value: string;
+    onChange: (value: string) => void;
+    onClear: () => void;
+    results: ProductItem[];
+    onSelect: (product: ProductItem) => void;
+  };
+  stickySearchRef?: RefObject<HTMLInputElement | null>;
+  scrollToStickySearch?: () => void;
+}) {
   const storeName = store.storeName ?? store.name ?? "Store";
-  const location = [store.city, store.state].filter(Boolean).join(", ") || "Local store";
+  const location = [store.city, store.state].filter(Boolean).join(", ") || "Sheopur, MP";
+
   const shareStore = async () => {
-    if (navigator.share) {
-      await navigator.share({ title: storeName, text: `Explore ${storeName} on SheoMart`, url: window.location.href });
-      return;
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({
+          title: storeName,
+          text: `Explore ${storeName} on SheoMart`,
+          url: window.location.href,
+        });
+        return;
+      } catch {
+        // user cancelled
+      }
     }
-    await navigator.clipboard?.writeText(window.location.href);
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      await navigator.clipboard.writeText(window.location.href);
+    }
   };
 
   return (
-    <section className={`overflow-hidden rounded-[2rem] border ${theme.hero}`} aria-labelledby="verified-store-heading">
-      <div className="relative isolate min-h-[440px] overflow-hidden p-5 sm:p-8 lg:p-10">
-        {store.banner ? <Image src={store.banner} alt={`${storeName} cover`} fill priority className={`-z-20 object-cover ${theme.cover}`} /> : <div className="absolute inset-0 -z-20 bg-[radial-gradient(circle_at_15%_20%,rgba(52,211,153,0.35),transparent_36%),radial-gradient(circle_at_80%_0%,rgba(231,200,115,0.18),transparent_30%)]" />}
-        <div className={`absolute inset-0 -z-10 ${theme.overlay}`} />
-        <div className="absolute -right-20 -top-24 -z-10 h-72 w-72 rounded-full border border-emerald-300/10 bg-emerald-400/10 blur-3xl" />
+    <section
+      className={`overflow-hidden rounded-[2rem] border border-emerald-400/40 bg-gradient-to-br from-emerald-950 via-teal-950 to-slate-950 shadow-[0_20px_60px_-25px_rgba(16,185,129,0.45)]`}
+      aria-labelledby="verified-store-heading"
+    >
+      <div className="relative isolate min-h-[440px] overflow-hidden p-6 sm:p-8 lg:p-10">
+        {/* Banner Cover or Fresh Gradient */}
+        {store.banner ? (
+          <Image
+            src={store.banner}
+            alt={`${storeName} cover`}
+            fill
+            priority
+            className="-z-20 object-cover opacity-30"
+          />
+        ) : (
+          <div className="absolute inset-0 -z-20 bg-[radial-gradient(circle_at_15%_20%,rgba(16,185,129,0.4),transparent_40%),radial-gradient(circle_at_85%_10%,rgba(20,184,166,0.25),transparent_40%)]" />
+        )}
 
-        <div className="flex min-h-[390px] flex-col justify-end">
+        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-slate-950 via-slate-950/75 to-slate-950/40" />
+        <div className="pointer-events-none absolute -right-20 -top-24 -z-10 h-72 w-72 rounded-full border border-emerald-300/10 bg-emerald-400/10 blur-3xl" />
+
+        <div className="flex min-h-[380px] flex-col justify-end">
           <div className="flex flex-col gap-6 md:flex-row md:items-end">
-            <div className={`flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 ${theme.logo} sm:h-28 sm:w-28`}>
-              {store.logo ? <Image src={store.logo} alt={`${storeName} logo`} width={112} height={112} className="h-full w-full object-cover" /> : <span className="text-4xl font-semibold">{storeName.charAt(0).toUpperCase()}</span>}
+            {/* Store Avatar with Emerald Ring */}
+            <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-emerald-400 bg-emerald-100 text-emerald-900 shadow-[0_0_28px_rgba(16,185,129,0.35)] ring-4 ring-slate-950 sm:h-28 sm:w-28">
+              {store.logo ? (
+                <Image
+                  src={store.logo}
+                  alt={`${storeName} logo`}
+                  width={112}
+                  height={112}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="text-4xl font-extrabold text-emerald-900">{storeName.charAt(0).toUpperCase()}</span>
+              )}
             </div>
+
+            {/* Store Details */}
             <div className="min-w-0 max-w-3xl">
-              <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold ${theme.badge}`}>
-                <BadgeIcon className="h-4 w-4" /> {badgeLabel} <Sparkles className="h-3 w-3" />
-              </span>
-              <StoreDeliveryInfo deliveryEnabled={store.deliveryEnabled === true} variant={deliveryVariant} eta={store.deliveryTime} city={store.city ?? "Sheopur"} />
-              <h1 id="verified-store-heading" className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-5xl">{storeName}</h1>
-              <p className="mt-2 text-sm font-medium text-emerald-100">{identityBanner} <span className={theme.accent}>•</span> {location}</p>
-              <p className="mt-4 max-w-2xl text-sm leading-6 text-emerald-50/85">{store.description ?? "Fresh products from this trusted local seller, curated for your everyday needs."}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  title="Verified by SheoMart — Authenticity & Quality Inspected"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/60 bg-emerald-500/20 px-3 py-1 text-xs font-bold text-emerald-200 shadow-sm"
+                >
+                  <BadgeIcon className="h-3.5 w-3.5 text-emerald-300" />
+                  {badgeLabel}
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300/30 bg-black/40 px-2.5 py-1 text-[11px] font-medium text-emerald-200">
+                  <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                  SheoMart Verified Partner
+                </span>
+              </div>
+
+              <StoreDeliveryInfo
+                deliveryEnabled={store.deliveryEnabled === true}
+                variant={deliveryVariant}
+                eta={store.deliveryTime}
+                city={store.city ?? "Sheopur"}
+              />
+
+              <h1
+                id="verified-store-heading"
+                className="mt-3.5 text-3xl font-extrabold tracking-tight text-white sm:text-5xl"
+              >
+                {storeName}
+              </h1>
+
+              <p className="mt-2 text-sm font-medium text-emerald-100">
+                {identityBanner} <span className="text-emerald-400">•</span> {location}
+              </p>
+
+              <p className="mt-3.5 max-w-2xl text-sm leading-6 text-emerald-50/85">
+                {store.description ??
+                  "Your dependable neighborhood grocery seller, stocked daily with fresh produce, dairy, staples, and household necessities."}
+              </p>
             </div>
           </div>
 
-          <div className="mt-7 flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Store quick statistics">
-            <Stat theme={theme} icon={Star} label="Rating" value={typeof store.rating === "number" ? `${store.rating.toFixed(1)} / 5` : "New"} />
-            <Stat theme={theme} icon={Heart} label="Reviews" value={`${store.totalReviews ?? 0}`} />
-            <Stat theme={theme} icon={Clock3} label="Pickup" value={`${store.pickupOpeningTime ?? "10:00"} - ${store.pickupClosingTime ?? "20:00"}`} />
-            <Stat theme={theme} icon={Users} label="Followers" value="Not available" />
-            <Stat theme={theme} icon={MapPin} label="Location" value={location} />
+          {/* Quick Statistics Bar */}
+          <div
+            className="mt-7 flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            aria-label="Store quick statistics"
+          >
+            <VerifiedStat
+              theme={theme}
+              icon={Star}
+              label="Rating"
+              value={typeof store.rating === "number" ? `${store.rating.toFixed(1)} / 5.0` : "New Seller"}
+            />
+            <VerifiedStat
+              theme={theme}
+              icon={Heart}
+              label="Reviews"
+              value={`${store.totalReviews ?? 0} reviews`}
+            />
+            <VerifiedStat
+              theme={theme}
+              icon={Clock3}
+              label="Pickup Hours"
+              value={`${store.pickupOpeningTime ?? "10:00"} - ${store.pickupClosingTime ?? "20:00"}`}
+            />
+            <VerifiedStat
+              theme={theme}
+              icon={Truck}
+              label="Fulfillment"
+              value="Daily Fresh Dispatch"
+            />
+            <VerifiedStat theme={theme} icon={MapPin} label="Location" value={location} />
           </div>
 
+          {/* CTAs */}
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <Button type="button" className={`sm:flex-1 ${theme.primaryButton}`} aria-label={`Follow ${storeName}`}>
+            <Button
+              type="button"
+              className="bg-emerald-500 font-bold text-white shadow-md shadow-emerald-500/25 hover:bg-emerald-400 sm:flex-1"
+              aria-label={`Follow ${storeName}`}
+            >
               Follow Store
             </Button>
-            <Button type="button" onClick={shareStore} variant="outline" className={`sm:flex-1 ${theme.secondaryButton}`}>
-              <Share2 className="h-4 w-4" /> Share Store
+            <Button
+              type="button"
+              onClick={shareStore}
+              variant="outline"
+              className="border-white/20 bg-white/10 text-white backdrop-blur-sm hover:border-white/40 hover:bg-white/20 sm:flex-1"
+            >
+              <Share2 className="mr-2 h-4 w-4" /> Share Store
             </Button>
-            {store.phone ? <Button asChild variant="outline" className={`sm:flex-1 ${theme.secondaryButton}`}><a href={`tel:${store.phone}`}><Phone className="h-4 w-4" /> Contact Seller</a></Button> : null}
+            {store.phone ? (
+              <Button
+                asChild
+                variant="outline"
+                className="border-white/20 bg-white/10 text-white backdrop-blur-sm hover:border-white/40 hover:bg-white/20 sm:flex-1"
+              >
+                <a href={`tel:${store.phone}`}>
+                  <Phone className="mr-2 h-4 w-4" /> Contact Store
+                </a>
+              </Button>
+            ) : null}
           </div>
-          {search ? <div className="mt-5 w-full max-w-md"><StoreSearchBar value={search.value} onChange={search.onChange} onClear={search.onClear} results={search.results} onSelect={search.onSelect} theme={theme} mode="hero" surface="hero" scrollToStickySearch={scrollToStickySearch} /></div> : null}
+
+          {/* In-store Search Bar */}
+          {search ? (
+            <div className="mt-5 w-full max-w-md">
+              <StoreSearchBar
+                value={search.value}
+                onChange={search.onChange}
+                onClear={search.onClear}
+                results={search.results}
+                onSelect={search.onSelect}
+                theme={theme}
+                mode="hero"
+                surface="hero"
+                scrollToStickySearch={scrollToStickySearch}
+              />
+            </div>
+          ) : null}
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 border-t border-emerald-300/15 bg-slate-950/45 p-4">
-        {["Trusted Seller", "Fast Delivery", "Genuine Products", "Secure Payments"].map((label) => (
-          <span key={label} className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium ${theme.trust}`}>
-            <ShieldCheck className="h-3.5 w-3.5 text-emerald-300" /> {label}
+      {/* Trust Badges Strip */}
+      <div className="flex flex-wrap gap-2.5 border-t border-emerald-400/20 bg-slate-950/70 p-4 backdrop-blur-md">
+        {[
+          "100% Quality Inspected",
+          "Fresh Daily Inventory",
+          "Hygienic Packaging",
+          "Prompt Local Delivery",
+          "Secure Online & Cash Payments",
+        ].map((label) => (
+          <span
+            key={label}
+            className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/25 bg-emerald-950/50 px-3 py-1.5 text-xs font-medium text-emerald-100"
+          >
+            <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" /> {label}
           </span>
         ))}
       </div>

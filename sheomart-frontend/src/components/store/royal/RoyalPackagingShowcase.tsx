@@ -1,4 +1,56 @@
-import { Award, CreditCard, Package, Ribbon } from "lucide-react";
+import { Award, CreditCard, Crown, Package, Ribbon } from "lucide-react";
 import { royalTheme } from "./royalTheme";
-const items = [{ icon: Package, title: "Black luxury box", text: "A considered presentation for every special selection." }, { icon: Ribbon, title: "Gold ribbon", text: "Finished with a signature Royal detail." }, { icon: CreditCard, title: "Thank-you card", text: "A personal note to complete the experience." }, { icon: Award, title: "Certificate of Authenticity", text: "Confidence in every premium purchase." }];
-export function RoyalPackagingShowcase() { return <section className="space-y-4" aria-labelledby="royal-packaging-heading"><h2 id="royal-packaging-heading" className={`text-2xl font-semibold ${royalTheme.panelText}`}>Luxury Packaging Experience</h2><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{items.map(({ icon: Icon, title, text }) => <article key={title} className={`rounded-2xl border p-4 ${royalTheme.panel} ${royalTheme.hover}`}><Icon className={`h-6 w-6 ${royalTheme.icon}`} /><h3 className={`mt-4 text-sm font-semibold ${royalTheme.panelText}`}>{title}</h3><p className="mt-1 text-xs leading-5 text-stone-400">{text}</p></article>)}</div></section>; }
+
+const items = [
+  {
+    icon: Package,
+    title: "Signature Matte Black Box",
+    text: "Reinforced rigid box engineered for thermal insulation and structural protection.",
+  },
+  {
+    icon: Ribbon,
+    title: "Embossed Gold Ribbon",
+    text: "Hand-tied champagne gold satin ribbon with our bespoke SheoMart emblem.",
+  },
+  {
+    icon: CreditCard,
+    title: "Wax-Sealed Patron Card",
+    text: "A personal appreciation note and lot verification certificate inside every parcel.",
+  },
+  {
+    icon: Award,
+    title: "Authenticity Hallmark",
+    text: "Unique tamper-evident seal ensuring uncompromised purity from store to doorstep.",
+  },
+];
+
+export function RoyalPackagingShowcase() {
+  return (
+    <section className="space-y-4" aria-labelledby="royal-packaging-heading">
+      <div>
+        <p className={`flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] ${royalTheme.accent}`}>
+          <Crown className="h-3.5 w-3.5" />
+          The Unboxing Ritual
+        </p>
+        <h2 id="royal-packaging-heading" className={`mt-1 text-2xl font-bold tracking-tight ${royalTheme.panelText}`}>
+          Luxury Packaging Experience
+        </h2>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {items.map(({ icon: Icon, title, text }) => (
+          <article
+            key={title}
+            className={`group rounded-2xl border border-amber-400/30 p-5 backdrop-blur-sm transition-all duration-300 ${royalTheme.panel} ${royalTheme.hover}`}
+          >
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-amber-400/40 bg-amber-500/10 text-amber-400 transition-colors group-hover:bg-amber-400 group-hover:text-stone-950">
+              <Icon className="h-5 w-5" />
+            </div>
+            <h3 className="mt-4 text-base font-bold text-white group-hover:text-amber-200 transition-colors">{title}</h3>
+            <p className="mt-1.5 text-xs leading-5 text-stone-300">{text}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}

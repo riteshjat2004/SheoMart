@@ -34,6 +34,14 @@ import { VerifiedOfferBanner } from "@/components/stores/verified/VerifiedOfferB
 import { VerifiedSearchSuggestions } from "@/components/stores/verified/VerifiedSearchSuggestions";
 import { VerifiedSpotlight } from "@/components/stores/verified/VerifiedSpotlight";
 import { VerifiedStickyBar } from "@/components/stores/verified/VerifiedStickyBar";
+import { NormalStoreHero } from "@/components/stores/normal/NormalStoreHero";
+import { NormalStickyBar } from "@/components/stores/normal/NormalStickyBar";
+import { NormalInfoGrid } from "@/components/stores/normal/NormalInfoGrid";
+import { NormalCollections } from "@/components/stores/normal/NormalCollections";
+import { NormalCouponWallet } from "@/components/stores/normal/NormalCouponWallet";
+import { NormalOfferBanner } from "@/components/stores/normal/NormalOfferBanner";
+import { NormalStoreReviews } from "@/components/stores/normal/NormalStoreReviews";
+import { NormalHighlights } from "@/components/stores/normal/NormalHighlights";
 import { RoyalStoreHero } from "@/components/store/royal/RoyalStoreHero";
 import { RoyalStickyBar } from "@/components/store/royal/RoyalStickyBar";
 import { RoyalConciergeCard } from "@/components/store/royal/RoyalConciergeCard";
@@ -54,6 +62,7 @@ import { RoyalGiftBoxShowcase } from "@/components/store/royal/RoyalGiftBoxShowc
 import { RoyalVIPBenefits } from "@/components/store/royal/RoyalVIPBenefits";
 import { RoyalPackagingShowcase } from "@/components/store/royal/RoyalPackagingShowcase";
 import { RoyalShoppingTimeline } from "@/components/store/royal/RoyalShoppingTimeline";
+import { RoyalCouponWallet } from "@/components/store/royal/RoyalCouponWallet";
 import { RoyalMotion } from "@/components/store/royal/RoyalMotion";
 import { useStoreSearch } from "@/components/store/shared/useStoreSearch";
 import { getProductDomId, scrollToProduct } from "@/components/store/shared/scrollToProduct";
@@ -357,137 +366,125 @@ export default function StoreDetailPage() {
             <ErrorState message={(storeQuery.error ?? productsQuery.error) instanceof Error ? (storeQuery.error ?? productsQuery.error)?.message ?? "Unable to load store details." : "Unable to load store details."} />
           ) : store ? (
             <StoreVariantResolver variant={storeVariant}>
-            {storeVariant === "verified" ? <div id="store-sticky-search"><VerifiedStickyBar store={store} visible={stickySearchVisible} search={{ value: searchQuery, onChange: setSearchQuery, onClear: clearSearch, results: searchResults, onSelect: selectSearchResult }} stickySearchRef={stickySearchRef} /></div> : storeVariant === "royal" ? <div id="store-sticky-search" className="border-b border-[#D4AF37]/40"><RoyalStickyBar store={store} visible={stickySearchVisible} search={{ value: searchQuery, onChange: setSearchQuery, onClear: clearSearch, results: searchResults, onSelect: selectSearchResult }} stickySearchRef={stickySearchRef} /></div> : null}
+            {storeVariant === "verified" ? (
+              <div id="store-sticky-search">
+                <VerifiedStickyBar
+                  store={store}
+                  visible={stickySearchVisible}
+                  search={{
+                    value: searchQuery,
+                    onChange: setSearchQuery,
+                    onClear: clearSearch,
+                    results: searchResults,
+                    onSelect: selectSearchResult,
+                  }}
+                  stickySearchRef={stickySearchRef}
+                />
+              </div>
+            ) : storeVariant === "royal" ? (
+              <div id="store-sticky-search" className="border-b border-[#D4AF37]/40">
+                <RoyalStickyBar
+                  store={store}
+                  visible={stickySearchVisible}
+                  search={{
+                    value: searchQuery,
+                    onChange: setSearchQuery,
+                    onClear: clearSearch,
+                    results: searchResults,
+                    onSelect: selectSearchResult,
+                  }}
+                  stickySearchRef={stickySearchRef}
+                />
+              </div>
+            ) : (
+              <div id="store-sticky-search">
+                <NormalStickyBar
+                  store={store}
+                  visible={stickySearchVisible}
+                  search={{
+                    value: searchQuery,
+                    onChange: setSearchQuery,
+                    onClear: clearSearch,
+                    results: searchResults,
+                    onSelect: selectSearchResult,
+                  }}
+                  stickySearchRef={stickySearchRef}
+                />
+              </div>
+            )}
             <div className="space-y-6">
-              {storeVariant === "verified" ? <VerifiedStoreHero store={store} search={{ value: searchQuery, onChange: setSearchQuery, onClear: clearSearch, results: searchResults, onSelect: selectSearchResult }} stickySearchRef={stickySearchRef} scrollToStickySearch={scrollToStickySearch} /> : storeVariant === "royal" ? <RoyalStoreHero store={store} search={{ value: searchQuery, onChange: setSearchQuery, onClear: clearSearch, results: searchResults, onSelect: selectSearchResult }} stickySearchRef={stickySearchRef} scrollToStickySearch={scrollToStickySearch} /> : <div className="overflow-hidden rounded-[2rem] border border-stone-200 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900">
-                <div className="relative h-60 overflow-hidden bg-stone-100 sm:h-72 lg:h-80 dark:bg-stone-800">
-                  {store.banner ? (
-                    <Image src={store.banner} alt={`${store.storeName ?? "Store"} banner`} fill className="object-cover" />
-                  ) : (
-                    <div className="h-full w-full bg-gradient-to-br from-stone-200 via-stone-100 to-emerald-100 dark:from-stone-800 dark:via-stone-900 dark:to-emerald-950/40" />
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-r from-stone-950/85 via-stone-900/45 to-stone-950/60" />
+              {storeVariant === "verified" ? (
+                <VerifiedStoreHero
+                  store={store}
+                  search={{
+                    value: searchQuery,
+                    onChange: setSearchQuery,
+                    onClear: clearSearch,
+                    results: searchResults,
+                    onSelect: selectSearchResult,
+                  }}
+                  stickySearchRef={stickySearchRef}
+                  scrollToStickySearch={scrollToStickySearch}
+                />
+              ) : storeVariant === "royal" ? (
+                <RoyalStoreHero
+                  store={store}
+                  search={{
+                    value: searchQuery,
+                    onChange: setSearchQuery,
+                    onClear: clearSearch,
+                    results: searchResults,
+                    onSelect: selectSearchResult,
+                  }}
+                  stickySearchRef={stickySearchRef}
+                  scrollToStickySearch={scrollToStickySearch}
+                />
+              ) : (
+                <NormalStoreHero
+                  store={store}
+                  search={{
+                    value: searchQuery,
+                    onChange: setSearchQuery,
+                    onClear: clearSearch,
+                    results: searchResults,
+                    onSelect: selectSearchResult,
+                  }}
+                  stickySearchRef={stickySearchRef}
+                  scrollToStickySearch={scrollToStickySearch}
+                />
+              )}
 
-                  <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6 lg:p-8">
-                    <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-                      <div className="flex items-end gap-4">
-                        <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-emerald-100 text-2xl font-semibold text-emerald-700 shadow-lg shadow-stone-950/20 dark:border-stone-900 dark:bg-emerald-950/60 dark:text-emerald-300">
-                          {store.logo ? (
-                            <Image src={store.logo} alt="Store logo" width={80} height={80} className="h-full w-full object-cover" />
-                          ) : (
-                            (store.storeName ?? "S").charAt(0)
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-emerald-300">Store profile</p>
-                          <h1 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">{store.storeName ?? store.name}</h1>
-                          {store.badge !== "normal" ? (
-                            <div className="mt-3 flex flex-wrap items-center gap-2 text-white">
-                              {store.badge === "verified" ? (
-                                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/60 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-semibold text-emerald-100">
-                                  <ShieldCheck className="h-3.5 w-3.5" />
-                                  Verified Store
-                                </span>
-                              ) : null}
-                              {store.badge === "royal" ? (
-                                <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/60 bg-amber-500/15 px-2.5 py-1 text-[11px] font-semibold text-amber-100">
-                                  <Crown className="h-3.5 w-3.5" />
-                                  SheoMart Royal
-                                </span>
-                              ) : null}
-                            </div>
-                          ) : null}
-                        </div>
-                      </div>
-
-                      <span className="inline-flex items-center rounded-full border border-emerald-400/50 bg-emerald-500/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-100">
-                        {store.status ?? "Approved"}
-                      </span>
+              {storeVariant === "royal" ? (
+                <RoyalMotion>
+                  <div className="space-y-6">
+                    <div className="grid gap-5 lg:grid-cols-2">
+                      <RoyalConciergeCard />
+                      <RoyalAuthenticityBanner />
                     </div>
+                    <RoyalDivider />
+                    <RoyalCouponWallet />
+                    <RoyalCollections products={products} />
+                    <RoyalLimitedEdition products={products} />
+                    <RoyalDivider />
+                    <RoyalPrivileges />
+                    <RoyalMembershipBanner />
+                    <RoyalTestimonials />
+                    <RoyalGiftExperience />
+                    <RoyalDivider />
+                    <RoyalSectionHeader title="VIP Shopping Experience" subtitle="A flagship journey from discovery to delivery." />
+                    <RoyalLaunches products={products} />
+                    <RoyalEarlyAccess />
+                    <RoyalShoppingConcierge />
+                    <RoyalRecommendations products={products} />
+                    <RoyalGiftBoxShowcase />
+                    <RoyalVIPBenefits />
+                    <RoyalPackagingShowcase />
+                    <RoyalShoppingTimeline />
+                    <RoyalDivider />
                   </div>
-                </div>
-
-                <div className="space-y-5 p-5 sm:p-6">
-                  <p className="max-w-3xl text-sm leading-7 text-stone-600 dark:text-stone-300">
-                    {store.description ?? "Fresh products from this local seller, curated for your everyday needs."}
-                  </p>
-
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-                    {[
-                      {
-                        icon: Star,
-                        label: "Rating",
-                        value: typeof store.rating === "number" ? `${store.rating.toFixed(1)} / 5` : "New",
-                      },
-                      {
-                        icon: MessageSquareText,
-                        label: "Reviews",
-                        value: `${store.totalReviews ?? 0}`,
-                      },
-                      {
-                        icon: MapPin,
-                        label: "Address",
-                        value: [store.address, store.city, store.state, store.pincode].filter(Boolean).join(", ") || "Address unavailable",
-                      },
-                      {
-                        icon: Clock3,
-                        label: "Pickup Hours",
-                        value: `${store.pickupOpeningTime ?? "10:00"} - ${store.pickupClosingTime ?? "20:00"}`,
-                      },
-                      {
-                        icon: Phone,
-                        label: "Phone",
-                        value: store.phone ?? "N/A",
-                      },
-                      {
-                        icon: ShieldCheck,
-                        label: "Verified",
-                        value: store.isVerified ? "Verified" : "Pending",
-                      },
-                    ].map(({ icon: Icon, label, value }) => (
-                      <div key={label} className="flex items-start gap-3 rounded-2xl border border-stone-200 bg-stone-50 px-3 py-3 dark:border-stone-800 dark:bg-stone-950/50">
-                        <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
-                          <Icon className="h-4 w-4" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-stone-500 dark:text-stone-400">{label}</p>
-                          <p className="mt-1 break-words text-sm font-medium text-stone-700 dark:text-stone-200">{value}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    {[
-                      { label: "Products", value: String(products.length), icon: Boxes },
-                      { label: "Categories", value: String(new Set(products.map((product) => product.categoryId).filter(Boolean)).size || 0), icon: MapPin },
-                      { label: "Rating", value: typeof store.rating === "number" ? store.rating.toFixed(1) : "New", icon: Star },
-                      { label: "Pickup Hours", value: `${store.pickupOpeningTime ?? "10:00"} - ${store.pickupClosingTime ?? "20:00"}`, icon: Clock3 },
-                    ].map(({ label, value, icon: Icon }) => (
-                      <div key={label} className="rounded-2xl border border-stone-200 bg-stone-50 p-3 dark:border-stone-800 dark:bg-stone-950/50">
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500 dark:text-stone-400">{label}</p>
-                          <Icon className="h-4 w-4 text-emerald-600" />
-                        </div>
-                        <p className="mt-3 text-xl font-semibold text-stone-900 dark:text-stone-50">{value}</p>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="flex flex-col gap-3 sm:flex-row">
-                    <Button asChild className="flex-1 justify-center rounded-full bg-emerald-500 text-white hover:bg-emerald-600 dark:bg-emerald-500 dark:hover:bg-emerald-400">
-                      <Link href="/categories">Browse Categories</Link>
-                    </Button>
-                    <Button asChild variant="outline" className="flex-1 justify-center rounded-full border-stone-300 text-stone-700 hover:bg-stone-100 dark:border-stone-700 dark:text-stone-200 dark:hover:bg-stone-800">
-                      <Link href="/explore">Back to Search</Link>
-                    </Button>
-                  </div>
-                </div>
-              </div>}
-
-              {storeVariant !== "normal" ? (
+                </RoyalMotion>
+              ) : storeVariant === "verified" ? (
                 <div className="space-y-5">
-                  {storeVariant === "royal" ? <RoyalMotion><div className="space-y-5"><div className="grid gap-5 lg:grid-cols-2"><RoyalConciergeCard /><RoyalAuthenticityBanner /></div><RoyalDivider /><RoyalCollections products={products} /><RoyalLimitedEdition products={products} /><RoyalDivider /><RoyalPrivileges /><RoyalMembershipBanner /><RoyalTestimonials /><RoyalGiftExperience /><RoyalDivider /><RoyalSectionHeader title="VIP Shopping Experience" subtitle="A flagship journey from discovery to delivery." /><RoyalLaunches products={products} /><RoyalEarlyAccess /><RoyalShoppingConcierge /><RoyalRecommendations products={products} /><RoyalGiftBoxShowcase /><RoyalVIPBenefits /><RoyalPackagingShowcase /><RoyalShoppingTimeline /><RoyalDivider /></div></RoyalMotion> : null}
                   <VerifiedTrustScore />
                   <VerifiedInfoGrid store={store} productCount={products.length} />
                   <VerifiedAchievements />
@@ -508,23 +505,53 @@ export default function StoreDetailPage() {
                   <VerifiedSearchSuggestions onSelect={setSearchQuery} />
                   <VerifiedSpotlight product={products[0]} />
                 </div>
-              ) : null}
+              ) : (
+                <div className="space-y-6">
+                  <NormalInfoGrid store={store} productCount={products.length} />
+                  <NormalHighlights />
+                  <NormalCollections products={products} onSelectCategory={focusCategory} />
+                  <NormalCouponWallet />
+                  <NormalOfferBanner onBrowseDeals={() => focusCategory("featured")} />
+                  <NormalStoreReviews
+                    storeName={store.storeName ?? store.name}
+                    totalReviews={store.totalReviews ?? 0}
+                    averageRating={typeof store.rating === "number" ? store.rating : 4.8}
+                  />
+                </div>
+              )}
 
-              <div className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm dark:border-stone-800 dark:bg-stone-900">
+
+              <div
+                className={`rounded-[2rem] p-6 shadow-sm ${
+                  storeVariant === "royal"
+                    ? "border border-amber-400/40 bg-gradient-to-b from-stone-950 via-zinc-950 to-stone-900 text-stone-100 shadow-[0_16px_50px_-25px_rgba(212,175,55,0.25)]"
+                    : "border border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900"
+                }`}
+              >
                 <div className="flex flex-col gap-4 pb-4">
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <p className="text-sm font-semibold uppercase tracking-[0.28em] text-emerald-600">Products</p>
-                      <h2 className="mt-2 text-xl font-semibold text-stone-900 dark:text-stone-50">Available from this store</h2>
+                      <p className={`text-sm font-semibold uppercase tracking-[0.28em] ${storeVariant === "royal" ? "text-amber-400" : "text-emerald-600"}`}>
+                        {storeVariant === "royal" ? "Royal Collection" : "Products"}
+                      </p>
+                      <h2 className={`mt-2 text-xl font-semibold ${storeVariant === "royal" ? "text-white" : "text-stone-900 dark:text-stone-50"}`}>
+                        {storeVariant === "royal" ? "Curated Flagship Selections" : "Available from this store"}
+                      </h2>
                     </div>
-                    <p className="text-sm text-stone-500 dark:text-stone-400">{filteredProducts.length} items</p>
+                    <p className={`text-sm ${storeVariant === "royal" ? "text-amber-200/70" : "text-stone-500 dark:text-stone-400"}`}>
+                      {filteredProducts.length} items
+                    </p>
                   </div>
 
-                  <div className="sticky top-0 z-10 -mx-2 rounded-2xl border border-stone-200 bg-white/90 px-2 py-3 backdrop-blur-sm dark:border-stone-800 dark:bg-stone-900/90">
+                  <div className={`sticky top-0 z-10 -mx-2 rounded-2xl border px-2 py-3 backdrop-blur-sm ${storeVariant === "royal" ? "border-amber-400/30 bg-black/85" : "border-stone-200 bg-white/90 dark:border-stone-800 dark:bg-stone-900/90"}`}>
                     <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
                       <div className="flex min-w-0 flex-1 items-center gap-3 overflow-x-auto">
-                        <div className="flex min-w-[160px] items-center gap-2 rounded-full border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-600 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-200">
-                          <SortAsc className="h-4 w-4 text-emerald-600" />
+                        <div className={`flex min-w-[160px] items-center gap-2 rounded-full border px-3 py-2 text-sm ${
+                          storeVariant === "royal"
+                            ? "border-amber-400/30 bg-stone-950 text-amber-200"
+                            : "border-stone-200 bg-stone-50 text-stone-600 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-200"
+                        }`}>
+                          <SortAsc className={`h-4 w-4 ${storeVariant === "royal" ? "text-amber-400" : "text-emerald-600"}`} />
                           <span className="whitespace-nowrap">Showing {displayedProducts.length} of {baseProductCount} products</span>
                         </div>
 
@@ -542,7 +569,11 @@ export default function StoreDetailPage() {
                                     setActiveCategory(null);
                                   }
                                 }}
-                                className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300"
+                                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                                  storeVariant === "royal"
+                                    ? "border-amber-400/40 bg-amber-500/15 text-amber-300 hover:bg-amber-500/25"
+                                    : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300"
+                                }`}
                               >
                                 {filter.label}
                                 <span aria-hidden="true">×</span>
@@ -570,7 +601,11 @@ export default function StoreDetailPage() {
                         <select
                           value={sortMode}
                           onChange={(event) => setSortMode(event.target.value as SortMode)}
-                          className="h-11 min-w-[170px] rounded-full border border-stone-200 bg-stone-50 px-3 text-sm text-stone-700 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-200 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/20"
+                          className={`h-11 min-w-[170px] rounded-full border px-3 text-sm outline-none transition ${
+                            storeVariant === "royal"
+                              ? "border-amber-400/40 bg-stone-950 text-amber-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
+                              : "border-stone-200 bg-stone-50 text-stone-700 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-200 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/20"
+                          }`}
                         >
                           <option value="recommended">Recommended</option>
                           <option value="price-low">Price: Low to High</option>
@@ -583,7 +618,7 @@ export default function StoreDetailPage() {
                     </div>
                   </div>
 
-                  <div className="sticky top-0 z-10 -mx-2 rounded-2xl border border-stone-200 bg-white/90 px-2 py-3 backdrop-blur-sm dark:border-stone-800 dark:bg-stone-900/90">
+                  <div className={`sticky top-0 z-10 -mx-2 rounded-2xl border px-2 py-3 backdrop-blur-sm ${storeVariant === "royal" ? "border-amber-400/30 bg-black/85" : "border-stone-200 bg-white/90 dark:border-stone-800 dark:bg-stone-900/90"}`}>
                     <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
                       <label className="relative block w-full xl:max-w-md">
                         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
@@ -591,7 +626,11 @@ export default function StoreDetailPage() {
                           value={searchQuery}
                           onChange={(event) => setSearchQuery(event.target.value)}
                           placeholder="Search products in this store"
-                          className="h-11 w-full rounded-full border border-stone-200 bg-stone-50 pl-10 pr-4 text-sm text-stone-700 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-200 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/20"
+                          className={`h-11 w-full rounded-full border pl-10 pr-4 text-sm outline-none transition ${
+                            storeVariant === "royal"
+                              ? "border-amber-400/30 bg-stone-950 text-stone-100 placeholder-stone-500 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
+                              : "border-stone-200 bg-stone-50 text-stone-700 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-200 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/20"
+                          }`}
                         />
                       </label>
 
@@ -604,7 +643,13 @@ export default function StoreDetailPage() {
                             }
                           }}
                           className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-                            !activeCategory ? "bg-emerald-500 text-white" : "border border-stone-200 bg-stone-50 text-stone-600 hover:bg-stone-100 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-300"
+                            !activeCategory
+                              ? storeVariant === "royal"
+                                ? "bg-gradient-to-r from-amber-400 to-yellow-500 font-bold text-stone-950 shadow-md shadow-amber-500/20"
+                                : "bg-emerald-500 text-white"
+                              : storeVariant === "royal"
+                              ? "border border-amber-400/30 bg-stone-900/80 text-stone-300 hover:border-amber-400/60 hover:text-white"
+                              : "border border-stone-200 bg-stone-50 text-stone-600 hover:bg-stone-100 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-300"
                           }`}
                         >
                           All
@@ -625,7 +670,13 @@ export default function StoreDetailPage() {
                                 focusCategory(categoryKey);
                               }}
                               className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-                                isSelected ? "bg-emerald-500 text-white" : "border border-stone-200 bg-stone-50 text-stone-600 hover:bg-stone-100 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-300"
+                                isSelected
+                                  ? storeVariant === "royal"
+                                    ? "bg-gradient-to-r from-amber-400 to-yellow-500 font-bold text-stone-950 shadow-md shadow-amber-500/20"
+                                    : "bg-emerald-500 text-white"
+                                  : storeVariant === "royal"
+                                  ? "border border-amber-400/30 bg-stone-900/80 text-stone-300 hover:border-amber-400/60 hover:text-white"
+                                  : "border border-stone-200 bg-stone-50 text-stone-600 hover:bg-stone-100 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-300"
                               }`}
                             >
                               {category.name}
@@ -636,6 +687,7 @@ export default function StoreDetailPage() {
                     </div>
                   </div>
                 </div>
+
 
                 {products.length === 0 ? (
                   <div className="mt-6">
@@ -665,7 +717,7 @@ export default function StoreDetailPage() {
                           <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                             {section.products.map((product) => (
                               <div id={getProductDomId(product.productId ?? product._id ?? product.name)} key={product.productId ?? product.name} className="min-w-[240px] max-w-[240px] shrink-0 snap-start sm:min-w-[260px] sm:max-w-[260px]">
-                                <ProductCard product={product} />
+                                <ProductCard product={product} storeBadge={store?.badge} />
                               </div>
                             ))}
                           </div>
@@ -685,7 +737,7 @@ export default function StoreDetailPage() {
                       <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
                         {filteredProducts.map((product, index) => (
                           <div id={getProductDomId(product.productId ?? product._id ?? product.name)} key={product.productId ?? product.name} className="animate-[store-fade-in_500ms_ease-out_both]" style={{ animationDelay: `${Math.min(index * 45, 300)}ms` }}>
-                            <ProductCard product={product} />
+                            <ProductCard product={product} storeBadge={store?.badge} />
                           </div>
                         ))}
                       </div>
@@ -708,19 +760,31 @@ export default function StoreDetailPage() {
                             categoryRefs.current[sectionId] = node;
                           }}
                           style={{ animationDelay: `${Math.min(index * 70, 350)}ms` }}
-                          className={`scroll-mt-32 animate-[store-fade-in_500ms_ease-out_both] rounded-2xl border border-stone-200 bg-stone-50/60 p-4 transition-all dark:border-stone-800 dark:bg-stone-950/50 ${
-                            isHighlighted ? "ring-2 ring-emerald-300 shadow-lg shadow-emerald-500/10" : ""
+                          className={`scroll-mt-32 animate-[store-fade-in_500ms_ease-out_both] rounded-2xl p-4 transition-all ${
+                            storeVariant === "royal"
+                              ? "border border-amber-400/30 bg-black/60 text-stone-100"
+                              : "border border-stone-200 bg-stone-50/60 dark:border-stone-800 dark:bg-stone-950/50"
+                          } ${
+                            isHighlighted
+                              ? storeVariant === "royal"
+                                ? "ring-2 ring-amber-400 shadow-lg shadow-amber-500/10"
+                                : "ring-2 ring-emerald-300 shadow-lg shadow-emerald-500/10"
+                              : ""
                           }`}
                         >
                           <div className="flex items-center justify-between gap-4">
                             <div className="flex items-center gap-3">
-                              <h3 className="text-lg font-semibold text-stone-900 dark:text-stone-50">{group.name}</h3>
-                              <span className="text-sm text-stone-500 dark:text-stone-400">{group.products.length} products</span>
+                              <h3 className={`text-lg font-semibold ${storeVariant === "royal" ? "text-white" : "text-stone-900 dark:text-stone-50"}`}>{group.name}</h3>
+                              <span className={`text-sm ${storeVariant === "royal" ? "text-amber-200/70" : "text-stone-500 dark:text-stone-400"}`}>{group.products.length} products</span>
                             </div>
                             <button
                               type="button"
                               onClick={() => focusCategory(sectionId)}
-                              className="text-sm font-medium text-emerald-600 transition hover:text-emerald-500"
+                              className={`text-sm font-medium transition ${
+                                storeVariant === "royal"
+                                  ? "text-amber-400 hover:text-amber-300"
+                                  : "text-emerald-600 transition hover:text-emerald-500"
+                              }`}
                             >
                               View All →
                             </button>
@@ -729,7 +793,7 @@ export default function StoreDetailPage() {
                           <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
                             {visibleProducts.map((product, productIndex) => (
                               <div id={getProductDomId(product.productId ?? product._id ?? product.name)} key={product.productId ?? product.name} className="animate-[store-fade-in_500ms_ease-out_both]" style={{ animationDelay: `${Math.min(productIndex * 45, 300)}ms` }}>
-                                <ProductCard product={product} />
+                                <ProductCard product={product} storeBadge={store?.badge} />
                               </div>
                             ))}
                           </div>
@@ -739,7 +803,11 @@ export default function StoreDetailPage() {
                               <button
                                 type="button"
                                 onClick={() => setExpandedCategories((current) => ({ ...current, [sectionId]: !current[sectionId] }))}
-                                className="text-sm font-semibold text-emerald-600 transition hover:text-emerald-500"
+                                className={`text-sm font-semibold transition ${
+                                  storeVariant === "royal"
+                                    ? "text-amber-400 hover:text-amber-300"
+                                    : "text-emerald-600 hover:text-emerald-500"
+                                }`}
                               >
                                 {isExpanded ? "Show Less" : "Show More"}
                               </button>

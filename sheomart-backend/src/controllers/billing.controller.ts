@@ -13,6 +13,7 @@ import {
   completePickupPayment as completePickupPaymentService,
   createOfflineInvoice as createOfflineInvoiceService,
   getInvoiceById as getInvoiceByIdService,
+  getPosCatalog as getPosCatalogService,
   getStoreCustomer as getStoreCustomerService,
   getStoreCustomerForUser as getStoreCustomerForUserService,
   getStoreCustomerOrders as getStoreCustomerOrdersService,
@@ -334,3 +335,18 @@ export const updatePlusCustomer = async (req: AuthRequest, res: Response): Promi
     data: { customer },
   });
 };
+
+export const getPosCatalog = async (req: AuthRequest, res: Response): Promise<void> => {
+  const storeOwnerId = req.user?.userId;
+  if (!storeOwnerId) {
+    throw new AppError("Unauthorized", 401);
+  }
+
+  const catalog = await getPosCatalogService(storeOwnerId);
+  res.status(200).json({
+    success: true,
+    message: "POS catalog fetched successfully",
+    data: catalog,
+  });
+};
+
