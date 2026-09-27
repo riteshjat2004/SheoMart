@@ -1,128 +1,172 @@
-# ===========================================
-# SheoMart Root .gitignore
-# ===========================================
+# ==========================================================
+# SheoMart Monorepo - Production .gitignore
+# Frontend (Next.js) + Backend (Node.js) + Mobile (Android) + AI (Python)
+# ==========================================================
 
-# -------------------------
-# Dependencies
-# -------------------------
+# ==========================================================
+# Environment Variables
+# ==========================================================
+**/.env
+**/.env.*
+!**/.env.example
+
+# ==========================================================
+# Node.js / Next.js
+# ==========================================================
 **/node_modules/
 
-# -------------------------
-# Build Output
-# -------------------------
+# Next.js
+**/.next/
+**/out/
+**/.turbo/
+.vercel/
+
+# Build Outputs
 **/dist/
 **/build/
-**/.next/
+**/coverage/
+coverage/
+.nyc_output/
+
+# TypeScript
+*.tsbuildinfo
+
+# ==========================================================
+# Android Studio / Kotlin / Gradle
+# ==========================================================
+
+# Local SDK configuration (machine specific)
+**/local.properties
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+
+# Gradle cache
+**/.gradle/
+
+# Android build outputs
+**/build/
+
+# Native build cache
+**/.cxx/
+**/.externalNativeBuild/
+
+# Kotlin cache
+**/.kotlin/
+
+# Android captures
+**/captures/
+
+# Generated APK / AAB files
+*.apk
+*.aab
+
+# Keep website downloadable APK
+!sheomart-frontend/public/app/SheoMart-latest.apk
+
+# ==========================================================
+# React Native / Expo (Future-proof)
+# ==========================================================
 **/.expo/
 **/.expo-shared/
+**/.metro-health-check*
 **/web-build/
-**/coverage/
+**/android/app/build/
+**/ios/build/
 
-# -------------------------
+# ==========================================================
+# Python (Future AI Services)
+# ==========================================================
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# ==========================================================
 # Logs
-# -------------------------
+# ==========================================================
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+firebase-debug.log
 
-# -------------------------
-# Environment Files
-# -------------------------
-**/.env
-**/.env.*
-!**/.env.example
-
-# -------------------------
-# OS Files
-# -------------------------
-.DS_Store
-Thumbs.db
-
-# -------------------------
-# VS Code
-# -------------------------
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
-
-# -------------------------
-# JetBrains
-# -------------------------
-.idea/
-
-# -------------------------
-# Expo / React Native
-# -------------------------
-**/.expo/
-**/.expo-shared/
-**/.metro-health-check*
-**/android/app/build/
-**/ios/build/
-
-# -------------------------
-# TypeScript
-# -------------------------
-*.tsbuildinfo
-
-# -------------------------
-# Temporary Files
-# -------------------------
-*.tmp
-*.temp
+# ==========================================================
+# Cache Files
+# ==========================================================
 .cache/
-tmp/
-
-# -------------------------
-# Testing
-# -------------------------
-coverage/
-.nyc_output/
-
-# -------------------------
-# ESLint Cache
-# -------------------------
+.parcel-cache/
 .eslintcache
 
-# -------------------------
-# Local Database Files
-# -------------------------
+# ==========================================================
+# Temporary Files
+# ==========================================================
+*.tmp
+*.temp
+*.swp
+*.swo
+*.orig
+tmp/
+temp/
+
+# ==========================================================
+# Runtime Uploads
+# ==========================================================
+**/uploads/
+
+# ==========================================================
+# Local Databases / Dumps
+# ==========================================================
 *.sqlite
 *.db
+*.dump
+mongodb-dump/
 
-# -------------------------
-# Certificates / Keys
-# -------------------------
+# ==========================================================
+# Certificates / Secrets
+# ==========================================================
 *.pem
 *.key
 *.crt
 
-# -------------------------
+# ==========================================================
 # Archives
-# -------------------------
+# ==========================================================
 *.zip
 *.tar
 *.gz
 
-# -------------------------
-# Runtime Uploads
-# -------------------------
-**/uploads/
+# ==========================================================
+# VS Code
+# ==========================================================
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
 
-# -------------------------
-# Firebase
-# -------------------------
-firebase-debug.log
+# ==========================================================
+# OS Generated Files
+# ==========================================================
+.DS_Store
+Thumbs.db
+desktop.ini
 
-# -------------------------
-# Miscellaneous
-# -------------------------
-.vercel/
+# ==========================================================
+# Project Specific
+# ==========================================================
 
+# Ignore local assets folder used for raw design resources
+assets/
 
+# Ignore personal notes
 info.txt
-assets
 
-# Local Gradle daemon configuration
-gradle/gradle-daemon-jvm.properties
+# Keep deployed public assets
+!sheomart-frontend/public/logo/
+!sheomart-frontend/public/app/
