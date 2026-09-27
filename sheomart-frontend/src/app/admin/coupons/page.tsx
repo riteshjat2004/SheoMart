@@ -202,8 +202,9 @@ export default function AdminCouponsPage() {
       <Breadcrumb items={[{ label: "Admin" }, { label: "Coupon Management" }]} />
 
       <PageHeader
+        category="MARKETING"
         title="Coupon Management"
-        description="Configure promotional discount codes, targeting scopes, first-order rules, and track customer redemptions."
+        description="Configure promotional discount codes, targeting scopes, redemption rules, and validity."
         actions={
           <Button
             onClick={() => {

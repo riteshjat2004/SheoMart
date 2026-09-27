@@ -21,6 +21,7 @@ import {
   Tablet,
   X,
 } from "lucide-react";
+import Image from "next/image";
 import { Breadcrumb } from "@/components/dashboard/layout/Breadcrumb";
 import { DashboardContent } from "@/components/dashboard/layout/DashboardContent";
 import { PageHeader } from "@/components/dashboard/layout/PageHeader";
@@ -29,6 +30,8 @@ import { EmptyState } from "@/components/dashboard/EmptyState";
 import { LoadingSkeleton } from "@/components/dashboard/LoadingSkeleton";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
+import { useAuthStore } from "@/store/auth-store";
+import { useProfile } from "@/hooks/useProfile";
 import {
   useAdminSessions,
   useRevokeSession,
@@ -50,7 +53,14 @@ const statusStyles = {
 
 export default function AdminSecurityPage() {
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+  const { data: profile } = useProfile();
   const [activeTab, setActiveTab] = useState<"sessions" | "seller_queue" | "policies">("sessions");
+
+  const avatarUrl = profile?.avatar || "/logo/admin-avatar.jpg";
+  const displayName = profile?.name ?? user?.name ?? "Platform Administrator";
+  const displayEmail = profile?.email ?? user?.email ?? "admin@sheomart.com";
+  const userInitial = displayName.charAt(0).toUpperCase();
 
   // Sessions state & hooks
   const sessionsQuery = useAdminSessions();
@@ -141,9 +151,55 @@ export default function AdminSecurityPage() {
     <DashboardContent className="space-y-6">
       <Breadcrumb items={[{ label: "Admin" }, { label: "Security & Sessions" }]} />
       <PageHeader
-        title="Security & Session Management"
-        description="Monitor active administrator sessions, enforce security middleware, and review seller recovery requests."
+        category="SECURITY"
+        title="Security & Access"
+        description="Manage administrative sessions, audit trails, and protections."
       />
+
+      {/* Admin Profile Security Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-stone-200/80 bg-white/90 p-4 sm:p-5 backdrop-blur-sm dark:border-stone-800/80 dark:bg-stone-900/80">
+        <div className="flex items-center gap-4">
+          <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full ring-2 ring-emerald-500/40 shadow-xs">
+            {avatarUrl ? (
+              <Image
+                src={avatarUrl}
+                alt={displayName}
+                width={56}
+                height={56}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-emerald-500 to-emerald-700 text-lg font-bold text-white">
+                {userInitial}
+              </div>
+            )}
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">
+                {displayName}
+              </h3>
+              <span className="rounded-md bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                Super Admin
+              </span>
+            </div>
+            <p className="text-xs text-stone-500 dark:text-stone-400">{displayEmail}</p>
+            <p className="mt-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              <span>Multi-Factor Authentication & Session Isolation Active</span>
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 self-end sm:self-center">
+          <div className="rounded-xl border border-stone-200/80 bg-stone-50/80 px-3.5 py-2 text-right dark:border-stone-800/80 dark:bg-stone-900/60">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Authenticated Devices</p>
+            <p className="text-sm font-extrabold text-stone-900 dark:text-stone-100">
+              {sessionsQuery.data?.length ?? 1} Active
+            </p>
+          </div>
+        </div>
+      </div>
 
       {feedback && (
         <div

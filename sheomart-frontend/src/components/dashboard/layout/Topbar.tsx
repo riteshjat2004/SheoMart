@@ -1,63 +1,66 @@
 "use client";
 
-import Link from "next/link";
-import { Bell, ChevronDown, LogOut, UserCircle2 } from "lucide-react";
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { useAuthStore } from "@/store/auth-store";
+import { Menu, AlertTriangle } from "lucide-react";
+import { useAppStore } from "@/store/app-store";
+import { useAdminSettings, useSystemHealth } from "@/hooks/use-admin-settings";
+import { QuickCreateDropdown } from "./QuickCreateDropdown";
+import { NotificationCenter } from "./NotificationCenter";
+import { AdminProfileDropdown } from "./AdminProfileDropdown";
 
 export function Topbar() {
-  const { user, logout } = useAuthStore();
-  const [open, setOpen] = useState(false);
+  const { setMobileMenuOpen } = useAppStore();
+  const { data: settings } = useAdminSettings();
+  const { data: health } = useSystemHealth();
+
+  const isMaintenanceMode = settings?.maintenance?.enabled;
+  const isHealthy = health?.status === "healthy";
 
   return (
-    <header className="sticky top-0 z-20 border-b border-stone-200/70 bg-white/90 backdrop-blur dark:border-stone-800 dark:bg-stone-950/90">
-      <div className="flex items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-emerald-600">Operations</p>
-          <h1 className="text-lg font-semibold text-stone-900 dark:text-stone-50">Welcome back</h1>
+    <header className="sticky top-0 z-20 border-b border-stone-200/80 bg-white/85 backdrop-blur-md dark:border-stone-800/80 dark:bg-stone-950/85 transition-colors">
+      <div className="flex h-[60px] items-center justify-between px-4 sm:px-6 lg:px-8">
+        {/* Left Section: Mobile Menu Trigger on small screens */}
+        <div className="flex items-center">
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(true)}
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-stone-200 bg-white text-stone-600 transition hover:bg-stone-100 hover:text-stone-900 lg:hidden dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300 dark:hover:bg-stone-800"
+            aria-label="Open mobile navigation menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" aria-label="Notifications">
-            <Bell className="h-4 w-4" />
-          </Button>
-
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setOpen((value) => !value)}
-              className="flex items-center gap-2 rounded-full border border-stone-200 bg-white px-2 py-2 text-sm font-medium text-stone-700 transition hover:border-emerald-400 hover:text-emerald-600 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200"
-              aria-haspopup="menu"
-              aria-expanded={open}
-            >
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 text-sm font-semibold text-white">
-                {user?.name?.[0] ?? "U"}
+        {/* Right Section: Platform Status + Actions + Profile */}
+        <div className="flex items-center gap-2 sm:gap-2.5">
+          {/* Platform Status Badge */}
+          <div className="hidden lg:flex items-center">
+            {isMaintenanceMode ? (
+              <div className="flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                <AlertTriangle className="h-3 w-3" />
+                <span>Maintenance Active</span>
               </div>
-              <span className="hidden sm:block">{user?.name ?? "User"}</span>
-              <ChevronDown className="mr-1 h-4 w-4" />
-            </button>
-
-            {open ? (
-              <div className="absolute right-0 mt-2 w-56 rounded-2xl border border-stone-200 bg-white p-2 shadow-xl dark:border-stone-800 dark:bg-stone-900">
-                <Link href="/" className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-stone-700 transition hover:bg-stone-100 dark:text-stone-200 dark:hover:bg-stone-800">
-                  <UserCircle2 className="h-4 w-4" />
-                  View storefront
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => {
-                    logout();
-                    setOpen(false);
-                  }}
-                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm text-stone-700 transition hover:bg-stone-100 dark:text-stone-200 dark:hover:bg-stone-800"
-                >
-                  <LogOut className="h-4 w-4" />
-                  Logout
-                </button>
+            ) : (
+              <div className="flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                </span>
+                <span className="hidden 2xl:inline">System</span>
+                <span>{isHealthy ? "Online" : "Degraded"}</span>
               </div>
-            ) : null}
+            )}
           </div>
+
+          {/* Quick Create Dropdown */}
+          <QuickCreateDropdown />
+
+          {/* Notification Center */}
+          <NotificationCenter />
+
+          <div className="h-5 w-px bg-stone-200 dark:bg-stone-800 hidden sm:block" />
+
+          {/* Admin Profile Menu */}
+          <AdminProfileDropdown />
         </div>
       </div>
     </header>

@@ -588,8 +588,9 @@ export default function AdminStoresPage() {
       <Breadcrumb items={[{ label: "Admin" }, { label: "Stores" }]} />
 
       <PageHeader
-        title="Store management & approvals"
-        description="Comprehensive workspace to audit, approve, activate, badge, and govern local merchant storefronts."
+        category="STORE MANAGEMENT"
+        title="Store Management"
+        description="Review merchant applications, verified badges, operating metrics, and store health."
       />
 
       {/* Stats Summary Cards */}

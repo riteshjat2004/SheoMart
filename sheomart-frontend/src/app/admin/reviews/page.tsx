@@ -243,8 +243,9 @@ export default function AdminReviewsPage() {
     <DashboardContent className="space-y-6">
       <Breadcrumb items={[{ label: "Admin" }, { label: "Review Moderation" }]} />
       <PageHeader
-        title="Review Moderation & Feedback"
-        description="Inspect, moderate, approve, or suppress marketplace reviews. Synchronizes product and store rating aggregates automatically."
+        category="PLATFORM"
+        title="Review Moderation"
+        description="Audit customer feedback, merchant ratings, and spam flags across marketplace products."
       />
 
       {feedback && (

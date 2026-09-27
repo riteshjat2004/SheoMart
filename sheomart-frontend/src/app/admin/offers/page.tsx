@@ -201,6 +201,7 @@ export default function AdminOffersPage() {
       <Breadcrumb items={[{ label: "Admin" }, { label: "Festival Offers" }]} />
 
       <PageHeader
+        category="MARKETING"
         title="Promotional Offer Management"
         description="Schedule seasonal marketing campaigns, manage homepage banner placements, flash sales, and category-wide discounts."
         actions={

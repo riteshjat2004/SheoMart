@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 
 interface BreadcrumbItem {
   label: string;
@@ -10,24 +11,44 @@ interface BreadcrumbProps {
 }
 
 export function Breadcrumb({ items }: BreadcrumbProps) {
+  // Normalize items to prevent duplicate "Admin"
+  const normalizedItems = items.filter(
+    (item, index) => !(index === 0 && item.label.toLowerCase() === "admin")
+  );
+
   return (
-    <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-2 text-sm text-stone-600 dark:text-stone-300">
-      <Link href="/" className="transition hover:text-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
+    <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[11px] font-medium text-stone-400 dark:text-stone-500">
+      <Link
+        href="/"
+        className="transition-colors hover:text-stone-600 dark:hover:text-stone-300"
+      >
         Home
       </Link>
-      {items.map((item, index) => {
-        const isLast = index === items.length - 1;
+      <span className="text-stone-300 dark:text-stone-700">/</span>
+      <Link
+        href="/admin"
+        className="transition-colors hover:text-stone-600 dark:hover:text-stone-300"
+      >
+        Admin
+      </Link>
+      {normalizedItems.map((item, index) => {
+        const isLast = index === normalizedItems.length - 1;
         return (
-          <div key={`${item.label}-${index}`} className="flex items-center gap-2">
-            <span>/</span>
+          <span key={`${item.label}-${index}`} className="flex items-center gap-1.5">
+            <span className="text-stone-300 dark:text-stone-700">/</span>
             {isLast || !item.href ? (
-              <span className="font-medium text-stone-900 dark:text-stone-100">{item.label}</span>
+              <span className="font-semibold text-stone-700 dark:text-stone-300 truncate max-w-[200px]">
+                {item.label}
+              </span>
             ) : (
-              <Link href={item.href} className="transition hover:text-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
+              <Link
+                href={item.href}
+                className="transition-colors hover:text-stone-600 dark:hover:text-stone-300"
+              >
                 {item.label}
               </Link>
             )}
-          </div>
+          </span>
         );
       })}
     </nav>

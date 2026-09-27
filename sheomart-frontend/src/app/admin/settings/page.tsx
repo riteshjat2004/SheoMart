@@ -72,6 +72,9 @@ import {
   downloadPlatformBackup,
   exportPlatformDataset,
 } from "@/services/admin-settings";
+import NextImage from "next/image";
+import { useAuthStore } from "@/store/auth-store";
+import { useProfile } from "@/hooks/useProfile";
 import { changePassword } from "@/services/profile";
 import type {
   AuditLogFilters,
@@ -110,11 +113,18 @@ function calculatePasswordStrength(pass: string) {
 }
 
 export default function AdminSettingsPage() {
+  const { user } = useAuthStore();
+  const { data: profile } = useProfile();
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
   const settingsQuery = useAdminSettings();
   const updateSettingsMutation = useUpdateAdminSettings();
   const systemHealthQuery = useSystemHealth();
   const securityStatusQuery = useSecurityStatus();
+
+  const avatarUrl = profile?.avatar || "/logo/admin-avatar.jpg";
+  const displayName = profile?.name ?? user?.name ?? "Platform Administrator";
+  const displayEmail = profile?.email ?? user?.email ?? "admin@sheomart.com";
+  const userInitial = displayName.charAt(0).toUpperCase();
 
   // Local draft state of settings
   const [draft, setDraft] = useState<MarketplaceSettings | null>(null);
@@ -247,8 +257,9 @@ export default function AdminSettingsPage() {
     <DashboardContent className="space-y-6">
       <Breadcrumb items={[{ label: "Admin" }, { label: "Settings & Security" }]} />
       <PageHeader
-        title="Marketplace Settings & Security"
-        description="Configure platform parameters, branding, delivery rules, payment channels, notifications, and security policies."
+        category="PLATFORM SETTINGS"
+        title="System Settings"
+        description="Configure marketplace operations, commissions and notifications."
         actions={
           <Button
             size="sm"
@@ -326,6 +337,48 @@ export default function AdminSettingsPage() {
           {/* TAB 1: GENERAL SETTINGS */}
           {activeTab === "general" && (
             <div className="space-y-6">
+              {/* Admin Profile Card */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-stone-200/80 bg-white/90 p-4 sm:p-5 backdrop-blur-sm dark:border-stone-800/80 dark:bg-stone-900/80">
+                <div className="flex items-center gap-4">
+                  <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full ring-2 ring-emerald-500/40 shadow-xs">
+                    {avatarUrl ? (
+                      <NextImage
+                        src={avatarUrl}
+                        alt={displayName}
+                        width={56}
+                        height={56}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-emerald-500 to-emerald-700 text-lg font-bold text-white">
+                        {userInitial}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">
+                        {displayName}
+                      </h3>
+                      <span className="rounded-md bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        Super Admin
+                      </span>
+                    </div>
+                    <p className="text-xs text-stone-500 dark:text-stone-400">{displayEmail}</p>
+                    <p className="mt-1 text-[11px] text-stone-400">
+                      Primary administrator profile for SheoMart marketplace operations
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 self-end sm:self-center">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    Verified Admin Profile
+                  </span>
+                </div>
+              </div>
+
               <DashboardCard
                 title="Marketplace Identity"
                 description="Core consumer-facing branding details displayed on the storefront and invoices."

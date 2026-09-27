@@ -258,19 +258,20 @@ export default function AdminUsersPage() {
     <DashboardContent className="space-y-6">
       <Breadcrumb items={[{ label: "Admin" }, { label: "Users" }]} />
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <PageHeader
-          title="User Management"
-          description="Manage customer accounts, merchants, administrators, verifications, and access controls."
-        />
-        <Button
-          onClick={() => setIsCreateOpen(true)}
-          className="bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700 shrink-0 gap-1.5"
-        >
-          <Plus className="h-4 w-4" />
-          Create User
-        </Button>
-      </div>
+      <PageHeader
+        category="USER MANAGEMENT"
+        title="User Management"
+        description="Control customer accounts, seller privileges, verification status, and system roles."
+        actions={
+          <Button
+            onClick={() => setIsCreateOpen(true)}
+            className="bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700 shrink-0 gap-1.5"
+          >
+            <Plus className="h-4 w-4" />
+            Create User
+          </Button>
+        }
+      />
 
       {/* KPI Summary Cards */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

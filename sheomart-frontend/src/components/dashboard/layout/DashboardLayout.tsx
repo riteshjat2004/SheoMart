@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { Sidebar } from "@/components/dashboard/layout/Sidebar";
 import { Topbar } from "@/components/dashboard/layout/Topbar";
+import { CommandPalette } from "@/components/dashboard/layout/CommandPalette";
 import type { UserRole } from "@/types/auth";
 
 interface DashboardLayoutProps {
@@ -12,14 +13,17 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children, role }: DashboardLayoutProps) {
   return (
-    <div className="min-h-screen bg-stone-50 text-stone-900 dark:bg-stone-950 dark:text-stone-100">
-      <div className="flex min-h-screen flex-col xl:flex-row">
+    <div className="min-h-screen bg-stone-50 text-stone-900 transition-colors dark:bg-stone-950 dark:text-stone-100">
+      <div className="flex min-h-screen flex-col lg:flex-row">
         <Sidebar role={role} />
-        <div className="flex min-h-screen flex-1 flex-col">
+        <div className="flex min-h-screen min-w-0 flex-1 flex-col">
           <Topbar />
-          <main className="flex-1 px-4 py-5 sm:px-6 lg:px-8">{children}</main>
+          <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+            {children}
+          </main>
         </div>
       </div>
+      <CommandPalette />
     </div>
   );
 }

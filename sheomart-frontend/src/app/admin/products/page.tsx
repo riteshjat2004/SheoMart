@@ -270,8 +270,9 @@ export default function AdminProductsPage() {
       <Breadcrumb items={[{ label: "Admin" }, { label: "Products" }]} />
 
       <PageHeader
-        title="Product Management"
-        description="Comprehensive platform catalog oversight: inspect inventory, pricing, publication status, bulk actions, and marketplace vendor products."
+        category="PRODUCT CATALOG"
+        title="Product Catalog"
+        description="Inspect global product listings, pricing, variants, inventory, and seller stock."
         actions={
           <Button
             onClick={() => setFormProduct(null)}

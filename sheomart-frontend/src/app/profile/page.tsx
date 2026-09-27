@@ -41,7 +41,7 @@ export default function CustomerProfilePage() {
     }
 
     if (role === "platform_admin") {
-      router.replace("/admin");
+      router.replace("/admin/settings?tab=general");
     }
   }, [isAuthenticated, loading, role, router]);
 

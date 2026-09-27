@@ -215,8 +215,9 @@ export default function AdminCategoriesPage() {
       <Breadcrumb items={[{ label: "Admin" }, { label: "Categories" }]} />
 
       <PageHeader
-        title="Category Management"
-        description="Create, edit, organize, and control marketplace categories and store taxonomy."
+        category="PRODUCT CATALOG"
+        title="Category Taxonomy"
+        description="Organize marketplace catalog structure, category icons, hierarchy, and visibility."
         actions={
           <Button onClick={() => setIsCreateOpen(true)} className="bg-emerald-600 text-white hover:bg-emerald-700">
             <Plus className="h-4 w-4 mr-1.5" />

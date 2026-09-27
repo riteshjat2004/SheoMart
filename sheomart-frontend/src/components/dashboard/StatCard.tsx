@@ -9,14 +9,24 @@ interface StatCardProps {
 
 export function StatCard({ title, value, description, icon }: StatCardProps) {
   return (
-    <div className="rounded-[1.5rem] border border-stone-200 bg-white/80 p-5 shadow-sm backdrop-blur dark:border-stone-800 dark:bg-stone-900/80">
+    <div className="rounded-2xl border border-stone-200/80 bg-white/90 p-6 shadow-xs backdrop-blur-sm dark:border-stone-800/80 dark:bg-stone-900/80">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-medium text-stone-500 dark:text-stone-400">{title}</p>
-          <p className="mt-3 text-2xl font-semibold text-stone-900 dark:text-stone-50">{value}</p>
-          {description ? <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">{description}</p> : null}
+          <p className="text-xs font-semibold uppercase tracking-wide text-stone-400 dark:text-stone-500">
+            {title}
+          </p>
+          <p className="mt-2 text-2xl font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
+            {value}
+          </p>
+          {description ? (
+            <p className="mt-1 text-xs text-stone-400 dark:text-stone-500">{description}</p>
+          ) : null}
         </div>
-        {icon ? <div className="rounded-2xl bg-emerald-100 p-2 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">{icon}</div> : null}
+        {icon ? (
+          <div className="rounded-xl bg-emerald-500/10 p-2.5 text-emerald-600 dark:text-emerald-400">
+            {icon}
+          </div>
+        ) : null}
       </div>
     </div>
   );

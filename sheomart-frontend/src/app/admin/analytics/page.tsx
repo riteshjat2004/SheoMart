@@ -150,8 +150,9 @@ export default function AdminAnalyticsPage() {
     <DashboardContent className="space-y-6">
       <Breadcrumb items={[{ label: "Admin" }, { label: "Analytics" }]} />
       <PageHeader
-        title="Marketplace Analytics & Intelligence"
-        description="Real platform business performance computed from users, stores, inventory, orders, and payment records."
+        category="ANALYTICS"
+        title="Analytics & Intelligence"
+        description="Real-time marketplace trends, financial breakdowns, seller growth, and platform vitality."
         actions={
           <div className="relative">
             <Button
