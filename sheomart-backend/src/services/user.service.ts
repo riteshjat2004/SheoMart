@@ -1,6 +1,8 @@
 import { User, IUser } from "../models/user.model";
 import { Store } from "../models/store.model";
 import { Order, ORDER_STATUS } from "../models/order.model";
+import { Coupon } from "../models/coupon.model";
+import { Offer } from "../models/offer.model";
 import { Address } from "../models/address.model";
 import { CartItem } from "../models/cart.model";
 import { WishlistItem } from "../models/wishlist.model";
@@ -811,6 +813,114 @@ export class UserService {
     return {
       message: "Account deleted successfully",
     };
+  }
+
+  static async getUserNotifications(userId: string) {
+    const orders = await Order.find({ userId }).sort({ createdAt: -1 }).limit(6).lean();
+    const activeCoupons = await Coupon.find({ isActive: true }).sort({ endsAt: 1 }).limit(3).lean();
+    const activeOffers = await Offer.find({ isActive: true }).limit(2).lean();
+
+    const notifications: Array<{
+      id: string;
+      title: string;
+      message: string;
+      type: "order" | "offer" | "coupon" | "system";
+      timestamp: string;
+      actionUrl?: string;
+      priority: "low" | "medium" | "high";
+    }> = [];
+
+    for (const order of orders) {
+      const st = order.pickupStatus || order.status;
+      const orderShortId = order.orderId ? order.orderId.slice(-6).toUpperCase() : "";
+      if (st === "READY_FOR_PICKUP") {
+        notifications.push({
+          id: `notif-order-ready-${order.orderId}`,
+          title: "Order Ready for Pickup!",
+          message: `Order #${orderShortId} is ready for collection at the store.`,
+          type: "order",
+          timestamp: (order.readyForPickupAt || order.statusUpdatedAt || order.createdAt || new Date()).toISOString(),
+          actionUrl: `/orders/${order.orderId}`,
+          priority: "high",
+        });
+      } else if (st === "OUT_FOR_DELIVERY") {
+        notifications.push({
+          id: `notif-order-out-${order.orderId}`,
+          title: "Order Out for Delivery",
+          message: `Order #${orderShortId} is on its way to your doorstep.`,
+          type: "order",
+          timestamp: (order.outForDeliveryAt || order.statusUpdatedAt || order.createdAt || new Date()).toISOString(),
+          actionUrl: `/orders/${order.orderId}`,
+          priority: "high",
+        });
+      } else if (st === "DELIVERED" || st === "PICKED_UP") {
+        notifications.push({
+          id: `notif-order-done-${order.orderId}`,
+          title: "Order Completed",
+          message: `Order #${orderShortId} has been successfully delivered/collected.`,
+          type: "order",
+          timestamp: (order.deliveredAt || order.pickedUpAt || order.statusUpdatedAt || order.createdAt || new Date()).toISOString(),
+          actionUrl: `/orders/${order.orderId}`,
+          priority: "low",
+        });
+      } else if (st === "CANCELLED") {
+        notifications.push({
+          id: `notif-order-cancel-${order.orderId}`,
+          title: "Order Cancelled",
+          message: `Order #${orderShortId} was cancelled.`,
+          type: "order",
+          timestamp: (order.cancelledAt || order.statusUpdatedAt || order.createdAt || new Date()).toISOString(),
+          actionUrl: `/orders/${order.orderId}`,
+          priority: "medium",
+        });
+      } else if (st === "PREPARING" || st === "ACCEPTED") {
+        notifications.push({
+          id: `notif-order-prep-${order.orderId}`,
+          title: "Order Accepted & Packing",
+          message: `The seller is packing items for Order #${orderShortId}.`,
+          type: "order",
+          timestamp: (order.preparingAt || order.acceptedAt || order.createdAt || new Date()).toISOString(),
+          actionUrl: `/orders/${order.orderId}`,
+          priority: "medium",
+        });
+      }
+    }
+
+    for (const coupon of activeCoupons) {
+      notifications.push({
+        id: `notif-coupon-${coupon.couponId || coupon.code}`,
+        title: `Savings Alert: Code ${coupon.code}`,
+        message: `Use code ${coupon.code} for instant savings at checkout!`,
+        type: "coupon",
+        timestamp: (coupon.startsAt || new Date()).toISOString(),
+        actionUrl: `/coupons`,
+        priority: "low",
+      });
+    }
+
+    for (const offer of activeOffers) {
+      notifications.push({
+        id: `notif-offer-${offer.offerId}`,
+        title: offer.title || "Festival Special Offer",
+        message: offer.description || "Limited-time deals across selected categories.",
+        type: "offer",
+        timestamp: (offer.createdAt || new Date()).toISOString(),
+        actionUrl: `/offers`,
+        priority: "low",
+      });
+    }
+
+    notifications.push({
+      id: "notif-system-welcome",
+      title: "Welcome to SheoMart",
+      message: "Enjoy fast doorstep delivery, verified local stores, and authentic groceries.",
+      type: "system",
+      timestamp: new Date(Date.now() - 86400000).toISOString(),
+      actionUrl: "/explore",
+      priority: "low",
+    });
+
+    return notifications;
   }
 }
 

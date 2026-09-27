@@ -15,10 +15,14 @@ import {
   getInvoiceById as getInvoiceByIdService,
   getStoreCustomer as getStoreCustomerService,
   getStoreCustomerForUser as getStoreCustomerForUserService,
+  getStoreCustomerOrders as getStoreCustomerOrdersService,
+  getStoreCustomersAnalytics as getStoreCustomersAnalyticsService,
+  getStoreCustomersSummary as getStoreCustomersSummaryService,
   listInvoices as listInvoicesService,
   listPickupOrders as listPickupOrdersService,
   listStoreCustomers as listStoreCustomersService,
   updatePlusCustomer as updatePlusCustomerService,
+  updateStoreCustomerNotes as updateStoreCustomerNotesService,
 } from "../services/billing.service";
 import {
   createOfflineInvoiceSchema,
@@ -189,15 +193,79 @@ export const completePickupPayment = async (req: AuthRequest, res: Response): Pr
 };
 
 export const listStoreCustomers = async (req: AuthRequest, res: Response): Promise<void> => {
-  const filters = listBillingQuerySchema.parse(req.query);
   const isPlusCustomer = getQueryString(req.query.isPlusCustomer);
+  const isVerified = getQueryString(req.query.isVerified);
+  const search = getQueryString(req.query.search);
+  const type = getQueryString(req.query.type) as any;
+  const sortBy = getQueryString(req.query.sortBy) as any;
+  const spendingMin = req.query.spendingMin ? Number(req.query.spendingMin) : undefined;
+  const spendingMax = req.query.spendingMax ? Number(req.query.spendingMax) : undefined;
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 20;
+
   const result = await listStoreCustomersService(req.user?.userId as string, {
-    ...filters,
-    page: filters.page ?? 1,
-    limit: filters.limit ?? 20,
+    page,
+    limit,
+    search,
     isPlusCustomer: isPlusCustomer === undefined ? undefined : isPlusCustomer === "true",
+    isVerified: isVerified === undefined ? undefined : isVerified === "true",
+    type,
+    sortBy,
+    spendingMin,
+    spendingMax,
   });
   res.status(200).json({ success: true, message: "Store customers fetched successfully", data: result });
+};
+
+export const getStoreCustomersSummary = async (req: AuthRequest, res: Response): Promise<void> => {
+  const result = await getStoreCustomersSummaryService(req.user?.userId as string);
+  res.status(200).json({ success: true, message: "Customer summary fetched successfully", data: result });
+};
+
+export const getStoreCustomersAnalytics = async (req: AuthRequest, res: Response): Promise<void> => {
+  const result = await getStoreCustomersAnalyticsService(req.user?.userId as string);
+  res.status(200).json({ success: true, message: "Customer analytics fetched successfully", data: result });
+};
+
+export const updateStoreCustomerNotes = async (req: AuthRequest, res: Response): Promise<void> => {
+  const customerId = Array.isArray(req.params.customerId)
+    ? req.params.customerId[0]
+    : req.params.customerId;
+  const paramsResult = customerIdParamSchema.safeParse({ customerId });
+  if (!paramsResult.success) {
+    throw new AppError(paramsResult.error.issues[0]?.message || "Invalid customer ID", 400);
+  }
+
+  const notes = typeof req.body?.notes === "string" ? req.body.notes : "";
+  const result = await updateStoreCustomerNotesService(
+    req.user?.userId as string,
+    paramsResult.data.customerId,
+    notes
+  );
+  res.status(200).json({ success: true, message: "Customer note updated successfully", data: result });
+};
+
+export const getStoreCustomerOrders = async (req: AuthRequest, res: Response): Promise<void> => {
+  const customerId = Array.isArray(req.params.customerId)
+    ? req.params.customerId[0]
+    : req.params.customerId;
+  const paramsResult = customerIdParamSchema.safeParse({ customerId });
+  if (!paramsResult.success) {
+    throw new AppError(paramsResult.error.issues[0]?.message || "Invalid customer ID", 400);
+  }
+
+  const result = await getStoreCustomerOrdersService(
+    req.user?.userId as string,
+    paramsResult.data.customerId,
+    {
+      page: req.query.page as string,
+      limit: req.query.limit as string,
+      orderStatus: getQueryString(req.query.orderStatus),
+      paymentStatus: getQueryString(req.query.paymentStatus),
+      sortBy: getQueryString(req.query.sortBy),
+    }
+  );
+  res.status(200).json({ success: true, message: "Customer orders fetched successfully", data: result });
 };
 
 export const getStoreCustomer = async (req: AuthRequest, res: Response): Promise<void> => {

@@ -16,6 +16,7 @@ import {
   updateProfile,
   changePassword,
   deleteAccount,
+  getUserNotifications,
 } from "../controllers/user.controller";
 import { asyncHandler } from "../utils/asyncHandler";
 import { authenticate } from "../middleware/auth.middleware";
@@ -37,11 +38,12 @@ router.patch("/admin/:userId/verify", authenticate, authorize(USER_ROLES.PLATFOR
 router.delete("/admin/:userId", authenticate, authorize(USER_ROLES.PLATFORM_ADMIN), asyncHandler(deleteAdminUser));
 router.patch("/admin/:userId/restore", authenticate, authorize(USER_ROLES.PLATFORM_ADMIN), asyncHandler(restoreAdminUser));
 
-// User Profile Routes
+// User Profile & Notification Routes
 router.get("/profile", authenticate, asyncHandler(getProfile));
 router.patch("/profile", authenticate, asyncHandler(updateProfile));
 router.patch("/change-password", authenticate, asyncHandler(changePassword));
 router.post("/change-password", authenticate, asyncHandler(changePassword));
 router.delete("/account", authenticate, asyncHandler(deleteAccount));
+router.get("/notifications", authenticate, asyncHandler(getUserNotifications));
 
 export default router;

@@ -22,7 +22,31 @@ export function OrderActionsCard({ status, fulfillmentType, isPending, onStatusC
 
   return <>
     <DashboardCard title={fulfillmentType === "delivery" ? "Delivery management" : "Pickup management"} description="Advance the order through the next valid fulfillment stage.">
-      {availableActions ? <div className="flex flex-wrap gap-3">{availableActions.map((action) => <Button key={action.status} type="button" variant={action.status === "CANCELLED" ? "outline" : "default"} onClick={() => setPendingStatus(action.status)} disabled={isPending}>{isPending ? "Updating..." : action.label}</Button>)}</div> : <span className={`inline-flex rounded-full px-3 py-1 text-sm font-semibold ${status === "PICKED_UP" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>{status === "PICKED_UP" ? "Order completed" : "Order cancelled"}</span>}
+      {availableActions ? (
+        <div className="flex flex-wrap gap-3">
+          {availableActions.map((action) => (
+            <Button
+              key={action.status}
+              type="button"
+              variant={action.status === "CANCELLED" ? "outline" : "default"}
+              onClick={() => setPendingStatus(action.status)}
+              disabled={isPending}
+            >
+              {isPending ? "Updating..." : action.label}
+            </Button>
+          ))}
+        </div>
+      ) : (
+        <span
+          className={`inline-flex rounded-full px-3 py-1 text-sm font-semibold ${
+            status === "PICKED_UP" || status === "DELIVERED"
+              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400"
+              : "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400"
+          }`}
+        >
+          {status === "PICKED_UP" || status === "DELIVERED" ? "Order completed" : "Order cancelled"}
+        </span>
+      )}
     </DashboardCard>
     {pendingStatus ? <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/60 p-4" role="dialog" aria-modal="true" aria-labelledby="order-status-confirm-title"><div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl dark:bg-stone-900"><h2 id="order-status-confirm-title" className="text-lg font-semibold text-stone-900 dark:text-stone-50">Confirm status change</h2><p className="mt-2 text-sm text-stone-600 dark:text-stone-300">Change this order to {pendingStatus.replaceAll("_", " ").toLowerCase()}?</p><div className="mt-6 flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setPendingStatus(null)} disabled={isPending}>Cancel</Button><Button type="button" onClick={confirmStatus} disabled={isPending}>{isPending ? "Updating..." : "Confirm"}</Button></div></div></div> : null}
   </>;

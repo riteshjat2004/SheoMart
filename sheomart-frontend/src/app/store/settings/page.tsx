@@ -2,13 +2,30 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BadgeCheck, Image as ImageIcon, Loader2, MapPin, Pencil, Plus, Store as StoreIcon, Trash2, Truck, X } from "lucide-react";
+import {
+  BadgeCheck,
+  Image as ImageIcon,
+  Loader2,
+  MapPin,
+  Pencil,
+  Plus,
+  Store as StoreIcon,
+  Trash2,
+  Truck,
+  X,
+  Clock,
+  Shield,
+  FileText,
+  CreditCard,
+  Crown,
+  CheckCircle2,
+  Calendar,
+} from "lucide-react";
 import { z } from "zod";
 import { Breadcrumb } from "@/components/dashboard/layout/Breadcrumb";
 import { DashboardContent } from "@/components/dashboard/layout/DashboardContent";
 import { PageHeader } from "@/components/dashboard/layout/PageHeader";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
-import { EmptyState } from "@/components/dashboard/EmptyState";
 import { LoadingSkeleton } from "@/components/dashboard/LoadingSkeleton";
 import { ErrorState } from "@/components/common/error-state";
 import { Button } from "@/components/ui/button";
@@ -40,7 +57,16 @@ const settingsSchema = z.object({
   pickupAddress: z.string().max(300),
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
-  deliverySlots: z.array(z.object({ slotId: z.string(), label: z.string(), startTime: z.string(), endTime: z.string(), capacity: z.number().int().min(1).optional(), isActive: z.boolean() })),
+  deliverySlots: z.array(
+    z.object({
+      slotId: z.string(),
+      label: z.string(),
+      startTime: z.string(),
+      endTime: z.string(),
+      capacity: z.number().int().min(1).optional(),
+      isActive: z.boolean(),
+    })
+  ),
 });
 
 type SettingsValues = z.infer<typeof settingsSchema>;
@@ -56,16 +82,16 @@ function initialValues(store: StoreItem, fallbackPhone: string): SettingsValues 
     city: store.city ?? "",
     state: store.state ?? "",
     pincode: store.pincode ?? "",
-    pickupOpeningTime: store.pickupOpeningTime ?? "",
-    pickupClosingTime: store.pickupClosingTime ?? "",
-    pickupEnabled: store.supportsPickup ?? store.pickupEnabled ?? false,
-    deliveryEnabled: store.supportsDelivery ?? store.deliveryEnabled ?? false,
-    supportsPickup: store.supportsPickup ?? store.pickupEnabled ?? false,
-    supportsDelivery: store.supportsDelivery ?? store.deliveryEnabled ?? false,
+    pickupOpeningTime: store.pickupOpeningTime ?? "08:00",
+    pickupClosingTime: store.pickupClosingTime ?? "22:00",
+    pickupEnabled: store.supportsPickup ?? store.pickupEnabled ?? true,
+    deliveryEnabled: store.supportsDelivery ?? store.deliveryEnabled ?? true,
+    supportsPickup: store.supportsPickup ?? store.pickupEnabled ?? true,
+    supportsDelivery: store.supportsDelivery ?? store.deliveryEnabled ?? true,
     deliveryFee: store.deliveryFee ?? 0,
     freeDeliveryAbove: store.freeDeliveryAbove ?? 0,
-    deliveryRadiusKm: store.deliveryRadiusKm ?? 0,
-    preparationTimeMinutes: store.preparationTimeMinutes ?? 30,
+    deliveryRadiusKm: store.deliveryRadiusKm ?? 8,
+    preparationTimeMinutes: store.preparationTimeMinutes ?? 20,
     pickupInstructions: store.pickupInstructions ?? "",
     pickupAddress: store.pickupAddress ?? "",
     latitude: store.latitude,
@@ -74,40 +100,64 @@ function initialValues(store: StoreItem, fallbackPhone: string): SettingsValues 
   };
 }
 
-function Field({ label, value, onChange, error, ...props }: { label: string; value: string; onChange: (value: string) => void; error?: string } & Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChange">) {
+function Field({
+  label,
+  value,
+  onChange,
+  error,
+  ...props
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  error?: string;
+} & Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChange">) {
   return (
-    <label className="space-y-1.5 text-sm font-medium text-stone-700 dark:text-stone-300">
+    <label className="space-y-1.5 text-xs font-semibold text-stone-700 dark:text-stone-300">
       <span>{label}</span>
-      <input {...props} value={value} onChange={(event) => onChange(event.target.value)} className="min-h-10 w-full rounded-lg border border-stone-200 bg-white px-3 text-sm outline-none focus:border-emerald-500 dark:border-stone-800 dark:bg-stone-950" />
-      {error ? <span className="text-xs font-normal text-rose-600">{error}</span> : null}
+      <input
+        {...props}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="min-h-10 w-full rounded-xl border border-stone-200 bg-white px-3 text-xs outline-none focus:border-emerald-500 dark:border-stone-800 dark:bg-stone-950"
+      />
+      {error ? <span className="text-[11px] font-normal text-rose-600">{error}</span> : null}
     </label>
   );
 }
 
-function StoreSettingsForm({ store, fallbackPhone, ownerName, ownerEmail }: { store: StoreItem; fallbackPhone: string; ownerName: string; ownerEmail: string }) {
+type TabType = "profile" | "fulfillment" | "hours" | "appearance" | "security" | "policies";
+
+function StoreSettingsForm({
+  store,
+  fallbackPhone,
+  ownerName,
+  ownerEmail,
+}: {
+  store: StoreItem;
+  fallbackPhone: string;
+  ownerName: string;
+  ownerEmail: string;
+}) {
   const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState<TabType>("profile");
   const values = useMemo(() => initialValues(store, fallbackPhone), [store, fallbackPhone]);
   const [formValues, setFormValues] = useState<SettingsValues>(values);
   const [errors, setErrors] = useState<Partial<Record<keyof SettingsValues, string>>>({});
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [isStoreOpen, setIsStoreOpen] = useState(true);
-  const [slotDraft, setSlotDraft] = useState<DeliverySlot>({ slotId: "", label: "", startTime: "09:00", endTime: "11:00", isActive: true });
+  const [slotDraft, setSlotDraft] = useState<DeliverySlot>({
+    slotId: "",
+    label: "",
+    startTime: "09:00",
+    endTime: "11:00",
+    isActive: true,
+  });
   const [editingSlotId, setEditingSlotId] = useState<string | null>(null);
   const [slotSaving, setSlotSaving] = useState(false);
   const [slotToast, setSlotToast] = useState<string | null>(null);
   const [slotToDelete, setSlotToDelete] = useState<string | null>(null);
   const [highlightedSlotId, setHighlightedSlotId] = useState<string | null>(null);
-  const previousSlotCount = useRef(formValues.deliverySlots.length);
-
-  useEffect(() => {
-    const currentCount = formValues.deliverySlots.length;
-    if (currentCount > previousSlotCount.current) {
-      const addedSlot = formValues.deliverySlots[currentCount - 1];
-      setHighlightedSlotId(addedSlot.slotId);
-      window.setTimeout(() => setHighlightedSlotId(null), 700);
-    }
-    previousSlotCount.current = currentCount;
-  }, [formValues.deliverySlots]);
 
   const updateMutation = useMutation({
     mutationFn: (payload: UpdateMyStorePayload) => updateMyStore(payload),
@@ -115,10 +165,15 @@ function StoreSettingsForm({ store, fallbackPhone, ownerName, ownerEmail }: { st
       await queryClient.invalidateQueries({ queryKey: ["my-store"] });
       setFeedback({ type: "success", message: "Store settings updated successfully." });
     },
-    onError: (error) => setFeedback({ type: "error", message: error instanceof Error ? error.message : "Unable to update store settings." }),
+    onError: (error) =>
+      setFeedback({
+        type: "error",
+        message: error instanceof Error ? error.message : "Unable to update store settings.",
+      }),
   });
 
-  const setValue = (key: keyof SettingsValues, value: string) => setFormValues((current) => ({ ...current, [key]: value }));
+  const setValue = (key: keyof SettingsValues, value: string) =>
+    setFormValues((current) => ({ ...current, [key]: value }));
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -130,117 +185,421 @@ function StoreSettingsForm({ store, fallbackPhone, ownerName, ownerEmail }: { st
         if (!nextErrors[key]) nextErrors[key] = issue.message;
       }
       setErrors(nextErrors);
-      setFeedback({ type: "error", message: "Please correct the highlighted fields." });
+      setFeedback({ type: "error", message: "Please correct highlighted fields before saving." });
       return;
     }
 
     if (!result.data.supportsPickup && !result.data.supportsDelivery) {
-      setFeedback({ type: "error", message: "Enable pickup or delivery before saving." });
+      setFeedback({ type: "error", message: "Enable either pickup or delivery fulfillment." });
       return;
     }
-    for (let index = 0; index < result.data.deliverySlots.length; index += 1) {
-      const slot = result.data.deliverySlots[index];
-      if (slot.startTime >= slot.endTime) {
-        setFeedback({ type: "error", message: "Each delivery slot must end after it starts." });
-        return;
-      }
-      if (result.data.deliverySlots.some((other, otherIndex) => otherIndex > index && slot.startTime < other.endTime && other.startTime < slot.endTime)) {
-        setFeedback({ type: "error", message: "Delivery slots cannot overlap." });
-        return;
-      }
-    }
+
     setErrors({});
     setFeedback(null);
     updateMutation.mutate(result.data);
   };
 
-  const previewAddress = [formValues.address, formValues.city, formValues.state, formValues.pincode].filter(Boolean).join(", ");
+  const previewAddress = [formValues.address, formValues.city, formValues.state, formValues.pincode]
+    .filter(Boolean)
+    .join(", ");
+
   const persistMode = (mode: "pickup" | "delivery" | "both") => {
     const supportsPickup = mode !== "delivery";
     const supportsDelivery = mode !== "pickup";
-    setFormValues((current) => ({ ...current, pickupEnabled: supportsPickup, deliveryEnabled: supportsDelivery, supportsPickup, supportsDelivery }));
-    updateMutation.mutate({ pickupEnabled: supportsPickup, deliveryEnabled: supportsDelivery, supportsPickup, supportsDelivery });
+    setFormValues((current) => ({
+      ...current,
+      pickupEnabled: supportsPickup,
+      deliveryEnabled: supportsDelivery,
+      supportsPickup,
+      supportsDelivery,
+    }));
+    updateMutation.mutate({
+      pickupEnabled: supportsPickup,
+      deliveryEnabled: supportsDelivery,
+      supportsPickup,
+      supportsDelivery,
+    });
   };
 
+  const tabs: Array<{ id: TabType; label: string; icon: any }> = [
+    { id: "profile", label: "Store Profile", icon: StoreIcon },
+    { id: "fulfillment", label: "Delivery & Slots", icon: Truck },
+    { id: "hours", label: "Business Hours", icon: Clock },
+    { id: "appearance", label: "Branding Preview", icon: ImageIcon },
+    { id: "security", label: "Security & Login", icon: Shield },
+    { id: "policies", label: "Store Policies", icon: FileText },
+  ];
+
   return (
-    <form className="space-y-6" onSubmit={handleSubmit}>
-      {feedback ? <div className={`rounded-lg border p-3 text-sm ${feedback.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-rose-200 bg-rose-50 text-rose-700"}`}>{feedback.message}</div> : null}
-
-      <DashboardCard title="Business profile" description="Manage the public details customers see for your store.">
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-1.5 text-sm"><span className="font-medium text-stone-700 dark:text-stone-300">Store name</span><p className="rounded-lg bg-stone-50 px-3 py-2.5 text-stone-500 dark:bg-stone-950 dark:text-stone-400">{store.storeName ?? store.name ?? "-"}</p></div>
-          <div className="space-y-1.5 text-sm"><span className="font-medium text-stone-700 dark:text-stone-300">Owner name</span><p className="rounded-lg bg-stone-50 px-3 py-2.5 text-stone-500 dark:bg-stone-950 dark:text-stone-400">{ownerName || "-"}</p></div>
-          <div className="space-y-1.5 text-sm"><span className="font-medium text-stone-700 dark:text-stone-300">Email</span><p className="rounded-lg bg-stone-50 px-3 py-2.5 text-stone-500 dark:bg-stone-950 dark:text-stone-400">{ownerEmail || store.email || "-"}</p></div>
-          <div className="space-y-1.5 text-sm"><span className="font-medium text-stone-700 dark:text-stone-300">Store status</span><p className="rounded-lg bg-stone-50 px-3 py-2.5 capitalize text-stone-500 dark:bg-stone-950 dark:text-stone-400">{store.status ?? "-"}</p></div>
-        </div>
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <Field label="Logo URL" value={formValues.logo} onChange={(value) => setValue("logo", value)} error={errors.logo} type="url" placeholder="https://example.com/logo.png" />
-          <Field label="Banner URL" value={formValues.banner} onChange={(value) => setValue("banner", value)} error={errors.banner} type="url" placeholder="https://example.com/banner.png" />
-          <label className="space-y-1.5 text-sm font-medium text-stone-700 dark:text-stone-300 md:col-span-2"><span>Description</span><textarea value={formValues.description} onChange={(event) => setValue("description", event.target.value)} maxLength={1000} rows={4} className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-500 dark:border-stone-800 dark:bg-stone-950" />{errors.description ? <span className="text-xs font-normal text-rose-600">{errors.description}</span> : null}</label>
-          <Field label="Phone" value={formValues.phone} onChange={(value) => setValue("phone", value)} error={errors.phone} inputMode="numeric" />
-          <div className="space-y-1.5 text-sm"><span className="font-medium text-stone-700 dark:text-stone-300">Verification status</span><p className="flex items-center gap-2 rounded-lg bg-stone-50 px-3 py-2.5 text-stone-500 dark:bg-stone-950 dark:text-stone-400"><BadgeCheck className="h-4 w-4 text-emerald-600" />{store.isVerified ? "Verified" : "Pending verification"}</p></div>
-        </div>
-      </DashboardCard>
-
-      <DashboardCard title="Store address" description="Keep your customer-facing location details accurate.">
-        <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Address" value={formValues.address} onChange={(value) => setValue("address", value)} error={errors.address} />
-          <Field label="Area / locality" value="" onChange={() => undefined} placeholder="Not persisted by the current API" disabled />
-          <Field label="City" value={formValues.city} onChange={(value) => setValue("city", value)} error={errors.city} />
-          <Field label="District" value="" onChange={() => undefined} placeholder="Not persisted by the current API" disabled />
-          <Field label="State" value={formValues.state} onChange={(value) => setValue("state", value)} error={errors.state} />
-          <Field label="Pincode" value={formValues.pincode} onChange={(value) => setValue("pincode", value)} error={errors.pincode} inputMode="numeric" />
-        </div>
-      </DashboardCard>
-
-      <div className="grid gap-6 xl:grid-cols-2">
-        <DashboardCard title="Fulfillment settings" description="Choose how customers can receive orders from your store.">
-          <div className="space-y-3">
-            <div className="grid gap-3 sm:grid-cols-3">{([{ value: "pickup", label: "Pickup Only", icon: BadgeCheck }, { value: "delivery", label: "Delivery Only", icon: Truck }, { value: "both", label: "Pickup + Delivery", icon: StoreIcon }] as const).map(({ value, label, icon: Icon }) => <button key={value} type="button" onClick={() => persistMode(value)} className={`rounded-xl border p-4 text-left transition ${((value === "pickup" && formValues.supportsPickup && !formValues.supportsDelivery) || (value === "delivery" && formValues.supportsDelivery && !formValues.supportsPickup) || (value === "both" && formValues.supportsPickup && formValues.supportsDelivery)) ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10" : "border-stone-200 dark:border-stone-800"}`}><Icon className="h-5 w-5 text-emerald-600" /><span className="mt-2 block text-sm font-semibold">{label}</span></button>)}</div>
-            <Field label="Preparation time (minutes)" type="number" min="1" value={String(formValues.preparationTimeMinutes)} onChange={(value) => setFormValues((current) => ({ ...current, preparationTimeMinutes: Number(value) }))} />
-            {formValues.supportsDelivery ? <div className="grid gap-4 sm:grid-cols-2"><Field label="Delivery fee" type="number" min="0" value={String(formValues.deliveryFee)} onChange={(value) => setFormValues((current) => ({ ...current, deliveryFee: Number(value) }))} /><Field label="Free delivery above" type="number" min="0" value={String(formValues.freeDeliveryAbove)} onChange={(value) => setFormValues((current) => ({ ...current, freeDeliveryAbove: Number(value) }))} /><Field label="Delivery radius (km)" type="number" min="0" value={String(formValues.deliveryRadiusKm)} onChange={(value) => setFormValues((current) => ({ ...current, deliveryRadiusKm: Number(value) }))} /><Field label="Store latitude" type="number" value={String(formValues.latitude ?? "")} onChange={(value) => setFormValues((current) => ({ ...current, latitude: value ? Number(value) : undefined }))} /><Field label="Store longitude" type="number" value={String(formValues.longitude ?? "")} onChange={(value) => setFormValues((current) => ({ ...current, longitude: value ? Number(value) : undefined }))} /></div> : null}
-            {formValues.supportsPickup ? <div className="grid gap-4"><Field label="Pickup address" value={formValues.pickupAddress} onChange={(value) => setFormValues((current) => ({ ...current, pickupAddress: value }))} /><label className="space-y-1.5 text-sm font-medium text-stone-700 dark:text-stone-300"><span>Pickup instructions</span><textarea value={formValues.pickupInstructions} onChange={(event) => setFormValues((current) => ({ ...current, pickupInstructions: event.target.value }))} maxLength={500} rows={3} className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm dark:border-stone-800 dark:bg-stone-950" /></label></div> : null}
-            <div className="mt-5 border-t border-stone-200 pt-5 dark:border-stone-800">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div><p className="font-semibold">Delivery slot manager</p><p className="mt-1 text-xs text-stone-500">Create the windows customers can select at checkout.</p></div>
-                <button type="button" disabled={slotSaving} onClick={() => { setFormValues((current) => ({ ...current, deliverySlots: editingSlotId ? current.deliverySlots.map((slot) => slot.slotId === editingSlotId ? { ...slotDraft, slotId: editingSlotId } : slot) : [...current.deliverySlots, { ...slotDraft, slotId: crypto.randomUUID() }] })); const nextId = editingSlotId ?? slotDraft.slotId; setSlotDraft({ slotId: "", label: "", startTime: "09:00", endTime: "11:00", isActive: true }); setEditingSlotId(null); setSlotSaving(true); setSlotToast(editingSlotId ? "Delivery slot updated." : "Delivery slot added."); setHighlightedSlotId(nextId || null); window.setTimeout(() => { setSlotSaving(false); setHighlightedSlotId(null); }, 500); }} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-emerald-600 to-emerald-500 px-4 text-sm font-semibold text-white shadow-sm shadow-emerald-500/20 transition duration-200 ease-in-out hover:scale-105 hover:shadow-lg hover:shadow-emerald-500/30 active:scale-95 disabled:pointer-events-none disabled:opacity-60 motion-reduce:transform-none motion-reduce:transition-none">{slotSaving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Plus className="h-4 w-4" aria-hidden="true" />}{slotSaving ? "Saving..." : editingSlotId ? "Save Slot" : "Add Delivery Slot"}</button>
-              </div>
-              {slotToast ? <div role="status" className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-300">{slotToast}</div> : null}
-              {formValues.deliverySlots.length === 0 ? <div className="mt-4 rounded-2xl border border-dashed border-emerald-300 bg-emerald-50/60 p-8 text-center dark:border-emerald-900/70 dark:bg-emerald-950/20"><div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300"><Truck className="h-6 w-6" aria-hidden="true" /></div><p className="mt-3 font-semibold">No delivery slots created yet.</p><p className="mt-1 text-sm text-stone-500">Add a delivery window for your customers.</p><button type="button" onClick={() => document.getElementById("delivery-slot-label")?.focus()} className="mt-4 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition duration-200 hover:bg-emerald-700 hover:shadow-lg hover:shadow-emerald-500/20 active:scale-95">Create First Slot</button></div> : <div className="mt-4 grid gap-3">{formValues.deliverySlots.map((slot) => <div key={slot.slotId} className={`group flex flex-wrap items-center justify-between gap-4 rounded-2xl border p-4 text-sm shadow-sm transition duration-200 ease-in-out hover:-translate-y-0.5 hover:border-emerald-400 hover:shadow-lg hover:shadow-emerald-500/10 motion-reduce:transform-none motion-reduce:transition-none ${highlightedSlotId === slot.slotId ? "animate-pulse border-emerald-400 bg-emerald-50/70 dark:bg-emerald-950/30" : "border-stone-200 dark:border-stone-800"}`}><div className="min-w-0"><p className="font-semibold text-stone-900 dark:text-stone-50">{slot.label || "Untitled slot"}</p><p className="mt-1 text-stone-500">{slot.startTime} - {slot.endTime}{slot.capacity ? ` · ${slot.capacity} orders` : " · Unlimited capacity"}</p></div><div className="flex items-center gap-2"><label className="flex cursor-pointer items-center gap-2 text-xs font-medium text-stone-600 dark:text-stone-300"><input type="checkbox" checked={slot.isActive} onChange={(event) => setFormValues((current) => ({ ...current, deliverySlots: current.deliverySlots.map((item) => item.slotId === slot.slotId ? { ...item, isActive: event.target.checked } : item) }))} className="peer sr-only" /><span className="relative h-6 w-11 rounded-full bg-stone-300 transition duration-250 peer-checked:bg-emerald-600 dark:bg-stone-700"><span className="absolute left-1 top-1 h-4 w-4 rounded-full bg-white shadow-sm transition duration-250 peer-checked:translate-x-5" /></span>{slot.isActive ? "Active" : "Inactive"}</label><button type="button" title="Edit delivery slot" aria-label={`Edit ${slot.label || "delivery slot"}`} onClick={() => { setSlotDraft(slot); setEditingSlotId(slot.slotId); }} className="rounded-full p-2 text-stone-500 transition duration-200 hover:bg-emerald-100 hover:text-emerald-700 dark:hover:bg-emerald-950/50"><Pencil className="h-4 w-4" aria-hidden="true" /></button><button type="button" title="Delete delivery slot" aria-label={`Delete ${slot.label || "delivery slot"}`} onClick={() => setSlotToDelete(slot.slotId)} className="rounded-full p-2 text-stone-500 transition duration-200 hover:bg-rose-100 hover:text-rose-700 dark:hover:bg-rose-950/50"><Trash2 className="h-4 w-4" aria-hidden="true" /></button></div></div>)}</div>}
-              <div className="mt-4 grid gap-3 sm:grid-cols-4"><input id="delivery-slot-label" placeholder="Label (9 AM - 11 AM)" value={slotDraft.label} onChange={(event) => setSlotDraft((current) => ({ ...current, label: event.target.value }))} className="min-h-10 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-none transition duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-stone-800 dark:bg-stone-950" /><input aria-label="Start time" type="time" value={slotDraft.startTime} onChange={(event) => setSlotDraft((current) => ({ ...current, startTime: event.target.value }))} className="min-h-10 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-none transition duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-stone-800 dark:bg-stone-950" /><input aria-label="End time" type="time" value={slotDraft.endTime} onChange={(event) => setSlotDraft((current) => ({ ...current, endTime: event.target.value }))} className="min-h-10 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-none transition duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-stone-800 dark:bg-stone-950" /><input aria-label="Capacity" type="number" min="1" placeholder="Capacity" value={slotDraft.capacity ?? ""} onChange={(event) => setSlotDraft((current) => ({ ...current, capacity: event.target.value ? Number(event.target.value) : undefined }))} className="min-h-10 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm outline-none transition duration-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-stone-800 dark:bg-stone-950" /></div>
-            </div>
-            {slotToDelete ? <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/60 p-4" role="dialog" aria-modal="true" aria-labelledby="delete-slot-title"><div className="w-full max-w-sm rounded-2xl border border-stone-700 bg-stone-900 p-6 text-stone-50 shadow-xl"><div className="flex items-start justify-between gap-4"><div><h2 id="delete-slot-title" className="font-semibold">Delete delivery slot?</h2><p className="mt-2 text-sm text-stone-400">This slot will be removed from your store settings.</p></div><button type="button" onClick={() => setSlotToDelete(null)} aria-label="Close confirmation" className="rounded-full p-2 text-stone-400 transition hover:bg-stone-800 hover:text-white"><X className="h-4 w-4" /></button></div><div className="mt-6 flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setSlotToDelete(null)}>Cancel</Button><Button type="button" onClick={() => { setFormValues((current) => ({ ...current, deliverySlots: current.deliverySlots.filter((slot) => slot.slotId !== slotToDelete) })); setSlotToDelete(null); setSlotToast("Delivery slot deleted."); }}>Delete Slot</Button></div></div></div> : null}
-          </div>
-        </DashboardCard>
-
-        <DashboardCard title="Store availability" description="These controls are prepared locally; opening hours are not exposed by the current API.">
-          <label className="flex items-center justify-between rounded-lg border border-stone-200 p-3 text-sm dark:border-stone-800"><span>Store open <span className="ml-1 text-xs text-stone-500">Local only</span></span><input type="checkbox" checked={isStoreOpen} onChange={(event) => setIsStoreOpen(event.target.checked)} className="h-4 w-4 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500" /></label>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2"><Field label="Opening time" type="time" value={formValues.pickupOpeningTime} onChange={(value) => setValue("pickupOpeningTime", value)} /><Field label="Closing time" type="time" value={formValues.pickupClosingTime} onChange={(value) => setValue("pickupClosingTime", value)} /></div>
-        </DashboardCard>
+    <div className="space-y-6">
+      {/* Sub-navigation tabs */}
+      <div className="flex flex-wrap gap-2 border-b border-stone-200 dark:border-stone-800">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = tab.id === activeTab;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 border-b-2 px-3 py-2.5 text-xs font-semibold transition ${
+                isActive
+                  ? "border-emerald-600 text-emerald-700 dark:border-emerald-400 dark:text-emerald-300"
+                  : "border-transparent text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200"
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
-      <DashboardCard title="Store preview" description="Preview the customer-facing store identity using the values above.">
-        <div className="overflow-hidden rounded-xl border border-stone-200 dark:border-stone-800"><div className="h-32 bg-stone-100 dark:bg-stone-800">{formValues.banner ? <img src={formValues.banner} alt="Store banner preview" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-stone-400"><ImageIcon aria-hidden="true" className="h-6 w-6" /></div>}</div><div className="flex gap-4 p-4"><div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-stone-200 bg-white dark:border-stone-700 dark:bg-stone-900">{formValues.logo ? <img src={formValues.logo} alt="Store logo preview" className="h-full w-full object-cover" /> : <StoreIcon className="h-6 w-6 text-emerald-600" />}</div><div className="min-w-0"><h3 className="font-semibold text-stone-900 dark:text-stone-50">{store.storeName ?? store.name ?? "Store"}</h3><p className="mt-1 text-sm text-stone-600 dark:text-stone-300">{formValues.phone || "Phone not set"}</p><p className="mt-1 flex items-center gap-1 text-sm text-stone-500"><MapPin className="h-3.5 w-3.5" />{previewAddress || "Address not set"}</p><div className="mt-3 flex gap-2">{formValues.pickupEnabled ? <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">Pickup</span> : null}{formValues.deliveryEnabled ? <span className="rounded-full bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-700">Delivery</span> : null}</div></div></div></div>
-      </DashboardCard>
+      <form className="space-y-6" onSubmit={handleSubmit}>
+        {feedback && (
+          <div
+            className={`rounded-2xl border p-4 text-xs font-semibold ${
+              feedback.type === "success"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300"
+                : "border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300"
+            }`}
+          >
+            {feedback.message}
+          </div>
+        )}
 
-      <div className="flex justify-end"><Button type="submit" disabled={updateMutation.isPending}>{updateMutation.isPending ? "Saving..." : "Save store settings"}</Button></div>
-    </form>
+        {/* Tab 1: Profile & Address */}
+        {activeTab === "profile" && (
+          <>
+            <DashboardCard title="Store Profile" description="Basic information displayed to shoppers on the SheoMart app.">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-1.5 text-xs">
+                  <span className="font-semibold text-stone-700 dark:text-stone-300">Store Name</span>
+                  <p className="rounded-xl bg-stone-50 px-3 py-2.5 text-stone-700 dark:bg-stone-950 dark:text-stone-300 font-bold">
+                    {store.storeName ?? store.name ?? "-"}
+                  </p>
+                </div>
+                <div className="space-y-1.5 text-xs">
+                  <span className="font-semibold text-stone-700 dark:text-stone-300">Merchant Owner</span>
+                  <p className="rounded-xl bg-stone-50 px-3 py-2.5 text-stone-700 dark:bg-stone-950 dark:text-stone-300">
+                    {ownerName || "-"}
+                  </p>
+                </div>
+                <div className="space-y-1.5 text-xs">
+                  <span className="font-semibold text-stone-700 dark:text-stone-300">Email Address</span>
+                  <p className="rounded-xl bg-stone-50 px-3 py-2.5 text-stone-700 dark:bg-stone-950 dark:text-stone-300">
+                    {ownerEmail || store.email || "-"}
+                  </p>
+                </div>
+                <div className="space-y-1.5 text-xs">
+                  <span className="font-semibold text-stone-700 dark:text-stone-300">Verification Tier</span>
+                  <p className="flex items-center gap-1.5 rounded-xl bg-stone-50 px-3 py-2.5 text-stone-700 dark:bg-stone-950 dark:text-stone-300">
+                    <BadgeCheck className="h-4 w-4 text-blue-500" />
+                    {store.badge === "royal" ? "Royal Merchant" : store.badge === "verified" ? "Verified Store" : "Standard Store"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <Field
+                  label="Store Logo Image URL"
+                  value={formValues.logo}
+                  onChange={(value) => setValue("logo", value)}
+                  error={errors.logo}
+                  type="url"
+                  placeholder="https://..."
+                />
+                <Field
+                  label="Store Banner Cover URL"
+                  value={formValues.banner}
+                  onChange={(value) => setValue("banner", value)}
+                  error={errors.banner}
+                  type="url"
+                  placeholder="https://..."
+                />
+                <label className="space-y-1.5 text-xs font-semibold text-stone-700 dark:text-stone-300 md:col-span-2">
+                  <span>Store Description & Specialties</span>
+                  <textarea
+                    value={formValues.description}
+                    onChange={(event) => setValue("description", event.target.value)}
+                    maxLength={1000}
+                    rows={3}
+                    className="w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-xs outline-none focus:border-emerald-500 dark:border-stone-800 dark:bg-stone-950"
+                  />
+                </label>
+                <Field
+                  label="Contact Phone"
+                  value={formValues.phone}
+                  onChange={(value) => setValue("phone", value)}
+                  error={errors.phone}
+                  inputMode="numeric"
+                />
+              </div>
+            </DashboardCard>
+
+            <DashboardCard title="Store Location" description="Physical address used for route dispatch and customer self-pickup.">
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field label="Address / Street" value={formValues.address} onChange={(value) => setValue("address", value)} error={errors.address} />
+                <Field label="City" value={formValues.city} onChange={(value) => setValue("city", value)} error={errors.city} />
+                <Field label="State" value={formValues.state} onChange={(value) => setValue("state", value)} error={errors.state} />
+                <Field label="Pincode" value={formValues.pincode} onChange={(value) => setValue("pincode", value)} error={errors.pincode} inputMode="numeric" />
+              </div>
+            </DashboardCard>
+          </>
+        )}
+
+        {/* Tab 2: Delivery & Slots */}
+        {activeTab === "fulfillment" && (
+          <DashboardCard title="Delivery & Fulfillment Controls" description="Configure radius, delivery charges, and hourly delivery windows.">
+            <div className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-3">
+                {[
+                  { value: "pickup", label: "Self-Pickup Only", icon: StoreIcon },
+                  { value: "delivery", label: "Doorstep Delivery Only", icon: Truck },
+                  { value: "both", label: "Both Pickup & Delivery", icon: CheckCircle2 },
+                ].map(({ value, label, icon: Icon }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => persistMode(value as any)}
+                    className={`rounded-2xl border p-4 text-left transition ${
+                      (value === "pickup" && formValues.supportsPickup && !formValues.supportsDelivery) ||
+                      (value === "delivery" && formValues.supportsDelivery && !formValues.supportsPickup) ||
+                      (value === "both" && formValues.supportsPickup && formValues.supportsDelivery)
+                        ? "border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/30 ring-2 ring-emerald-500/20"
+                        : "border-stone-200 dark:border-stone-800"
+                    }`}
+                  >
+                    <Icon className="h-5 w-5 text-emerald-600" />
+                    <span className="mt-2 block text-xs font-bold text-stone-900 dark:text-stone-100">
+                      {label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-3">
+                <Field
+                  label="Preparation Time (Minutes)"
+                  type="number"
+                  min="1"
+                  value={String(formValues.preparationTimeMinutes)}
+                  onChange={(v) => setFormValues((c) => ({ ...c, preparationTimeMinutes: Number(v) }))}
+                />
+                <Field
+                  label="Delivery Radius (Kilometers)"
+                  type="number"
+                  min="1"
+                  value={String(formValues.deliveryRadiusKm)}
+                  onChange={(v) => setFormValues((c) => ({ ...c, deliveryRadiusKm: Number(v) }))}
+                />
+                <Field
+                  label="Standard Delivery Fee (₹)"
+                  type="number"
+                  min="0"
+                  value={String(formValues.deliveryFee)}
+                  onChange={(v) => setFormValues((c) => ({ ...c, deliveryFee: Number(v) }))}
+                />
+                <Field
+                  label="Free Delivery Above (₹)"
+                  type="number"
+                  min="0"
+                  value={String(formValues.freeDeliveryAbove)}
+                  onChange={(v) => setFormValues((c) => ({ ...c, freeDeliveryAbove: Number(v) }))}
+                />
+              </div>
+
+              {/* Delivery Slots Section */}
+              <div className="mt-6 border-t border-stone-200 pt-5 dark:border-stone-800">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h4 className="text-xs font-bold text-stone-900 dark:text-stone-100">
+                      Customer Delivery Slots
+                    </h4>
+                    <p className="text-[11px] text-stone-400">Time windows selectable at checkout</p>
+                  </div>
+                </div>
+
+                <div className="grid gap-2">
+                  {formValues.deliverySlots.map((slot) => (
+                    <div
+                      key={slot.slotId}
+                      className="flex items-center justify-between rounded-xl border border-stone-200 bg-stone-50 p-3 text-xs dark:border-stone-800 dark:bg-stone-950"
+                    >
+                      <div>
+                        <span className="font-bold text-stone-900 dark:text-stone-100">{slot.label}</span>
+                        <p className="text-[11px] text-stone-400">
+                          {slot.startTime} - {slot.endTime} • {slot.capacity ? `${slot.capacity} orders max` : "Unlimited capacity"}
+                        </p>
+                      </div>
+                      <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${
+                        slot.isActive
+                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                          : "bg-stone-200 text-stone-600 dark:bg-stone-800"
+                      }`}>
+                        {slot.isActive ? "Active Slot" : "Disabled"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </DashboardCard>
+        )}
+
+        {/* Tab 3: Business Hours */}
+        {activeTab === "hours" && (
+          <DashboardCard title="Operating Hours & Availability" description="Set your daily opening and closing hours for orders and counter pickups.">
+            <div className="space-y-4">
+              <label className="flex items-center justify-between rounded-2xl border border-stone-200 p-4 text-xs font-semibold dark:border-stone-800 bg-stone-50/50 dark:bg-stone-950/50">
+                <div>
+                  <span className="text-stone-900 dark:text-stone-100 block">Accepting Orders Today</span>
+                  <span className="text-[11px] text-stone-400">Toggle offline during holidays or maintenance</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={isStoreOpen}
+                  onChange={(e) => setIsStoreOpen(e.target.checked)}
+                  className="h-4 w-4 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500"
+                />
+              </label>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field
+                  label="Daily Opening Time"
+                  type="time"
+                  value={formValues.pickupOpeningTime}
+                  onChange={(v) => setValue("pickupOpeningTime", v)}
+                />
+                <Field
+                  label="Daily Closing Time"
+                  type="time"
+                  value={formValues.pickupClosingTime}
+                  onChange={(v) => setValue("pickupClosingTime", v)}
+                />
+              </div>
+            </div>
+          </DashboardCard>
+        )}
+
+        {/* Tab 4: Appearance & Preview */}
+        {activeTab === "appearance" && (
+          <DashboardCard title="Store Branding Preview" description="How your store appears to customers browsing the SheoMart app.">
+            <div className="overflow-hidden rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 shadow-sm">
+              <div className="h-36 bg-stone-100 dark:bg-stone-800 relative">
+                {formValues.banner ? (
+                  <img src={formValues.banner} alt="Store banner" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full items-center justify-center text-stone-400">
+                    <ImageIcon className="h-8 w-8" />
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-4 p-5">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-stone-200 bg-white dark:border-stone-700 dark:bg-stone-950 -mt-8 shadow-md">
+                  {formValues.logo ? (
+                    <img src={formValues.logo} alt="Store logo" className="h-full w-full object-cover" />
+                  ) : (
+                    <StoreIcon className="h-8 w-8 text-emerald-600" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-bold text-stone-900 dark:text-stone-50">
+                      {store.storeName ?? store.name ?? "My Store"}
+                    </h3>
+                    {store.badge === "royal" ? (
+                      <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 border border-amber-300">Royal</span>
+                    ) : (
+                      <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 border border-blue-300">Verified</span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs text-stone-500 line-clamp-2">
+                    {formValues.description || "No description set yet."}
+                  </p>
+                  <p className="mt-1.5 flex items-center gap-1 text-[11px] text-stone-400">
+                    <MapPin className="h-3 w-3" />
+                    {previewAddress || "Address not specified"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </DashboardCard>
+        )}
+
+        {/* Tab 5: Security */}
+        {activeTab === "security" && (
+          <DashboardCard title="Store Security & Password Reset" description="Request an admin-approved security token to change merchant credentials.">
+            <SellerSecurityRequestCard
+              email={ownerEmail || ""}
+              storeName={store.storeName ?? store.name ?? ""}
+            />
+          </DashboardCard>
+        )}
+
+        {/* Tab 6: Policies */}
+        {activeTab === "policies" && (
+          <DashboardCard title="Store Customer Policies" description="Standard store guidelines shown to shoppers before checkout.">
+            <div className="space-y-4 text-xs">
+              <div className="rounded-xl border border-stone-200 bg-stone-50 p-4 dark:border-stone-800 dark:bg-stone-950">
+                <h4 className="font-bold text-stone-900 dark:text-stone-100 mb-1">Return & Replacement Policy</h4>
+                <p className="text-stone-500 leading-relaxed">
+                  Perishable grocery items (dairy, fruits, vegetables) must be verified at counter pickup or delivery doorstep. Non-perishable items can be returned within 24 hours in sealed condition.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-stone-200 bg-stone-50 p-4 dark:border-stone-800 dark:bg-stone-950">
+                <h4 className="font-bold text-stone-900 dark:text-stone-100 mb-1">Cancellation Policy</h4>
+                <p className="text-stone-500 leading-relaxed">
+                  Orders may be cancelled freely prior to order acceptance by the merchant. Once packing is initiated, cancellation requires store approval.
+                </p>
+              </div>
+            </div>
+          </DashboardCard>
+        )}
+
+        {/* Bottom Save Bar */}
+        <div className="flex justify-end pt-4 border-t border-stone-200 dark:border-stone-800">
+          <Button
+            type="submit"
+            disabled={updateMutation.isPending}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+          >
+            {updateMutation.isPending ? "Saving changes..." : "Save Store Settings"}
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 }
 
 export default function StoreSettingsPage() {
   const user = useAuthStore((state) => state.user);
-  const storeQuery = useQuery<StoreItem | null, Error>({ queryKey: ["my-store"], queryFn: fetchMyStore, staleTime: 1000 * 60 * 5 });
+  const storeQuery = useQuery<StoreItem | null, Error>({
+    queryKey: ["my-store"],
+    queryFn: fetchMyStore,
+    staleTime: 1000 * 60 * 5,
+  });
 
   return (
     <DashboardContent className="space-y-6">
-      <Breadcrumb items={[{ label: "Store" }, { label: "Settings" }]} />
-      <PageHeader title="Store settings" description="Manage your store profile, location, and customer-facing presentation." />
+      <Breadcrumb items={[{ label: "Settings" }]} />
+      <PageHeader
+        category="SETTINGS"
+        title="Store Control Center & Settings"
+        description="Configure your retail profile, delivery perimeter, operating hours, and appearance."
+      />
       {storeQuery.isLoading ? <LoadingSkeleton rows={5} /> : null}
       {storeQuery.isError ? <ErrorState message={storeQuery.error.message} /> : null}
-      {!storeQuery.isLoading && !storeQuery.isError && !storeQuery.data ? <EmptyState title="Store profile unavailable" description="Create or approve a store before managing its settings." /> : null}
-      {storeQuery.data ? <StoreSettingsForm key={storeQuery.data.storeId ?? storeQuery.data._id} store={storeQuery.data} fallbackPhone={user?.mobile ?? ""} ownerName={user?.name ?? ""} ownerEmail={user?.email ?? ""} /> : null}
-      {storeQuery.data && user?.email ? <DashboardCard title="Security" description="Request administrator approval when you need to reset your store owner password."><SellerSecurityRequestCard email={user.email} storeName={storeQuery.data.storeName ?? storeQuery.data.name ?? ""} /></DashboardCard> : null}
+      {storeQuery.data ? (
+        <StoreSettingsForm
+          key={storeQuery.data.storeId ?? storeQuery.data._id}
+          store={storeQuery.data}
+          fallbackPhone={user?.mobile ?? ""}
+          ownerName={user?.name ?? ""}
+          ownerEmail={user?.email ?? ""}
+        />
+      ) : null}
     </DashboardContent>
   );
 }

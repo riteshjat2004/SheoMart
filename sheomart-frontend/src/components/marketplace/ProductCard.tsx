@@ -6,6 +6,7 @@ import { Heart, Star } from "lucide-react";
 
 import { useAuthStore } from "@/store/auth-store";
 import { useAddCartItem } from "@/hooks/use-cart";
+import { useWishlist, useAddWishlistItem, useRemoveWishlistItem } from "@/hooks/use-wishlist";
 
 import type { ProductItem } from "@/types/marketplace";
 
@@ -17,6 +18,9 @@ export function ProductCard({ product }: ProductCardProps) {
   const router = useRouter();
 
   const { isAuthenticated } = useAuthStore();
+  const wishlistQuery = useWishlist();
+  const addWishlistMutation = useAddWishlistItem();
+  const removeWishlistMutation = useRemoveWishlistItem();
 
   const addCartMutation = useAddCartItem();
 
@@ -25,6 +29,37 @@ export function ProductCard({ product }: ProductCardProps) {
   const displayPrice = product.discountPrice ?? product.price;
   const imageSrc = product.image?.url || product.thumbnail || product.images?.[0] || "";
   const isOutOfStock = (product.quantity ?? 0) <= 0;
+
+  const wishlistItem = (wishlistQuery.data ?? []).find(
+    (item) => item.product?.productId === product.productId
+  );
+  const isInWishlist = Boolean(wishlistItem);
+
+  const handleToggleWishlist = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!product.productId) return;
+
+    if (!isAuthenticated) {
+      router.push("/login");
+      return;
+    }
+
+    setMessage(null);
+    if (isInWishlist && wishlistItem?.wishlistItemId) {
+      removeWishlistMutation.mutate(wishlistItem.wishlistItemId, {
+        onSuccess: () => setMessage("Removed from wishlist"),
+        onError: () => setMessage("Failed to update wishlist"),
+      });
+    } else {
+      addWishlistMutation.mutate(
+        { productId: product.productId },
+        {
+          onSuccess: () => setMessage("Saved to wishlist"),
+          onError: () => setMessage("Failed to save to wishlist"),
+        }
+      );
+    }
+  };
 
   const handleAddToCart = () => {
     if (!product.productId) return;
@@ -124,11 +159,16 @@ export function ProductCard({ product }: ProductCardProps) {
 
             <button
               type="button"
-              aria-label="Add to wishlist"
-              onClick={(event) => event.stopPropagation()}
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-stone-200 bg-stone-50 text-stone-600 transition-all duration-200 hover:scale-105 hover:border-emerald-200 hover:text-emerald-600 active:translate-y-[1px] dark:border-stone-700 dark:bg-stone-950 dark:text-stone-200 dark:hover:border-emerald-500/40 dark:hover:text-emerald-300"
+              aria-label={isInWishlist ? "Remove from wishlist" : "Add to wishlist"}
+              onClick={handleToggleWishlist}
+              disabled={addWishlistMutation.isPending || removeWishlistMutation.isPending}
+              className={`flex h-11 w-11 items-center justify-center rounded-full border transition-all duration-200 hover:scale-105 active:translate-y-[1px] ${
+                isInWishlist
+                  ? "border-red-200 bg-red-50 text-red-500 shadow-sm dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-400"
+                  : "border-stone-200 bg-stone-50 text-stone-600 hover:border-emerald-200 hover:text-emerald-600 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-200 dark:hover:border-emerald-500/40 dark:hover:text-emerald-300"
+              }`}
             >
-              <Heart className="h-4 w-4" />
+              <Heart className={`h-4 w-4 ${isInWishlist ? "fill-current" : ""}`} />
             </button>
           </div>
 

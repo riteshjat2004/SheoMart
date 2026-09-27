@@ -41,6 +41,13 @@ export const getOrder = async (req: AuthRequest, res: Response): Promise<void> =
   res.status(200).json(new ApiResponse(true, "Order fetched successfully", { order }));
 };
 
+export const cancelCustomerOrder = async (req: AuthRequest, res: Response): Promise<void> => {
+  const orderId = Array.isArray(req.params.orderId) ? req.params.orderId[0] : req.params.orderId;
+  const reason = typeof req.body?.reason === "string" ? req.body.reason : undefined;
+  const order = await OrderService.cancelCustomerOrder(req.user!.userId, orderId, reason);
+  res.status(200).json(new ApiResponse(true, "Order cancelled successfully", { order }));
+};
+
 export const updateSellerOrderStatus = async (req: AuthRequest, res: Response): Promise<void> => {
   const orderId = Array.isArray(req.params.orderId) ? req.params.orderId[0] : req.params.orderId;
   const status = req.body?.status;
@@ -75,4 +82,27 @@ export const markPaymentReceived = async (req: AuthRequest, res: Response): Prom
 
   const order = await OrderService.markPaymentReceived(req.user!.userId, result.data.orderId, paymentMethod);
   res.status(200).json(new ApiResponse(true, "Payment marked as received", { order }));
+};
+
+export const getStoreOrders = async (req: AuthRequest, res: Response): Promise<void> => {
+  const result = await OrderService.getStoreOrders(req.user!.userId, req.query);
+  res.status(200).json(new ApiResponse(true, "Store orders fetched successfully", result));
+};
+
+export const bulkUpdateSellerOrderStatus = async (req: AuthRequest, res: Response): Promise<void> => {
+  const { orderIds, status } = req.body || {};
+  if (!Array.isArray(orderIds) || orderIds.length === 0 || typeof status !== "string") {
+    throw new AppError("Invalid bulk update payload. orderIds array and status are required.", 400);
+  }
+
+  const result = await OrderService.bulkUpdateSellerOrderStatus(req.user!.userId, orderIds, status);
+  res.status(200).json(new ApiResponse(true, "Bulk orders updated successfully", result));
+};
+
+export const updateSellerNotes = async (req: AuthRequest, res: Response): Promise<void> => {
+  const orderId = Array.isArray(req.params.orderId) ? req.params.orderId[0] : req.params.orderId;
+  const sellerNotes = typeof req.body?.sellerNotes === "string" ? req.body.sellerNotes : "";
+
+  const order = await OrderService.updateSellerNotes(req.user!.userId, orderId, sellerNotes);
+  res.status(200).json(new ApiResponse(true, "Seller notes updated successfully", { order }));
 };

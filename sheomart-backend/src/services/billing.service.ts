@@ -9,7 +9,7 @@ import { OfflineInvoiceItem } from "../models/offlineInvoiceItem.model";
 import { Product } from "../models/product.model";
 import { Store } from "../models/store.model";
 import { StoreCustomer } from "../models/storeCustomer.model";
-import { Order } from "../models/order.model";
+import { Order, ORDER_STATUS } from "../models/order.model";
 import { User } from "../models/user.model";
 import type { CreateOfflineInvoiceInput } from "../validators/billing.validator";
 import { generateInvoiceNumber } from "../utils/invoice-number.util";
@@ -550,50 +550,362 @@ export const completePickupPayment = async (
   return updatedOrder;
 };
 
+export interface StoreCustomerQueryFilters {
+  page?: number | string;
+  limit?: number | string;
+  search?: string;
+  isPlusCustomer?: boolean;
+  isVerified?: boolean;
+  type?: "all" | "new" | "repeat" | "vip" | "frequent";
+  sortBy?: "highest_spend" | "most_orders" | "recent_purchase" | "alphabetical";
+  spendingMin?: number;
+  spendingMax?: number;
+}
+
 export const listStoreCustomers = async (
   ownerId: string,
-  filters: BillingInvoiceListFilters & { isPlusCustomer?: boolean }
+  filters: StoreCustomerQueryFilters
 ) => {
   const store = await getStoreForOwner(ownerId);
-  const query: Record<string, unknown> = { storeId: store.storeId };
+  const page = Math.max(1, Number(filters.page) || 1);
+  const limit = Math.max(1, Math.min(100, Number(filters.limit) || 20));
 
-  if (filters.isPlusCustomer !== undefined) {
-    query.isPlusCustomer = filters.isPlusCustomer;
+  // 1. Aggregate Order metrics for this store
+  const orderAgg = await Order.aggregate([
+    {
+      $match: {
+        storeId: store.storeId,
+        status: { $ne: ORDER_STATUS.DRAFT },
+      },
+    },
+    {
+      $group: {
+        _id: "$userId",
+        totalOrders: { $sum: 1 },
+        completedOrders: {
+          $sum: {
+            $cond: [{ $in: ["$status", ["DELIVERED", "PICKED_UP"]] }, 1, 0],
+          },
+        },
+        cancelledOrders: {
+          $sum: {
+            $cond: [{ $in: ["$status", ["CANCELLED", "FAILED"]] }, 1, 0],
+          },
+        },
+        pendingOrders: {
+          $sum: {
+            $cond: [
+              {
+                $in: [
+                  "$status",
+                  [
+                    "ORDER_PLACED",
+                    "CONFIRMED",
+                    "PROCESSING",
+                    "PACKED",
+                    "OUT_FOR_DELIVERY",
+                    "READY_FOR_PICKUP",
+                    "PENDING_PAYMENT",
+                  ],
+                ],
+              },
+              1,
+              0,
+            ],
+          },
+        },
+        totalOnlinePurchases: {
+          $sum: {
+            $cond: [{ $in: ["$status", ["CANCELLED", "FAILED"]] }, 0, "$grandTotal"],
+          },
+        },
+        lastPurchaseAt: { $max: "$createdAt" },
+        firstPurchaseAt: { $min: "$createdAt" },
+      },
+    },
+  ]);
+
+  // 2. Fetch StoreCustomer records for this store
+  const storeCustomers = await StoreCustomer.find({ storeId: store.storeId }).lean();
+
+  // 3. Collect all unique customer IDs
+  const allCustomerIds = new Set<string>();
+  orderAgg.forEach((item) => {
+    if (item._id) allCustomerIds.add(String(item._id));
+  });
+  storeCustomers.forEach((sc) => {
+    if (sc.customerId) allCustomerIds.add(String(sc.customerId));
+  });
+
+  const customerIdList = Array.from(allCustomerIds);
+
+  // 4. Fetch Users
+  const users = await User.find({ userId: { $in: customerIdList } })
+    .select("userId name email mobile avatar isEmailVerified isPhoneVerified status createdAt")
+    .lean();
+
+  const userMap = new Map(users.map((u) => [u.userId, u]));
+  const orderMap = new Map(orderAgg.map((o) => [String(o._id), o]));
+  const scMap = new Map(storeCustomers.map((sc) => [String(sc.customerId), sc]));
+
+  const now = new Date();
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  // 5. Construct enriched customer objects
+  const allEnrichedCustomers = customerIdList.map((customerId) => {
+    const user = userMap.get(customerId);
+    const orderData = (orderMap.get(customerId) || {}) as Record<string, any>;
+    const scData = (scMap.get(customerId) || {}) as Record<string, any>;
+
+    const totalOrders = Number(orderData.totalOrders) || 0;
+    const completedOrders = Number(orderData.completedOrders) || 0;
+    const cancelledOrders = Number(orderData.cancelledOrders) || 0;
+    const pendingOrders = Number(orderData.pendingOrders) || 0;
+    const totalOnlinePurchases = Number(orderData.totalOnlinePurchases) || 0;
+    const totalOfflinePurchases = Number(scData.totalOfflinePurchases) || 0;
+    const totalSpend = totalOnlinePurchases + totalOfflinePurchases;
+    const averageOrderValue = totalOrders > 0 ? Math.round(totalSpend / totalOrders) : 0;
+    const lastPurchaseAt = orderData.lastPurchaseAt || scData.lastPurchaseAt || null;
+    const firstPurchaseAt = orderData.firstPurchaseAt || scData.joinedAt || user?.createdAt || null;
+    const emailVerified = Boolean(user?.emailVerified);
+    const phoneVerified = Boolean(user?.phoneVerified);
+    const isVerifiedCustomer = Boolean(user?.isVerifiedCustomer);
+    const isVerified = isVerifiedCustomer || emailVerified || phoneVerified;
+    const isPlusCustomer = Boolean(scData.isPlusCustomer);
+    const notes = String(scData.notes || "");
+
+    const isVip = totalOrders >= 5 || totalSpend >= 5000;
+    const isFrequent = totalOrders >= 3;
+    const isRepeat = totalOrders > 1;
+    const isNew = totalOrders <= 1;
+
+    let statusBadge: "VIP" | "Frequent Buyer" | "Repeat Customer" | "New Customer" | "Inactive" = "New Customer";
+    if (isVip) statusBadge = "VIP";
+    else if (isFrequent) statusBadge = "Frequent Buyer";
+    else if (isRepeat) statusBadge = "Repeat Customer";
+    else if (lastPurchaseAt && new Date(lastPurchaseAt) < thirtyDaysAgo && totalOrders > 0) statusBadge = "Inactive";
+    else statusBadge = "New Customer";
+
+    const userStatus = user?.isSuspended ? "suspended" : user?.isActive === false ? "inactive" : "active";
+
+    return {
+      customerId,
+      storeCustomerId: scData.storeCustomerId,
+      name: user?.name || "Customer",
+      email: user?.email || "",
+      mobile: user?.mobile || "",
+      avatar: user?.avatar || null,
+      isEmailVerified: emailVerified,
+      isPhoneVerified: phoneVerified,
+      isVerified,
+      customerSince: user?.createdAt ? new Date(user.createdAt).toISOString() : new Date().toISOString(),
+      isPlusCustomer,
+      notes,
+      totalOrders,
+      completedOrders,
+      cancelledOrders,
+      pendingOrders,
+      totalOnlinePurchases,
+      totalOfflinePurchases,
+      totalSpend,
+      averageOrderValue,
+      lastPurchaseAt: lastPurchaseAt ? new Date(lastPurchaseAt).toISOString() : null,
+      firstPurchaseAt: firstPurchaseAt ? new Date(firstPurchaseAt).toISOString() : null,
+      isVip,
+      isRepeat,
+      isNew,
+      isFrequent,
+      statusBadge,
+      status: userStatus,
+    };
+  });
+
+  // Calculate live summary counts on all customers
+  const summary = {
+    totalCustomers: allEnrichedCustomers.length,
+    activeCustomers: allEnrichedCustomers.filter(
+      (c) => c.lastPurchaseAt && new Date(c.lastPurchaseAt) >= thirtyDaysAgo
+    ).length,
+    newCustomersThisMonth: allEnrichedCustomers.filter(
+      (c) => c.firstPurchaseAt && new Date(c.firstPurchaseAt) >= startOfCurrentMonth
+    ).length,
+    repeatCustomers: allEnrichedCustomers.filter((c) => c.isRepeat).length,
+    verifiedCustomers: allEnrichedCustomers.filter((c) => c.isVerified).length,
+    vipCustomers: allEnrichedCustomers.filter((c) => c.isVip).length,
+  };
+
+  // Filter
+  let filtered = allEnrichedCustomers;
+
+  if (filters.search && filters.search.trim()) {
+    const q = filters.search.trim().toLowerCase();
+    filtered = filtered.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        c.email.toLowerCase().includes(q) ||
+        c.mobile.includes(q) ||
+        c.customerId.toLowerCase().includes(q)
+    );
   }
 
-  const search = filters.search
-    ? new RegExp(escapeRegex(filters.search), "i")
-    : undefined;
-  const customers = await StoreCustomer.find(query)
-    .sort({ lastPurchaseAt: -1, joinedAt: -1 })
-    .skip((filters.page - 1) * filters.limit)
-    .limit(filters.limit)
-    .lean();
-  const total = await StoreCustomer.countDocuments(query);
+  if (filters.isPlusCustomer !== undefined) {
+    filtered = filtered.filter((c) => c.isPlusCustomer === filters.isPlusCustomer);
+  }
 
-  const customerIds = customers.map((customer) => customer.customerId);
-  const users = await User.find({
-    userId: { $in: customerIds },
-    ...(search ? { $or: [{ name: search }, { mobile: search }, { email: search }] } : {}),
-  })
-    .select("userId name email mobile")
-    .lean();
-  const userMap = new Map(users.map((user) => [user.userId, user]));
-  const filteredCustomers = search
-    ? customers.filter((customer) => customer.customerId ? userMap.has(customer.customerId) : false)
-    : customers;
+  if (filters.isVerified !== undefined) {
+    filtered = filtered.filter((c) => c.isVerified === filters.isVerified);
+  }
+
+  if (filters.type && filters.type !== "all") {
+    if (filters.type === "vip") filtered = filtered.filter((c) => c.isVip);
+    else if (filters.type === "repeat") filtered = filtered.filter((c) => c.isRepeat);
+    else if (filters.type === "new") filtered = filtered.filter((c) => c.isNew);
+    else if (filters.type === "frequent") filtered = filtered.filter((c) => c.isFrequent);
+  }
+
+  if (filters.spendingMin !== undefined) {
+    filtered = filtered.filter((c) => c.totalSpend >= (filters.spendingMin || 0));
+  }
+
+  if (filters.spendingMax !== undefined) {
+    filtered = filtered.filter((c) => c.totalSpend <= (filters.spendingMax || Infinity));
+  }
+
+  // Sort
+  const sortBy = filters.sortBy || "recent_purchase";
+  filtered.sort((a, b) => {
+    if (sortBy === "highest_spend") {
+      return b.totalSpend - a.totalSpend;
+    }
+    if (sortBy === "most_orders") {
+      return b.totalOrders - a.totalOrders;
+    }
+    if (sortBy === "alphabetical") {
+      return a.name.localeCompare(b.name);
+    }
+    // Default: recent_purchase
+    const timeA = a.lastPurchaseAt ? new Date(a.lastPurchaseAt).getTime() : 0;
+    const timeB = b.lastPurchaseAt ? new Date(b.lastPurchaseAt).getTime() : 0;
+    return timeB - timeA;
+  });
+
+  const total = filtered.length;
+  const totalPages = Math.ceil(total / limit);
+  const paginated = filtered.slice((page - 1) * limit, page * limit);
 
   return {
-    customers: filteredCustomers.map((customer) => ({
-      ...customer,
-      ...(customer.customerId ? userMap.get(customer.customerId) ?? {} : {}),
-    })),
+    customers: paginated,
     pagination: {
-      page: filters.page,
-      limit: filters.limit,
-      total: search ? filteredCustomers.length : total,
-      totalPages: Math.ceil((search ? filteredCustomers.length : total) / filters.limit),
+      page,
+      limit,
+      total,
+      totalPages,
     },
+    summary,
+  };
+};
+
+export const getStoreCustomersSummary = async (ownerId: string) => {
+  const result = await listStoreCustomers(ownerId, { page: 1, limit: 1 });
+  return result.summary;
+};
+
+export const getStoreCustomersAnalytics = async (ownerId: string) => {
+  const store = await getStoreForOwner(ownerId);
+  const listResult = await listStoreCustomers(ownerId, { page: 1, limit: 1000, sortBy: "highest_spend" });
+  const customers = listResult.customers;
+
+  const totalRevenue = customers.reduce((sum, c) => sum + c.totalSpend, 0);
+  const averageCustomerSpend = customers.length > 0 ? Math.round(totalRevenue / customers.length) : 0;
+  const repeatCount = customers.filter((c) => c.isRepeat).length;
+  const newCount = customers.filter((c) => c.isNew).length;
+  const repeatPurchaseRate = customers.length > 0 ? Math.round((repeatCount / customers.length) * 100) : 0;
+
+  // Monthly Spending Trend (last 6 months)
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+  sixMonthsAgo.setDate(1);
+  sixMonthsAgo.setHours(0, 0, 0, 0);
+
+  const monthlyAgg = await Order.aggregate([
+    {
+      $match: {
+        storeId: store.storeId,
+        createdAt: { $gte: sixMonthsAgo },
+        status: { $nin: ["CANCELLED", "FAILED", ORDER_STATUS.DRAFT] },
+      },
+    },
+    {
+      $group: {
+        _id: {
+          year: { $year: "$createdAt" },
+          month: { $month: "$createdAt" },
+        },
+        revenue: { $sum: "$grandTotal" },
+        orderCount: { $sum: 1 },
+      },
+    },
+    { $sort: { "_id.year": 1, "_id.month": 1 } },
+  ]);
+
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const spendingTrend = monthlyAgg.map((m) => ({
+    month: `${monthNames[m._id.month - 1]} ${m._id.year}`,
+    revenue: m.revenue,
+    orders: m.orderCount,
+  }));
+
+  // Top 10 Customers
+  const top10Customers = customers.slice(0, 10).map((c) => ({
+    customerId: c.customerId,
+    name: c.name,
+    email: c.email,
+    mobile: c.mobile,
+    totalOrders: c.totalOrders,
+    totalSpend: c.totalSpend,
+    isVip: c.isVip,
+    isVerified: c.isVerified,
+    lastPurchaseAt: c.lastPurchaseAt,
+  }));
+
+  // Category Spending breakdown for this store
+  const categoryAgg = await Order.aggregate([
+    {
+      $match: {
+        storeId: store.storeId,
+        status: { $nin: ["CANCELLED", "FAILED", ORDER_STATUS.DRAFT] },
+      },
+    },
+    { $unwind: "$orderItems" },
+    {
+      $group: {
+        _id: "$orderItems.categorySnapshot",
+        category: { $first: "$orderItems.categorySnapshot" },
+        spending: { $sum: "$orderItems.totalPrice" },
+        quantity: { $sum: "$orderItems.quantity" },
+      },
+    },
+    { $sort: { spending: -1 } },
+    { $limit: 8 },
+  ]);
+
+  return {
+    cards: {
+      totalRevenue,
+      averageCustomerSpend,
+      repeatPurchaseRate,
+      newCustomersCount: newCount,
+      repeatCustomersCount: repeatCount,
+      totalCustomers: customers.length,
+    },
+    spendingTrend,
+    topCustomers: top10Customers,
+    categorySpending: categoryAgg.map((c) => ({
+      category: c.category || "General",
+      spending: c.spending,
+      quantity: c.quantity,
+    })),
   };
 };
 
@@ -603,16 +915,338 @@ export const getStoreCustomer = async (
   storeId?: string
 ) => {
   const ownerStore = await getStoreForOwner(ownerId);
-  const customer = await StoreCustomer.findOne({
-    storeId: storeId ?? ownerStore.storeId,
-    customerId,
-  }).lean();
+  const targetStoreId = storeId ?? ownerStore.storeId;
 
-  if (!customer) {
-    throw new AppError("Store customer not found", 404);
+  // 1. Verify seller ownership relation: Customer must have placed an order OR be in StoreCustomer for this store
+  const [hasOrder, storeCustomerDoc, user] = await Promise.all([
+    Order.findOne({ storeId: targetStoreId, userId: customerId, status: { $ne: ORDER_STATUS.DRAFT } }).lean(),
+    StoreCustomer.findOne({ storeId: targetStoreId, customerId }).lean(),
+    User.findOne({ userId: customerId })
+      .select("userId name email mobile avatar isEmailVerified isPhoneVerified status createdAt")
+      .lean(),
+  ]);
+
+  if (!hasOrder && !storeCustomerDoc) {
+    throw new AppError("Customer not found for this store", 404);
   }
 
-  return { customer, isPlusCustomer: customer.isPlusCustomer };
+  // 2. Aggregate orders for this customer at this store
+  const orderStats = await Order.aggregate([
+    {
+      $match: {
+        storeId: targetStoreId,
+        userId: customerId,
+        status: { $ne: ORDER_STATUS.DRAFT },
+      },
+    },
+    {
+      $group: {
+        _id: "$userId",
+        totalOrders: { $sum: 1 },
+        completedOrders: {
+          $sum: { $cond: [{ $in: ["$status", ["DELIVERED", "PICKED_UP"]] }, 1, 0] },
+        },
+        cancelledOrders: {
+          $sum: { $cond: [{ $in: ["$status", ["CANCELLED", "FAILED"]] }, 1, 0] },
+        },
+        pendingOrders: {
+          $sum: {
+            $cond: [
+              {
+                $in: [
+                  "$status",
+                  [
+                    "ORDER_PLACED",
+                    "CONFIRMED",
+                    "PROCESSING",
+                    "PACKED",
+                    "OUT_FOR_DELIVERY",
+                    "READY_FOR_PICKUP",
+                    "PENDING_PAYMENT",
+                  ],
+                ],
+              },
+              1,
+              0,
+            ],
+          },
+        },
+        totalOnlinePurchases: {
+          $sum: { $cond: [{ $in: ["$status", ["CANCELLED", "FAILED"]] }, 0, "$grandTotal"] },
+        },
+        couponsUsed: {
+          $sum: { $cond: [{ $or: [{ $gt: ["$couponDiscount", 0] }, { $ne: ["$couponCode", null] }] }, 1, 0] },
+        },
+        totalItemsCount: { $sum: "$totalItems" },
+        lastPurchaseAt: { $max: "$createdAt" },
+        firstPurchaseAt: { $min: "$createdAt" },
+      },
+    },
+  ]);
+
+  const stats = orderStats[0] || {
+    totalOrders: 0,
+    completedOrders: 0,
+    cancelledOrders: 0,
+    pendingOrders: 0,
+    totalOnlinePurchases: 0,
+    couponsUsed: 0,
+    totalItemsCount: 0,
+    lastPurchaseAt: null,
+    firstPurchaseAt: null,
+  };
+
+  const totalOfflinePurchases = storeCustomerDoc?.totalOfflinePurchases || 0;
+  const totalSpend = stats.totalOnlinePurchases + totalOfflinePurchases;
+  const averageOrderValue = stats.totalOrders > 0 ? Math.round(totalSpend / stats.totalOrders) : 0;
+  const averageBasketSize = stats.totalOrders > 0 ? Math.round((stats.totalItemsCount / stats.totalOrders) * 10) / 10 : 0;
+
+  // 3. Top 5 favorite products from this seller
+  const favoriteProducts = await Order.aggregate([
+    {
+      $match: {
+        storeId: targetStoreId,
+        userId: customerId,
+        status: { $nin: ["CANCELLED", "FAILED", ORDER_STATUS.DRAFT] },
+      },
+    },
+    { $unwind: "$orderItems" },
+    {
+      $group: {
+        _id: "$orderItems.productId",
+        productId: { $first: "$orderItems.productId" },
+        name: { $first: "$orderItems.name" },
+        sku: { $first: "$orderItems.sku" },
+        quantity: { $sum: "$orderItems.quantity" },
+        totalSpent: { $sum: "$orderItems.totalPrice" },
+      },
+    },
+    { $sort: { quantity: -1, totalSpent: -1 } },
+    { $limit: 5 },
+  ]);
+
+  // 4. Favorite categories from this seller
+  const favoriteCategories = await Order.aggregate([
+    {
+      $match: {
+        storeId: targetStoreId,
+        userId: customerId,
+        status: { $nin: ["CANCELLED", "FAILED", ORDER_STATUS.DRAFT] },
+      },
+    },
+    { $unwind: "$orderItems" },
+    {
+      $group: {
+        _id: "$orderItems.categorySnapshot",
+        category: { $first: "$orderItems.categorySnapshot" },
+        quantity: { $sum: "$orderItems.quantity" },
+        totalSpent: { $sum: "$orderItems.totalPrice" },
+      },
+    },
+    { $sort: { quantity: -1 } },
+    { $limit: 5 },
+  ]);
+
+  // 5. Recent 5 orders for timeline
+  const recentOrders = await Order.find({
+    storeId: targetStoreId,
+    userId: customerId,
+    status: { $ne: ORDER_STATUS.DRAFT },
+  })
+    .sort({ createdAt: -1 })
+    .limit(5)
+    .select("orderId invoiceNumber createdAt status pickupStatus fulfillmentType grandTotal paymentMethod paymentStatus totalItems orderItems")
+    .lean();
+
+  const emailVerified = Boolean(user?.emailVerified);
+  const phoneVerified = Boolean(user?.phoneVerified);
+  const isVerifiedCustomer = Boolean(user?.isVerifiedCustomer);
+  const isVerified = isVerifiedCustomer || emailVerified || phoneVerified;
+  const isVip = stats.totalOrders >= 5 || totalSpend >= 5000;
+  const isPlusCustomer = Boolean(storeCustomerDoc?.isPlusCustomer);
+
+  return {
+    customer: {
+      customerId,
+      storeCustomerId: storeCustomerDoc?.storeCustomerId,
+      name: user?.name || "Customer",
+      email: user?.email || "",
+      mobile: user?.mobile || "",
+      avatar: user?.avatar || null,
+      isEmailVerified: emailVerified,
+      isPhoneVerified: phoneVerified,
+      isVerified,
+      customerSince: user?.createdAt ? new Date(user.createdAt).toISOString() : new Date().toISOString(),
+      isPlusCustomer,
+      notes: storeCustomerDoc?.notes || "",
+      isVip,
+    },
+    sellerRelationship: {
+      totalOrders: stats.totalOrders,
+      completedOrders: stats.completedOrders,
+      cancelledOrders: stats.cancelledOrders,
+      pendingOrders: stats.pendingOrders,
+      totalSpending: totalSpend,
+      totalOnlinePurchases: stats.totalOnlinePurchases,
+      totalOfflinePurchases,
+      averageOrderValue,
+      lastPurchase: stats.lastPurchaseAt ? new Date(stats.lastPurchaseAt).toISOString() : null,
+      firstPurchase: stats.firstPurchaseAt ? new Date(stats.firstPurchaseAt).toISOString() : null,
+    },
+    favoriteProducts,
+    favoriteCategories: favoriteCategories.map((c) => ({
+      category: c.category || "General",
+      quantity: c.quantity,
+      totalSpent: c.totalSpent,
+    })),
+    timeline: recentOrders.map((order) => {
+      const itemsCount = (order as any).orderItems?.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0) || (order as any).orderItems?.length || 0;
+      return {
+        orderId: order.orderId,
+        invoiceNumber: order.invoiceNumber,
+        date: order.createdAt,
+        status: order.pickupStatus || order.status,
+        fulfillmentType: order.fulfillmentType,
+        grandTotal: order.grandTotal,
+        paymentMethod: order.paymentMethod,
+        paymentStatus: order.paymentStatus,
+        totalItems: itemsCount,
+        productsCount: (order as any).orderItems?.length || 0,
+      };
+    }),
+    insights: {
+      mostPurchasedProduct: favoriteProducts[0]?.name || "N/A",
+      favoriteCategory: favoriteCategories[0]?.category || "General",
+      averageBasketSize,
+      lifetimeSpend: totalSpend,
+      couponUsageCount: stats.couponsUsed,
+      lastActiveDate: stats.lastPurchaseAt ? new Date(stats.lastPurchaseAt).toISOString() : null,
+    },
+    isPlusCustomer,
+    outstandingAmount: 0,
+    purchases: recentOrders.map((o) => ({
+      orderId: o.orderId,
+      invoiceId: o.invoiceNumber,
+      date: o.createdAt,
+      type: o.fulfillmentType === "pickup" ? "PICKUP" : "DELIVERY",
+      amount: o.grandTotal,
+      paymentStatus: o.paymentStatus,
+    })),
+  };
+};
+
+export const updateStoreCustomerNotes = async (
+  ownerId: string,
+  customerId: string,
+  notes: string
+) => {
+  const store = await getStoreForOwner(ownerId);
+
+  // Validate customer belongs to this store
+  const [hasOrder, storeCustomerDoc] = await Promise.all([
+    Order.findOne({ storeId: store.storeId, userId: customerId, status: { $ne: ORDER_STATUS.DRAFT } }).lean(),
+    StoreCustomer.findOne({ storeId: store.storeId, customerId }).lean(),
+  ]);
+
+  if (!hasOrder && !storeCustomerDoc) {
+    throw new AppError("Customer not found for this store", 404);
+  }
+
+  const updated = await StoreCustomer.findOneAndUpdate(
+    { storeId: store.storeId, customerId },
+    {
+      $set: { notes },
+      $setOnInsert: {
+        storeId: store.storeId,
+        customerId,
+        isPlusCustomer: false,
+        joinedAt: new Date(),
+        totalOfflinePurchases: 0,
+        totalOnlinePurchases: 0,
+      },
+    },
+    { upsert: true, new: true, runValidators: true }
+  ).lean();
+
+  return { success: true, notes: updated.notes };
+};
+
+export const getStoreCustomerOrders = async (
+  ownerId: string,
+  customerId: string,
+  filters: {
+    page?: number | string;
+    limit?: number | string;
+    orderStatus?: string;
+    paymentStatus?: string;
+    sortBy?: string;
+  }
+) => {
+  const store = await getStoreForOwner(ownerId);
+
+  // Verify relation
+  const [hasOrder, storeCustomerDoc] = await Promise.all([
+    Order.findOne({ storeId: store.storeId, userId: customerId, status: { $ne: ORDER_STATUS.DRAFT } }).lean(),
+    StoreCustomer.findOne({ storeId: store.storeId, customerId }).lean(),
+  ]);
+
+  if (!hasOrder && !storeCustomerDoc) {
+    throw new AppError("Customer not found for this store", 404);
+  }
+
+  const page = Math.max(1, Number(filters.page) || 1);
+  const limit = Math.max(1, Math.min(100, Number(filters.limit) || 10));
+
+  const query: Record<string, unknown> = {
+    storeId: store.storeId,
+    userId: customerId,
+    status: { $ne: ORDER_STATUS.DRAFT },
+  };
+
+  if (filters.orderStatus) {
+    query.$or = [{ pickupStatus: filters.orderStatus }, { status: filters.orderStatus }];
+  }
+  if (filters.paymentStatus) {
+    query.paymentStatus = filters.paymentStatus;
+  }
+
+  const sortOrder: Record<string, 1 | -1> = filters.sortBy === "amount_desc"
+    ? { grandTotal: -1 }
+    : filters.sortBy === "amount_asc"
+    ? { grandTotal: 1 }
+    : { createdAt: -1 };
+
+  const [orders, total] = await Promise.all([
+    Order.find(query)
+      .sort(sortOrder)
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean(),
+    Order.countDocuments(query),
+  ]);
+
+  return {
+    orders: orders.map((order) => ({
+      orderId: order.orderId,
+      invoiceNumber: order.invoiceNumber,
+      createdAt: order.createdAt,
+      status: order.pickupStatus || order.status,
+      paymentStatus: order.paymentStatus,
+      paymentMethod: order.paymentMethod,
+      fulfillmentType: order.fulfillmentType,
+      grandTotal: order.grandTotal,
+      couponCode: order.couponCode,
+      couponDiscount: order.couponDiscount,
+      totalItems: order.orderItems?.reduce((sum, item) => sum + (item.quantity || 1), 0) || order.orderItems?.length || 0,
+      orderItems: order.orderItems,
+    })),
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
 };
 
 export const getStoreCustomerForUser = async (

@@ -17,7 +17,7 @@ export function DashboardLayout({ children, role }: DashboardLayoutProps) {
       <div className="flex min-h-screen flex-col lg:flex-row">
         <Sidebar role={role} />
         <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-          <Topbar />
+          <Topbar role={role} />
           <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
             {children}
           </main>

@@ -27,8 +27,13 @@ import { USER_ROLES } from "../constants/roles";
 import { asyncHandler } from "../utils/asyncHandler";
 import { uploadProductImage } from "../middleware/upload.middleware";
 
+import sellerCouponRoutes from "./seller-coupon.routes";
+
 const router = Router();
 const adminOnly = [authenticate, authorize(USER_ROLES.PLATFORM_ADMIN)];
+
+// Seller Coupon Routes
+router.use("/store/coupons", sellerCouponRoutes);
 
 // Public / Customer promotion routes
 router.get("/coupons/active", asyncHandler(getActiveCoupons));

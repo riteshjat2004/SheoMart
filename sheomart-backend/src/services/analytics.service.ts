@@ -980,5 +980,315 @@ export class AnalyticsService {
       }
     }
   }
+
+  static async getCustomerInsights(userId: string) {
+    const orders = await Order.find({ userId, status: { $ne: ORDER_STATUS.CANCELLED } }).lean();
+    const cancelledOrdersCount = await Order.countDocuments({ userId, status: ORDER_STATUS.CANCELLED });
+
+    let totalSpent = 0;
+    let totalSaved = 0;
+    let couponsUsed = 0;
+    const storeCountMap = new Map<string, number>();
+    const categoryCountMap = new Map<string, { count: number; spent: number }>();
+
+    const monthlySpendingMap = new Map<string, number>();
+    const monthlyOrdersMap = new Map<string, number>();
+
+    const now = new Date();
+    const currentMonthKey = now.toISOString().slice(0, 7);
+    let currentMonthSpending = 0;
+
+    for (const order of orders) {
+      const grandTotal = order.grandTotal || 0;
+      totalSpent += grandTotal;
+      totalSaved += (order.discount || 0) + (order.couponDiscount || 0) + (order.festivalDiscount || 0);
+      if (order.couponCode) couponsUsed++;
+
+      if (order.storeId) {
+        storeCountMap.set(order.storeId, (storeCountMap.get(order.storeId) || 0) + 1);
+      }
+
+      const orderMonth = order.createdAt ? new Date(order.createdAt).toISOString().slice(0, 7) : currentMonthKey;
+      monthlySpendingMap.set(orderMonth, (monthlySpendingMap.get(orderMonth) || 0) + grandTotal);
+      monthlyOrdersMap.set(orderMonth, (monthlyOrdersMap.get(orderMonth) || 0) + 1);
+
+      if (orderMonth === currentMonthKey) {
+        currentMonthSpending += grandTotal;
+      }
+    }
+
+    let favoriteStoreId: string | null = null;
+    let maxStoreOrders = 0;
+    for (const [sId, count] of storeCountMap.entries()) {
+      if (count > maxStoreOrders) {
+        maxStoreOrders = count;
+        favoriteStoreId = sId;
+      }
+    }
+    let favoriteStoreName = "None yet";
+    if (favoriteStoreId) {
+      const store = await Store.findOne({ storeId: favoriteStoreId }).select("storeName").lean();
+      if (store) favoriteStoreName = store.storeName;
+    }
+
+    const productIds = orders.flatMap((o) => (o.orderItems || []).map((i) => i.productId)).filter(Boolean);
+    if (productIds.length > 0) {
+      const products = await Product.find({ productId: { $in: productIds } }).select("productId categoryId").lean();
+      const pCatMap = new Map(products.map((p) => [p.productId, p.categoryId]));
+      const catIds = products.map((p) => p.categoryId).filter(Boolean);
+      const categories = await Category.find({ categoryId: { $in: catIds } }).select("categoryId name").lean();
+      const catNameMap = new Map(categories.map((c) => [c.categoryId, c.name]));
+
+      for (const order of orders) {
+        for (const item of order.orderItems || []) {
+          const cId = pCatMap.get(item.productId);
+          const cName = (cId && catNameMap.get(cId)) || "General";
+          const current = categoryCountMap.get(cName) || { count: 0, spent: 0 };
+          categoryCountMap.set(cName, {
+            count: current.count + (item.quantity || 1),
+            spent: current.spent + ((item.discountPrice || item.price || 0) * (item.quantity || 1)),
+          });
+        }
+      }
+    }
+
+    let favoriteCategory = "None yet";
+    let maxCatCount = 0;
+    const categorySpending: Array<{ category: string; spent: number; itemsCount: number }> = [];
+    for (const [cat, data] of categoryCountMap.entries()) {
+      categorySpending.push({ category: cat, spent: Math.round(data.spent), itemsCount: data.count });
+      if (data.count > maxCatCount) {
+        maxCatCount = data.count;
+        favoriteCategory = cat;
+      }
+    }
+    categorySpending.sort((a, b) => b.spent - a.spent);
+
+    const months: string[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push(d.toISOString().slice(0, 7));
+    }
+
+    const spendingTrend = months.map((m) => ({
+      month: m,
+      spending: Math.round(monthlySpendingMap.get(m) || 0),
+    }));
+
+    const ordersTrend = months.map((m) => ({
+      month: m,
+      orders: monthlyOrdersMap.get(m) || 0,
+    }));
+
+    return {
+      totalOrders: orders.length,
+      cancelledOrders: cancelledOrdersCount,
+      totalSpent: Math.round(totalSpent),
+      moneySaved: Math.round(totalSaved),
+      couponsUsed,
+      currentMonthSpending: Math.round(currentMonthSpending),
+      favoriteStore: favoriteStoreName,
+      favoriteCategory,
+      spendingTrend,
+      ordersTrend,
+      categorySpending: categorySpending.slice(0, 6),
+    };
+  }
+
+  static async getSellerOverview(
+    ownerId: string,
+    query: {
+      from?: string;
+      to?: string;
+      range?: string;
+      timezone?: string;
+    }
+  ) {
+    const store = await Store.findOne({ ownerId, isDeleted: false });
+    if (!store) {
+      throw new AppError("Store not found for seller", 404);
+    }
+
+    const storeId = store.storeId;
+    const now = new Date();
+    let fromDate: Date;
+    let toDate: Date = new Date();
+
+    if (query.range === "today") {
+      fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    } else if (query.range === "week") {
+      fromDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    } else if (query.range === "quarter") {
+      fromDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+    } else if (query.range === "year") {
+      fromDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+    } else if (query.from) {
+      fromDate = new Date(query.from);
+      if (query.to) toDate = new Date(query.to);
+    } else {
+      fromDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    }
+
+    const ordersInRange = await Order.find({
+      storeId,
+      createdAt: { $gte: fromDate, $lte: toDate },
+    }).lean();
+
+    let totalRevenue = 0;
+    let completedOrders = 0;
+    let cancelledOrders = 0;
+    let pendingOrders = 0;
+    const dailyMap = new Map<string, { revenue: number; orders: number }>();
+    const customerSet = new Set<string>();
+
+    ordersInRange.forEach((order) => {
+      const isPaid = order.paymentStatus === PAYMENT_STATUS.PAID || order.status === ORDER_STATUS.DELIVERED;
+      if (isPaid && order.status !== ORDER_STATUS.CANCELLED) {
+        totalRevenue += order.grandTotal || 0;
+      }
+      if (order.status === ORDER_STATUS.DELIVERED) {
+        completedOrders++;
+      } else if (order.status === ORDER_STATUS.CANCELLED) {
+        cancelledOrders++;
+      } else {
+        pendingOrders++;
+      }
+
+      if (order.userId) {
+        customerSet.add(order.userId);
+      }
+
+      const dayKey = new Date(order.createdAt).toISOString().slice(0, 10);
+      const existing = dailyMap.get(dayKey) || { revenue: 0, orders: 0 };
+      if (isPaid && order.status !== ORDER_STATUS.CANCELLED) {
+        existing.revenue += order.grandTotal || 0;
+      }
+      existing.orders += 1;
+      dailyMap.set(dayKey, existing);
+    });
+
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayOrders = await Order.find({
+      storeId,
+      createdAt: { $gte: todayStart },
+    }).lean();
+
+    let todayRevenue = 0;
+    todayOrders.forEach((o) => {
+      if (o.status !== ORDER_STATUS.CANCELLED) {
+        todayRevenue += o.grandTotal || 0;
+      }
+    });
+
+    const [allProducts, lowStockProducts, activeCouponsCount, reviews] = await Promise.all([
+      Product.find({ storeId, isDeleted: false }).select("productId name price discountPrice quantity rating totalReviews").lean(),
+      Product.find({ storeId, isDeleted: false, quantity: { $lte: 10 } }).select("productId name quantity sku").lean(),
+      Coupon.countDocuments({ storeId, isActive: true, isDeleted: false }),
+      Review.find({ storeId, isDeleted: false }).select("rating").lean(),
+    ]);
+
+    const sortedProducts = [...allProducts].sort((a, b) => (b.totalReviews || 0) - (a.totalReviews || 0));
+    const topProducts = sortedProducts.slice(0, 5).map((p) => ({
+      productId: p.productId,
+      name: p.name,
+      price: p.discountPrice || p.price,
+      salesCount: p.totalReviews || 1,
+      quantity: p.quantity || 0,
+      revenue: (p.totalReviews || 1) * (p.discountPrice || p.price || 0),
+    }));
+
+    let totalRatingSum = 0;
+    reviews.forEach((r) => { totalRatingSum += r.rating; });
+    const averageRating = reviews.length > 0 ? Number((totalRatingSum / reviews.length).toFixed(1)) : (store.rating || 0);
+
+    const trend: Array<{ date: string; revenue: number; orders: number }> = [];
+    const curr = new Date(fromDate);
+    while (curr <= toDate) {
+      const dKey = curr.toISOString().slice(0, 10);
+      const val = dailyMap.get(dKey) || { revenue: 0, orders: 0 };
+      trend.push({ date: dKey, revenue: Math.round(val.revenue), orders: val.orders });
+      curr.setDate(curr.getDate() + 1);
+    }
+
+    return {
+      store: {
+        storeId: store.storeId,
+        storeName: store.storeName,
+        badge: store.badge,
+        status: store.status,
+        rating: averageRating,
+        totalReviews: reviews.length,
+        createdAt: (store as any).createdAt,
+      },
+      kpis: {
+        todayRevenue: Math.round(todayRevenue),
+        todayOrders: todayOrders.length,
+        totalRevenue: Math.round(totalRevenue),
+        totalOrders: ordersInRange.length,
+        completedOrders,
+        cancelledOrders,
+        pendingOrders,
+        totalProducts: allProducts.length,
+        lowStockCount: lowStockProducts.length,
+        uniqueCustomers: customerSet.size,
+        activeCoupons: activeCouponsCount,
+        averageBasketValue: ordersInRange.length > 0 ? Math.round(totalRevenue / ordersInRange.length) : 0,
+      },
+      trend,
+      topProducts,
+      lowStockAlerts: lowStockProducts.slice(0, 6),
+    };
+  }
+
+  static async exportSellerAnalyticsCSV(
+    ownerId: string,
+    query: {
+      type?: string;
+      from?: string;
+      to?: string;
+    }
+  ) {
+    const store = await Store.findOne({ ownerId, isDeleted: false });
+    if (!store) {
+      throw new AppError("Store not found", 404);
+    }
+
+    const type = query.type || "orders";
+    if (type === "products") {
+      const products = await Product.find({ storeId: store.storeId, isDeleted: false }).lean();
+      const rows = [
+        ["Product ID", "Name", "SKU", "Price", "Discount Price", "Stock Quantity", "Reviews Count"].join(","),
+        ...products.map((p) =>
+          [
+            `"${p.productId}"`,
+            `"${(p.name || "").replace(/"/g, '""')}"`,
+            `"${p.sku || ""}"`,
+            p.price,
+            p.discountPrice || p.price,
+            p.quantity || 0,
+            p.totalReviews || 0,
+          ].join(",")
+        ),
+      ];
+      return rows.join("\n");
+    }
+
+    const orders = await Order.find({ storeId: store.storeId }).sort({ createdAt: -1 }).limit(500).lean();
+    const rows = [
+      ["Order ID", "Customer Name", "Phone", "Amount", "Payment Status", "Order Status", "Created At"].join(","),
+      ...orders.map((o) =>
+        [
+          `"${o.orderId}"`,
+          `"${(o.shippingAddress?.fullName || "Customer").replace(/"/g, '""')}"`,
+          `"${o.shippingAddress?.mobile || ""}"`,
+          o.grandTotal,
+          o.paymentStatus,
+          o.status,
+          new Date(o.createdAt).toISOString(),
+        ].join(",")
+      ),
+    ];
+    return rows.join("\n");
+  }
 }
 

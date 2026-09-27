@@ -22,11 +22,16 @@ import {
   X,
   Boxes,
   Receipt,
+  Star,
+  BadgeCheck,
+  Crown,
   LucideIcon,
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { useAppStore } from "@/store/app-store";
 import { useProfile } from "@/hooks/useProfile";
+import { useQuery } from "@tanstack/react-query";
+import { fetchMyStore } from "@/services/store";
 import type { UserRole } from "@/types/auth";
 
 interface NavItem {
@@ -101,7 +106,7 @@ const STORE_OWNER_NAV_GROUPS: NavGroup[] = [
     items: [
       { id: "store-orders", title: "Orders", href: "/store/orders", icon: ShoppingBag },
       { id: "store-customers", title: "Customers", href: "/store/customers", icon: Users },
-      { id: "store-reviews", title: "Reviews", href: "/store/reviews", icon: ShoppingBag },
+      { id: "store-reviews", title: "Reviews", href: "/store/reviews", icon: Star },
     ],
   },
   {
@@ -149,17 +154,36 @@ export function Sidebar({ role }: SidebarProps) {
   }, [hydrateSidebar]);
 
   const currentRole: UserRole = role ?? user?.role ?? "platform_admin";
+  const isSeller = currentRole === "store_owner" || pathname?.startsWith("/store");
+
+  const storeQuery = useQuery({
+    queryKey: ["my-store"],
+    queryFn: fetchMyStore,
+    staleTime: 1000 * 60 * 5,
+    enabled: isSeller,
+  });
+
+  const store = storeQuery.data;
+  const storeName = store?.storeName || store?.name || "My Store";
+  const storeLogo = store?.logo;
+  const storeBadge = store?.badge || "normal";
 
   const navGroups = useMemo(() => {
+    if (isSeller) return STORE_OWNER_NAV_GROUPS;
     if (currentRole === "platform_admin") return ADMIN_NAV_GROUPS;
-    if (currentRole === "store_owner") return STORE_OWNER_NAV_GROUPS;
     return CUSTOMER_NAV_GROUPS;
-  }, [currentRole]);
+  }, [currentRole, isSeller]);
 
   const userInitial = user?.name ? user.name.charAt(0).toUpperCase() : "A";
   const avatarUrl = profile?.avatar || "/logo/admin-avatar.jpg";
-  const displayName = profile?.name ?? user?.name ?? "Administrator";
-  const displayEmail = profile?.email ?? user?.email ?? "admin@sheomart.com";
+  const displayName = isSeller
+    ? storeName
+    : profile?.name ?? user?.name ?? "Administrator";
+  const displayEmail = isSeller
+    ? profile?.email ?? user?.email ?? "seller@sheomart.com"
+    : profile?.email ?? user?.email ?? "admin@sheomart.com";
+
+  const brandHref = isSeller ? "/store" : "/admin";
 
   const renderNavGroup = (group: NavGroup, isCollapsed: boolean, onNavigate?: () => void) => (
     <div key={group.label} className="mb-5">
@@ -225,30 +249,58 @@ export function Sidebar({ role }: SidebarProps) {
             {/* Mobile Header */}
             <div className="flex items-center justify-between pb-4 border-b border-stone-200 dark:border-stone-800">
               <Link
-                href="/admin"
+                href={brandHref}
                 onClick={() => setMobileMenuOpen(false)}
                 className="flex items-center gap-2.5"
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-stone-50 dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800">
-                  <Image
-                    src="/logo/appicon.png"
-                    alt="SheoMart Logo"
-                    width={32}
-                    height={32}
-                    className="w-8 h-8 object-contain rounded-lg"
-                  />
+                <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-stone-50 dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800">
+                  {isSeller && storeLogo ? (
+                    <Image
+                      src={storeLogo}
+                      alt={storeName}
+                      width={32}
+                      height={32}
+                      className="w-8 h-8 object-cover rounded-lg"
+                    />
+                  ) : (
+                    <Image
+                      src="/logo/appicon.png"
+                      alt="SheoMart Logo"
+                      width={32}
+                      height={32}
+                      className="w-8 h-8 object-contain rounded-lg"
+                    />
+                  )}
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">
                     <span className="text-sm font-bold tracking-tight text-stone-900 dark:text-stone-50">
                       SheoMart
                     </span>
-                    <span className="rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                      Marketplace Admin
-                    </span>
+                    {isSeller ? (
+                      <span className="flex items-center gap-0.5 rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        {storeBadge === "verified" ? (
+                          <>
+                            <BadgeCheck className="h-2.5 w-2.5 text-blue-500" />
+                            Verified
+                          </>
+                        ) : storeBadge === "royal" ? (
+                          <>
+                            <Crown className="h-2.5 w-2.5 text-amber-500" />
+                            Royal
+                          </>
+                        ) : (
+                          "Seller"
+                        )}
+                      </span>
+                    ) : (
+                      <span className="rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        Marketplace Admin
+                      </span>
+                    )}
                   </div>
-                  <p className="text-[10px] font-medium text-stone-400 dark:text-stone-500">
-                    Marketplace Console
+                  <p className="text-[10px] font-medium text-stone-400 dark:text-stone-500 truncate max-w-[140px]">
+                    {isSeller ? storeName : "Marketplace Console"}
                   </p>
                 </div>
               </Link>
@@ -274,10 +326,18 @@ export function Sidebar({ role }: SidebarProps) {
               <div className="flex items-center justify-between rounded-xl bg-stone-50 p-2.5 dark:bg-stone-900/60 border border-stone-200/60 dark:border-stone-800/60">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full ring-2 ring-emerald-500/30">
-                    {avatarUrl ? (
+                    {isSeller && storeLogo ? (
+                      <Image
+                        src={storeLogo}
+                        alt={storeName}
+                        width={32}
+                        height={32}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : avatarUrl ? (
                       <Image
                         src={avatarUrl}
-                        alt="Admin Avatar"
+                        alt="Avatar"
                         width={32}
                         height={32}
                         className="h-full w-full object-cover"
@@ -323,32 +383,60 @@ export function Sidebar({ role }: SidebarProps) {
         {/* Desktop Brand Header */}
         <div className="flex h-[60px] items-center justify-between border-b border-stone-200/80 px-4 dark:border-stone-800/80">
           <Link
-            href="/admin"
+            href={brandHref}
             className={`flex items-center gap-3 transition-opacity ${
               isSidebarCollapsed ? "mx-auto" : ""
             }`}
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-stone-50 dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 shadow-2xs">
-              <Image
-                src="/logo/appicon.png"
-                alt="SheoMart Logo"
-                width={32}
-                height={32}
-                className="w-8 h-8 object-contain rounded-lg"
-              />
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-stone-50 dark:bg-stone-900 border border-stone-200/80 dark:border-stone-800 shadow-2xs">
+              {isSeller && storeLogo ? (
+                <Image
+                  src={storeLogo}
+                  alt={storeName}
+                  width={32}
+                  height={32}
+                  className="w-8 h-8 object-cover rounded-lg"
+                />
+              ) : (
+                <Image
+                  src="/logo/appicon.png"
+                  alt="SheoMart Logo"
+                  width={32}
+                  height={32}
+                  className="w-8 h-8 object-contain rounded-lg"
+                />
+              )}
             </div>
             {!isSidebarCollapsed && (
-              <div className="animate-in fade-in duration-150">
+              <div className="animate-in fade-in duration-150 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <span className="text-sm font-extrabold tracking-tight text-stone-900 dark:text-stone-50">
                     SheoMart
                   </span>
-                  <span className="rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                    Marketplace Admin
-                  </span>
+                  {isSeller ? (
+                    <span className="flex items-center gap-0.5 rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      {storeBadge === "verified" ? (
+                        <>
+                          <BadgeCheck className="h-2.5 w-2.5 text-blue-500" />
+                          Verified
+                        </>
+                      ) : storeBadge === "royal" ? (
+                        <>
+                          <Crown className="h-2.5 w-2.5 text-amber-500" />
+                          Royal
+                        </>
+                      ) : (
+                        "Seller"
+                      )}
+                    </span>
+                  ) : (
+                    <span className="rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      Marketplace Admin
+                    </span>
+                  )}
                 </div>
-                <p className="text-[10px] font-medium text-stone-400 dark:text-stone-500">
-                  Marketplace Console
+                <p className="text-[10px] font-medium text-stone-400 dark:text-stone-500 truncate max-w-[140px]">
+                  {isSeller ? storeName : "Marketplace Console"}
                 </p>
               </div>
             )}
@@ -395,10 +483,18 @@ export function Sidebar({ role }: SidebarProps) {
                 className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full ring-2 ring-emerald-500/30 shadow-xs"
                 title={`${displayName} (${displayEmail})`}
               >
-                {avatarUrl ? (
+                {isSeller && storeLogo ? (
+                  <Image
+                    src={storeLogo}
+                    alt={storeName}
+                    width={36}
+                    height={36}
+                    className="h-full w-full object-cover"
+                  />
+                ) : avatarUrl ? (
                   <Image
                     src={avatarUrl}
-                    alt="Admin Avatar"
+                    alt="Avatar"
                     width={36}
                     height={36}
                     className="h-full w-full object-cover"
@@ -414,10 +510,18 @@ export function Sidebar({ role }: SidebarProps) {
             <div className="flex items-center justify-between rounded-xl bg-stone-50/80 p-2.5 dark:bg-stone-900/60 border border-stone-200/60 dark:border-stone-800/60">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="relative flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full ring-2 ring-emerald-500/30 shadow-xs">
-                  {avatarUrl ? (
+                  {isSeller && storeLogo ? (
+                    <Image
+                      src={storeLogo}
+                      alt={storeName}
+                      width={32}
+                      height={32}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : avatarUrl ? (
                     <Image
                       src={avatarUrl}
-                      alt="Admin Avatar"
+                      alt="Avatar"
                       width={32}
                       height={32}
                       className="h-full w-full object-cover"

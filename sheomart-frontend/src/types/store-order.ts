@@ -57,15 +57,34 @@ export interface StoreOrder {
   outForDeliveryAt?: string;
   deliveredAt?: string;
   pickedUpAt?: string;
+  cancelledAt?: string;
+  sellerNotes?: string;
+  couponCode?: string;
+  couponDiscount?: number;
+  festivalDiscount?: number;
 }
+
+export interface StoreOrderSummary {
+  totalOrders: number;
+  pending: number;
+  accepted: number;
+  packed: number;
+  outForDelivery: number;
+  delivered: number;
+  cancelled: number;
+  todayRevenue: number;
+}
+
 export interface StoreOrderPagination { page: number; limit: number; total: number; totalPages: number; }
-export interface StoreOrdersResponse { orders: StoreOrder[]; pagination?: StoreOrderPagination; }
+export interface StoreOrdersResponse { orders: StoreOrder[]; pagination?: StoreOrderPagination; summary?: StoreOrderSummary; }
 export interface StoreOrderFilters {
   page: number;
   limit: number;
   search?: string;
   orderStatus?: StoreOrderStatus;
   paymentStatus?: StorePaymentStatus;
+  fulfillmentType?: "pickup" | "delivery" | "all";
+  sortBy?: "newest" | "oldest" | "amount_desc" | "amount_asc";
   from?: string;
   to?: string;
 }

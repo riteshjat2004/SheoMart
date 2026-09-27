@@ -1,5 +1,7 @@
 import { AppError } from "../errors/AppError";
 import { Inventory, INVENTORY_STATUS } from "../models/inventory.model";
+import { InventoryLedger } from "../models/inventoryLedger.model";
+import { INVENTORY_MOVEMENT_TYPE, REFERENCE_TYPE } from "../types/billing";
 import { Product } from "../models/product.model";
 import { Store } from "../models/store.model";
 import { STORE_STATUS } from "../constants/store";
@@ -30,7 +32,7 @@ export class InventoryService {
 
     const product = await Product.findOne({
       productId,
-      isActive: true,
+      isDeleted: { $ne: true },
     });
 
     if (!product) {
@@ -273,6 +275,8 @@ export class InventoryService {
       throw new AppError("Invalid quantity", 400);
     }
 
+    const previousQuantity = inventory.availableQuantity;
+
     if (data.availableQuantity !== undefined) {
       inventory.availableQuantity = data.availableQuantity;
     }
@@ -313,7 +317,34 @@ export class InventoryService {
       userId
     );
 
+    if (data.availableQuantity !== undefined && data.availableQuantity !== previousQuantity) {
+      const quantityChange = inventory.availableQuantity - previousQuantity;
+      const product = await Product.findOne({ productId });
+      if (product) {
+        await InventoryLedger.create({
+          storeId: product.storeId,
+          productId,
+          movementType: quantityChange > 0 ? INVENTORY_MOVEMENT_TYPE.RESTOCK : INVENTORY_MOVEMENT_TYPE.ADJUSTMENT,
+          referenceType: REFERENCE_TYPE.MANUAL,
+          referenceId: `MANUAL-${Date.now()}`,
+          quantityChange,
+          previousQuantity,
+          newQuantity: inventory.availableQuantity,
+          performedBy: userId,
+        });
+      }
+    }
+
     return inventory;
+  }
+
+  static async getInventoryLedger(
+    productId: string,
+    userId: string,
+    role?: string
+  ) {
+    await this.validateOwnership(productId, userId, role);
+    return InventoryLedger.find({ productId }).sort({ createdAt: -1 }).limit(100);
   }
 
   static async updateInventoryStatus(

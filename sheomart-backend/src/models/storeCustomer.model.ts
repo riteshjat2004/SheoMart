@@ -28,6 +28,7 @@ const storeCustomerSchema = new Schema<IStoreCustomer>(
     totalOfflinePurchases: { type: Number, required: true, min: 0, default: 0 },
     totalOnlinePurchases: { type: Number, required: true, min: 0, default: 0 },
     lastPurchaseAt: { type: Date, default: null },
+    notes: { type: String, default: "" },
   },
   { timestamps: true }
 );

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   getInventory,
+  getInventoryLedger,
   syncStoreInventory,
   updateInventory,
   updateInventoryStatus,
@@ -17,6 +18,20 @@ router.get(
   authenticate,
   authorize(USER_ROLES.STORE_OWNER),
   asyncHandler(syncStoreInventory)
+);
+
+router.get(
+  "/:productId/ledger",
+  authenticate,
+  authorize(USER_ROLES.STORE_OWNER, USER_ROLES.PLATFORM_ADMIN),
+  asyncHandler(getInventoryLedger)
+);
+
+router.get(
+  "/:productId/history",
+  authenticate,
+  authorize(USER_ROLES.STORE_OWNER, USER_ROLES.PLATFORM_ADMIN),
+  asyncHandler(getInventoryLedger)
 );
 
 router.get(

@@ -315,7 +315,7 @@ export class ProductService {
       throw new AppError("Only approved store owners can view products", 403);
     }
 
-    const products = await Product.find({ storeId: store.storeId }).sort({ createdAt: -1 });
+    const products = await Product.find({ storeId: store.storeId, isDeleted: { $ne: true } }).sort({ createdAt: -1 });
     return this.enrichProductsWithInventory(products);
   }
 
@@ -824,5 +824,52 @@ export class ProductService {
     await product.save();
 
     return product;
+  }
+
+  static async duplicateProduct(productId: string, userId: string, role?: string) {
+    const originalProduct = await Product.findOne({ productId, isDeleted: { $ne: true } });
+    if (!originalProduct) {
+      throw new AppError("Product not found", 404);
+    }
+
+    await this.validateProductAccess(originalProduct, userId, role);
+
+    let copyIndex = 1;
+    let newSku = `${originalProduct.sku}-COPY`;
+    while (await Product.exists({ sku: newSku })) {
+      newSku = `${originalProduct.sku}-COPY${copyIndex}`;
+      copyIndex++;
+    }
+
+    const newName = `${originalProduct.name} (Copy)`;
+    const newSlug = await this.buildUniqueSlug(newName);
+
+    const duplicated = await Product.create({
+      storeId: originalProduct.storeId,
+      categoryId: originalProduct.categoryId,
+      name: newName,
+      slug: newSlug,
+      description: originalProduct.description,
+      brand: originalProduct.brand,
+      sku: newSku,
+      price: originalProduct.price,
+      discountPrice: originalProduct.discountPrice,
+      quantity: 0,
+      image: originalProduct.image,
+      images: originalProduct.images,
+      thumbnail: originalProduct.thumbnail,
+      isPublished: false,
+      isActive: true,
+      isFeatured: false,
+      isBestseller: false,
+      isTrending: false,
+      createdBy: userId,
+      updatedBy: userId,
+    });
+
+    await InventoryService.createInventoryForProduct(duplicated.productId, userId, 0);
+
+    const enriched = await this.enrichProductsWithInventory([duplicated]);
+    return enriched[0];
   }
 }

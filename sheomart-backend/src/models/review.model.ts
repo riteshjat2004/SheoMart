@@ -32,6 +32,11 @@ export interface IReview extends Document {
   moderationReason: string | null;
   deletedAt: Date | null;
   deletedBy: string | null;
+  sellerReply?: {
+    comment: string;
+    repliedAt: Date;
+    repliedBy?: string;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -149,6 +154,12 @@ const reviewSchema = new Schema<IReview>(
     deletedBy: {
       type: String,
       default: null,
+    },
+
+    sellerReply: {
+      comment: { type: String, trim: true, maxlength: 1000 },
+      repliedAt: { type: Date, default: null },
+      repliedBy: { type: String, default: null },
     },
   },
   {

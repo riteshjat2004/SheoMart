@@ -1,8 +1,20 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { Check, Search } from "lucide-react";
-import { useState } from "react";
+import {
+  Check,
+  Search,
+  Eye,
+  XCircle,
+  Truck,
+  Store,
+  ChevronRight,
+  MoreVertical,
+  CheckCircle2,
+  Clock,
+  Printer,
+  RotateCcw,
+} from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { LoadingSkeleton } from "@/components/dashboard/LoadingSkeleton";
@@ -11,11 +23,18 @@ import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { useUpdateOrderStatus } from "@/hooks/use-update-order-status";
 import { useStoreOrders } from "@/hooks/use-store-orders";
-import { STORE_ORDER_STATUSES, STORE_PAYMENT_STATUSES, type StoreOrder, type StoreOrderFilters } from "@/types/store-order";
+import { bulkUpdateOrderStatus } from "@/services/store-orders";
+import {
+  STORE_ORDER_STATUSES,
+  STORE_PAYMENT_STATUSES,
+  type StoreOrder,
+  type StoreOrderFilters,
+} from "@/types/store-order";
 
 interface StoreOrdersTableProps {
   filters: StoreOrderFilters;
   onFiltersChange: (filters: StoreOrderFilters) => void;
+  onViewOrder: (order: StoreOrder) => void;
 }
 
 const statusLabels: Record<string, string> = {
@@ -29,269 +48,594 @@ const statusLabels: Record<string, string> = {
   DELIVERED: "Delivered",
   CANCELLED: "Cancelled",
 };
+
 const paymentLabels: Record<string, string> = {
   PAID: "Paid",
   PENDING: "Pending",
   PARTIALLY_PAID: "Partially Paid",
   FAILED: "Failed",
 };
-const statusClasses: Record<string, string> = {
-  ORDER_PLACED: "bg-blue-100 text-blue-700",
-  PREPARING: "bg-orange-100 text-orange-700",
-  READY_FOR_PICKUP: "bg-green-100 text-green-700",
-  READY_FOR_DISPATCH: "bg-blue-100 text-blue-700",
-  OUT_FOR_DELIVERY: "bg-purple-100 text-purple-700",
-  PICKED_UP: "bg-emerald-100 text-emerald-700",
-  DELIVERED: "bg-green-100 text-green-700",
-  CANCELLED: "bg-red-100 text-red-700",
-};
-const paymentClasses: Record<string, string> = {
-  PAID: "bg-green-100 text-green-700",
-  PENDING: "bg-yellow-100 text-yellow-700",
-  PARTIALLY_PAID: "bg-orange-100 text-orange-700",
-  FAILED: "bg-red-100 text-red-700",
-};
 
-const formatDate = (value?: string) => (value ? new Date(value).toLocaleDateString() : "-");
-const getStatus = (order: StoreOrder) => (order as StoreOrder & { pickupStatus?: string }).pickupStatus ?? order.orderStatus ?? order.status ?? "ORDER_PLACED";
-const getCustomerName = (order: StoreOrder) => order.customerName ?? order.customer?.name ?? order.customer?.fullName ?? "Customer";
-const getCustomerPhone = (order: StoreOrder) => order.customerMobile ?? order.customerPhone ?? order.customer?.mobile ?? order.customer?.phone ?? "-";
-const isPickupOrder = (order: StoreOrder) => (!order.fulfillmentType && !order.deliveryMethod) || [order.fulfillmentType, order.deliveryMethod].some((value) => value?.toLowerCase().includes("pickup"));
-const getNextOrderStatus = (status: string, isPickup: boolean) => {
+const formatDate = (value?: string) =>
+  value
+    ? new Date(value).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "-";
+
+const getStatus = (order: StoreOrder) =>
+  (order as StoreOrder & { pickupStatus?: string }).pickupStatus ??
+  order.orderStatus ??
+  order.status ??
+  "ORDER_PLACED";
+
+const isPickupOrder = (order: StoreOrder) =>
+  (!order.fulfillmentType && !order.deliveryMethod) ||
+  [order.fulfillmentType, order.deliveryMethod].some((val) => val?.toLowerCase().includes("pickup"));
+
+type AllowedOrderStatus =
+  | "ACCEPTED"
+  | "PREPARING"
+  | "READY_FOR_PICKUP"
+  | "READY_FOR_DISPATCH"
+  | "OUT_FOR_DELIVERY"
+  | "PICKED_UP"
+  | "DELIVERED"
+  | "CANCELLED";
+
+const getNextAction = (
+  status: string,
+  isPickup: boolean
+): { label: string; status: AllowedOrderStatus } | null => {
   switch (status) {
     case "ORDER_PLACED":
-      return "ACCEPTED";
+      return { label: "Accept", status: "ACCEPTED" };
     case "ACCEPTED":
-      return "PREPARING";
+      return { label: "Start Packing", status: "PREPARING" };
     case "PREPARING":
-      return isPickup ? "READY_FOR_PICKUP" : "READY_FOR_DISPATCH";
+      return isPickup
+        ? { label: "Mark Ready", status: "READY_FOR_PICKUP" }
+        : { label: "Mark Ready", status: "READY_FOR_DISPATCH" };
     case "READY_FOR_DISPATCH":
-      return "OUT_FOR_DELIVERY";
+      return { label: "Out for Delivery", status: "OUT_FOR_DELIVERY" };
     case "OUT_FOR_DELIVERY":
-      return "DELIVERED";
+      return { label: "Delivered", status: "DELIVERED" };
     case "READY_FOR_PICKUP":
-      return "PICKED_UP";
+      return { label: "Picked Up", status: "PICKED_UP" };
     default:
       return null;
   }
 };
-const canCancelOrder = (status: string) => status === "ORDER_PLACED" || status === "PREPARING";
 
-function ColoredBadge({ value, label, classes }: { value: string; label: string; classes: Record<string, string> }) {
-  return (
-    <span className={`inline-flex rounded-full p-0.5 ${classes[value] ?? "bg-stone-100 text-stone-700"}`}>
-      <StatusBadge status={label} />
-    </span>
-  );
-}
+const canCancelOrder = (status: string) =>
+  status === "ORDER_PLACED" || status === "ACCEPTED" || status === "PREPARING";
 
-export function StoreOrdersTable({ filters, onFiltersChange }: StoreOrdersTableProps) {
-  const router = useRouter();
+export function StoreOrdersTable({
+  filters,
+  onFiltersChange,
+  onViewOrder,
+}: StoreOrdersTableProps) {
   const ordersQuery = useStoreOrders(filters);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+
   const updateOrderStatusMutation = useUpdateOrderStatus({
     onSuccess: (_data, variables) => {
-      setToast({ type: "success", message: `Order ${variables.orderId} updated successfully.` });
+      setToast({
+        type: "success",
+        message: `Order #${variables.orderId.slice(-8).toUpperCase()} updated.`,
+      });
       void ordersQuery.refetch();
     },
     onError: (error, variables) => {
       setToast({
         type: "error",
-        message: error instanceof Error ? error.message : `Unable to update order ${variables.orderId}.`,
+        message:
+          error instanceof Error
+            ? error.message
+            : `Unable to update order ${variables.orderId}.`,
       });
     },
   });
 
   const orders = ordersQuery.data?.orders ?? [];
   const pagination = ordersQuery.data?.pagination;
-  const totalPages = pagination?.totalPages ?? (orders.length < filters.limit ? filters.page : filters.page + 1);
-  const updateFilter = (changes: Partial<StoreOrderFilters>) => onFiltersChange({ ...filters, ...changes, page: changes.page ?? 1 });
+  const totalPages =
+    pagination?.totalPages ??
+    (orders.length < filters.limit ? filters.page : filters.page + 1);
+
+  const updateFilter = (changes: Partial<StoreOrderFilters>) =>
+    onFiltersChange({ ...filters, ...changes, page: changes.page ?? 1 });
+
+  // Selection helpers
+  const allSelected =
+    orders.length > 0 && orders.every((o) => selectedOrderIds.includes(o.orderId));
+  const someSelected = selectedOrderIds.length > 0 && !allSelected;
+
+  const toggleSelect = (orderId: string) => {
+    setSelectedOrderIds((current) =>
+      current.includes(orderId) ? current.filter((id) => id !== orderId) : [...current, orderId]
+    );
+  };
+
+  const selectAll = (select: boolean) => {
+    if (select) {
+      setSelectedOrderIds(orders.map((o) => o.orderId));
+    } else {
+      setSelectedOrderIds([]);
+    }
+  };
+
+  // Bulk actions
+  const handleBulkStatus = async (status: string, label: string) => {
+    if (selectedOrderIds.length === 0) return;
+    try {
+      setIsBulkProcessing(true);
+      await bulkUpdateOrderStatus(selectedOrderIds, status);
+      setToast({
+        type: "success",
+        message: `Successfully updated ${selectedOrderIds.length} orders to ${label}.`,
+      });
+      setSelectedOrderIds([]);
+      await ordersQuery.refetch();
+    } catch (err) {
+      setToast({
+        type: "error",
+        message: err instanceof Error ? err.message : "Bulk status update failed.",
+      });
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  };
+
+  const handlePrintSlips = () => {
+    window.print();
+  };
 
   const handleStatusAction = (order: StoreOrder) => {
     const status = getStatus(order);
-    const nextStatus = getNextOrderStatus(status, isPickupOrder(order));
-    if (!nextStatus) return;
+    const next = getNextAction(status, isPickupOrder(order));
+    if (!next) return;
 
-    const messages: Record<string, string> = { ACCEPTED: "Accept this order?", PREPARING: "Start preparing this order?", READY_FOR_PICKUP: "Mark order ready for pickup?", READY_FOR_DISPATCH: "Mark order ready for dispatch?", OUT_FOR_DELIVERY: "Mark order out for delivery?", PICKED_UP: "Confirm customer picked up this order?", DELIVERED: "Mark this order delivered?" };
-    const confirmed = window.confirm(messages[nextStatus]);
-    if (!confirmed) return;
-
-    updateOrderStatusMutation.mutate({ orderId: order.orderId, status: nextStatus });
+    updateOrderStatusMutation.mutate({ orderId: order.orderId, status: next.status });
   };
 
   const handleCancelOrder = (order: StoreOrder) => {
     const status = getStatus(order);
     if (!canCancelOrder(status)) return;
 
-    const confirmed = window.confirm("Cancel this order?");
+    const confirmed = window.confirm(`Cancel / Reject order #${order.orderId.slice(-8).toUpperCase()}?`);
     if (!confirmed) return;
 
     updateOrderStatusMutation.mutate({ orderId: order.orderId, status: "CANCELLED" });
   };
 
+  const resetFilters = () => {
+    onFiltersChange({
+      page: 1,
+      limit: filters.limit,
+      search: undefined,
+      orderStatus: undefined,
+      paymentStatus: undefined,
+      fulfillmentType: "all",
+      sortBy: "newest",
+      from: undefined,
+      to: undefined,
+    });
+  };
+
+  const hasActiveFilters =
+    Boolean(filters.search) ||
+    Boolean(filters.orderStatus) ||
+    Boolean(filters.paymentStatus) ||
+    (filters.fulfillmentType && filters.fulfillmentType !== "all") ||
+    (filters.sortBy && filters.sortBy !== "newest") ||
+    Boolean(filters.from) ||
+    Boolean(filters.to);
+
   return (
-    <DashboardCard title="Customer orders" description="Review customer pickup orders and their current payment status.">
+    <DashboardCard
+      title="Store Orders"
+      description="Process incoming customer orders, manage packing, track fulfillment, and view details."
+    >
       {toast ? (
         <div
-          className={`mb-4 rounded-lg border px-3 py-2 text-sm ${
+          className={`mb-4 flex items-center justify-between rounded-2xl border p-3.5 text-xs font-semibold ${
             toast.type === "success"
-              ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-300"
-              : "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/40 dark:text-rose-300"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300"
+              : "border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300"
           }`}
         >
-          {toast.message}
+          <span>{toast.message}</span>
+          <button
+            type="button"
+            onClick={() => setToast(null)}
+            className="text-[11px] underline hover:opacity-80"
+          >
+            Dismiss
+          </button>
         </div>
       ) : null}
 
-      <div className="sticky top-0 z-10 -mx-5 border-y border-stone-200 bg-white/95 px-5 py-4 backdrop-blur dark:border-stone-800 dark:bg-stone-900/95 lg:top-4">
-        <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_repeat(4,minmax(130px,auto))]">
-          <label className="relative">
-            <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-stone-400" />
-            <input
-              type="search"
-              value={filters.search ?? ""}
-              onChange={(event) => updateFilter({ search: event.target.value })}
-              placeholder="Search order, customer, or phone"
-              className="h-10 w-full rounded-lg border border-stone-200 bg-white pl-9 pr-3 text-sm text-stone-900 outline-none focus:border-emerald-500 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-50"
-            />
-          </label>
-          <select
-            value={filters.orderStatus ?? ""}
-            onChange={(event) => updateFilter({ orderStatus: event.target.value ? (event.target.value as StoreOrderFilters["orderStatus"]) : undefined })}
-            aria-label="Filter by order status"
-            className="h-10 rounded-lg border border-stone-200 bg-white px-3 text-sm text-stone-700 outline-none focus:border-emerald-500 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-200"
-          >
-            <option value="">All order statuses</option>
-            {STORE_ORDER_STATUSES.map((status) => (
-              <option key={status} value={status}>
-                {statusLabels[status]}
-              </option>
-            ))}
-          </select>
-          <select
-            value={filters.paymentStatus ?? ""}
-            onChange={(event) => updateFilter({ paymentStatus: event.target.value ? (event.target.value as StoreOrderFilters["paymentStatus"]) : undefined })}
-            aria-label="Filter by payment status"
-            className="h-10 rounded-lg border border-stone-200 bg-white px-3 text-sm text-stone-700 outline-none focus:border-emerald-500 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-200"
-          >
-            <option value="">All payment statuses</option>
-            {STORE_PAYMENT_STATUSES.map((status) => (
-              <option key={status} value={status}>
-                {paymentLabels[status]}
-              </option>
-            ))}
-          </select>
-          <label className="flex items-center gap-2 text-xs text-stone-500">
-            From
-            <input
-              type="date"
-              value={filters.from ?? ""}
-              onChange={(event) => updateFilter({ from: event.target.value || undefined })}
-              className="h-10 min-w-0 flex-1 rounded-lg border border-stone-200 bg-white px-2 text-sm text-stone-700 outline-none focus:border-emerald-500 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-200"
-            />
-          </label>
-          <label className="flex items-center gap-2 text-xs text-stone-500">
-            To
-            <input
-              type="date"
-              value={filters.to ?? ""}
-              onChange={(event) => updateFilter({ to: event.target.value || undefined })}
-              className="h-10 min-w-0 flex-1 rounded-lg border border-stone-200 bg-white px-2 text-sm text-stone-700 outline-none focus:border-emerald-500 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-200"
-            />
-          </label>
+      {/* Bulk Action Bar */}
+      {selectedOrderIds.length > 0 ? (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 dark:border-emerald-500/20">
+          <div className="flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-xs font-bold text-white">
+              {selectedOrderIds.length}
+            </span>
+            <span className="text-xs font-semibold text-stone-900 dark:text-stone-100">
+              orders selected
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              onClick={() => handleBulkStatus("ACCEPTED", "Accepted")}
+              disabled={isBulkProcessing}
+              className="h-8 rounded-xl bg-emerald-600 text-xs text-white hover:bg-emerald-700"
+            >
+              Accept All
+            </Button>
+
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleBulkStatus("PREPARING", "Preparing")}
+              disabled={isBulkProcessing}
+              className="h-8 rounded-xl text-xs"
+            >
+              Mark Packing
+            </Button>
+
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handlePrintSlips}
+              className="h-8 rounded-xl text-xs"
+            >
+              <Printer className="mr-1 h-3.5 w-3.5" />
+              Print Slips
+            </Button>
+
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setSelectedOrderIds([])}
+              className="h-8 rounded-xl text-xs text-stone-500"
+            >
+              Clear
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Search & Filter Controls */}
+      <div className="space-y-3">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex-1">
+            <label className="relative block">
+              <Search className="pointer-events-none absolute left-3.5 top-3 h-4 w-4 text-stone-400" />
+              <input
+                type="search"
+                value={filters.search ?? ""}
+                onChange={(e) => updateFilter({ search: e.target.value })}
+                placeholder="Search by Order ID, customer, phone, or product..."
+                className="h-10 w-full rounded-2xl border border-stone-200 bg-white pl-10 pr-4 text-xs outline-none transition-all focus:border-emerald-500 dark:border-stone-800 dark:bg-stone-950 dark:text-stone-100"
+              />
+            </label>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Status Filter */}
+            <select
+              value={filters.orderStatus ?? ""}
+              onChange={(e) =>
+                updateFilter({
+                  orderStatus: e.target.value
+                    ? (e.target.value as StoreOrderFilters["orderStatus"])
+                    : undefined,
+                })
+              }
+              className="h-9 rounded-full border border-stone-200 bg-white px-3 text-xs font-medium outline-none transition-all focus:border-emerald-500 dark:border-stone-800 dark:bg-stone-900"
+            >
+              <option value="">All Statuses</option>
+              {STORE_ORDER_STATUSES.map((st) => (
+                <option key={st} value={st}>
+                  {statusLabels[st] || st}
+                </option>
+              ))}
+            </select>
+
+            {/* Payment Filter */}
+            <select
+              value={filters.paymentStatus ?? ""}
+              onChange={(e) =>
+                updateFilter({
+                  paymentStatus: e.target.value
+                    ? (e.target.value as StoreOrderFilters["paymentStatus"])
+                    : undefined,
+                })
+              }
+              className="h-9 rounded-full border border-stone-200 bg-white px-3 text-xs font-medium outline-none transition-all focus:border-emerald-500 dark:border-stone-800 dark:bg-stone-900"
+            >
+              <option value="">All Payments</option>
+              {STORE_PAYMENT_STATUSES.map((pst) => (
+                <option key={pst} value={pst}>
+                  {paymentLabels[pst] || pst}
+                </option>
+              ))}
+            </select>
+
+            {/* Fulfillment Filter */}
+            <select
+              value={filters.fulfillmentType ?? "all"}
+              onChange={(e) =>
+                updateFilter({
+                  fulfillmentType: e.target.value as StoreOrderFilters["fulfillmentType"],
+                })
+              }
+              className="h-9 rounded-full border border-stone-200 bg-white px-3 text-xs font-medium outline-none transition-all focus:border-emerald-500 dark:border-stone-800 dark:bg-stone-900"
+            >
+              <option value="all">All Types</option>
+              <option value="delivery">Delivery</option>
+              <option value="pickup">Store Pickup</option>
+            </select>
+
+            {/* Sort Filter */}
+            <select
+              value={filters.sortBy ?? "newest"}
+              onChange={(e) =>
+                updateFilter({
+                  sortBy: e.target.value as StoreOrderFilters["sortBy"],
+                })
+              }
+              className="h-9 rounded-full border border-stone-200 bg-white px-3 text-xs font-medium outline-none transition-all focus:border-emerald-500 dark:border-stone-800 dark:bg-stone-900"
+            >
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+              <option value="amount_desc">Highest Value</option>
+              <option value="amount_asc">Lowest Value</option>
+            </select>
+
+            {hasActiveFilters ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={resetFilters}
+                className="h-8 rounded-full text-xs text-stone-500 hover:text-stone-900 dark:hover:text-stone-100"
+              >
+                <RotateCcw className="mr-1 h-3.5 w-3.5" />
+                Reset
+              </Button>
+            ) : null}
+          </div>
         </div>
       </div>
 
+      {/* Loading state */}
       {ordersQuery.isLoading ? (
-        <div className="mt-4">
+        <div className="mt-6">
           <LoadingSkeleton rows={6} />
         </div>
       ) : null}
 
+      {/* Error state */}
       {ordersQuery.isError ? (
-        <div className="mt-4 space-y-3">
-          <EmptyState title="Unable to load customer orders" description={ordersQuery.error.message} />
-          <Button type="button" variant="outline" onClick={() => ordersQuery.refetch()}>
+        <div className="mt-6 space-y-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-400">
+          <p>{ordersQuery.error.message || "Unable to load customer orders."}</p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => ordersQuery.refetch()}
+            className="rounded-xl text-xs"
+          >
             Retry
           </Button>
         </div>
       ) : null}
 
+      {/* Table view */}
       {!ordersQuery.isLoading && !ordersQuery.isError && orders.length === 0 ? (
-        <div className="mt-4">
-          <EmptyState title="No customer orders found." />
+        <div className="mt-6">
+          <EmptyState
+            title="No orders found"
+            description="When customers place orders from your store, they will appear here with live tracking."
+          />
         </div>
       ) : null}
 
       {!ordersQuery.isLoading && !ordersQuery.isError && orders.length > 0 ? (
         <>
-          <div className="mt-4 overflow-x-auto rounded-[1.25rem] border border-stone-200 dark:border-stone-800">
-            <table className="min-w-[1100px] w-full text-left text-sm">
-              <thead className="bg-stone-50 text-xs uppercase tracking-[0.12em] text-stone-500 dark:bg-stone-900/70 dark:text-stone-400">
+          <div className="mt-5 overflow-x-auto rounded-[1.25rem] border border-stone-200 dark:border-stone-800">
+            <table className="min-w-[1000px] w-full text-left text-xs">
+              <thead className="sticky top-0 z-10 bg-stone-50 uppercase tracking-wider text-stone-500 dark:bg-stone-900/80 dark:text-stone-400">
                 <tr>
+                  <th className="px-4 py-3 w-10">
+                    <input
+                      type="checkbox"
+                      aria-label="Select all orders"
+                      checked={allSelected}
+                      ref={(el) => {
+                        if (el) el.indeterminate = someSelected;
+                      }}
+                      onChange={(e) => selectAll(e.target.checked)}
+                      className="h-3.5 w-3.5 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500 dark:border-stone-700"
+                    />
+                  </th>
                   <th className="px-4 py-3">Order ID</th>
                   <th className="px-4 py-3">Customer</th>
-                  <th className="px-4 py-3">Pickup</th>
-                  <th className="px-4 py-3">Order Status</th>
-                  <th className="px-4 py-3">Payment Status</th>
-                  <th className="px-4 py-3">Grand Total</th>
-                  <th className="px-4 py-3">Order Date</th>
-                  <th className="px-4 py-3">Actions</th>
+                  <th className="px-4 py-3">Fulfillment</th>
+                  <th className="px-4 py-3">Items</th>
+                  <th className="px-4 py-3">Amount</th>
+                  <th className="px-4 py-3">Payment</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Placed At</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-stone-200 dark:divide-stone-800">
+              <tbody className="divide-y divide-stone-200/80 bg-white dark:divide-stone-800/80 dark:bg-stone-950/40">
                 {orders.map((order) => {
                   const status = getStatus(order);
-                  const paymentStatus = order.paymentStatus ?? "PENDING";
-                  const nextStatus = getNextOrderStatus(status, isPickupOrder(order));
-                  const pendingMutation = updateOrderStatusMutation.isPending && updateOrderStatusMutation.variables?.orderId === order.orderId;
+                  const isPickup = isPickupOrder(order);
+                  const nextAction = getNextAction(status, isPickup);
+                  const isSelected = selectedOrderIds.includes(order.orderId);
+                  const isPendingThis =
+                    updateOrderStatusMutation.isPending &&
+                    updateOrderStatusMutation.variables?.orderId === order.orderId;
+
+                  const totalItemsCount = (order.orderItems ?? []).reduce(
+                    (sum, item) => sum + (item.quantity ?? 1),
+                    0
+                  );
 
                   return (
-                    <tr key={order.orderId} className="text-stone-700 dark:text-stone-200">
-                      <td className="px-4 py-3 font-semibold text-stone-900 dark:text-stone-50">{order.orderId}</td>
-                      <td className="px-4 py-3">
-                        <p className="font-semibold text-stone-900 dark:text-stone-50">{getCustomerName(order)}</p>
-                        <p className="text-xs text-stone-500 dark:text-stone-400">{getCustomerPhone(order)}</p>
+                    <tr
+                      key={order.orderId}
+                      className="transition-colors hover:bg-stone-50/70 dark:hover:bg-stone-900/40"
+                    >
+                      {/* Checkbox */}
+                      <td className="px-4 py-3.5">
+                        <input
+                          type="checkbox"
+                          aria-label={`Select order ${order.orderId}`}
+                          checked={isSelected}
+                          onChange={() => toggleSelect(order.orderId)}
+                          className="h-3.5 w-3.5 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500 dark:border-stone-700"
+                        />
                       </td>
-                      <td className="px-4 py-3">{isPickupOrder(order) ? <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">Pickup</span> : "-"}</td>
-                      <td className="px-4 py-3">
-                        <ColoredBadge value={status} label={statusLabels[status] ?? status} classes={statusClasses} />
+
+                      {/* Order ID */}
+                      <td className="px-4 py-3.5">
+                        <button
+                          type="button"
+                          onClick={() => onViewOrder(order)}
+                          className="text-left font-mono font-bold text-stone-900 hover:text-emerald-600 dark:text-stone-100 dark:hover:text-emerald-400"
+                        >
+                          #{order.orderId.slice(-8).toUpperCase()}
+                        </button>
+                        <p className="text-[11px] text-stone-400">
+                          {order.invoiceNumber ? `Inv: ${order.invoiceNumber}` : "Inv: Pending"}
+                        </p>
                       </td>
-                      <td className="px-4 py-3">
-                        <ColoredBadge value={paymentStatus} label={paymentLabels[paymentStatus] ?? paymentStatus} classes={paymentClasses} />
+
+                      {/* Customer */}
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-semibold text-stone-900 dark:text-stone-100">
+                            {order.customerName || order.customer?.name || "Customer"}
+                          </p>
+                          {order.isPlusCustomer || order.customer?.isPlus ? (
+                            <span className="rounded-full bg-purple-500/10 px-1.5 py-0.2 text-[10px] font-bold text-purple-600">
+                              PLUS
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="text-[11px] text-stone-400">
+                          {order.customerMobile || order.customerPhone || order.customer?.mobile || "—"}
+                        </p>
                       </td>
-                      <td className="px-4 py-3 font-semibold">₹{order.grandTotal ?? 0}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">{formatDate(order.createdAt)}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          {nextStatus ? (
-                            <Button type="button" size="sm" onClick={() => handleStatusAction(order)} disabled={pendingMutation}>
-                              {pendingMutation
-                                ? "Updating..."
-                                : nextStatus === "PREPARING"
-                                  ? "Start Preparing"
-                                  : nextStatus === "READY_FOR_PICKUP"
-                                    ? "Mark Ready for Pickup"
-                                    : <><Check className="mr-1 h-4 w-4" />Order Picked Up</>}
+
+                      {/* Fulfillment */}
+                      <td className="px-4 py-3.5">
+                        <span className="inline-flex items-center gap-1 rounded-full border border-stone-200/80 bg-stone-50 px-2 py-0.5 text-[11px] font-medium text-stone-700 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
+                          {isPickup ? (
+                            <>
+                              <Store className="h-3 w-3 text-blue-600" />
+                              Pickup
+                            </>
+                          ) : (
+                            <>
+                              <Truck className="h-3 w-3 text-emerald-600" />
+                              Delivery
+                            </>
+                          )}
+                        </span>
+                      </td>
+
+                      {/* Items */}
+                      <td className="px-4 py-3.5">
+                        <span className="font-semibold text-stone-700 dark:text-stone-300">
+                          {totalItemsCount} {totalItemsCount === 1 ? "item" : "items"}
+                        </span>
+                      </td>
+
+                      {/* Amount */}
+                      <td className="px-4 py-3.5 font-bold text-stone-900 dark:text-stone-50">
+                        ₹{(order.grandTotal ?? 0).toLocaleString("en-IN")}
+                      </td>
+
+                      {/* Payment */}
+                      <td className="px-4 py-3.5">
+                        <span
+                          className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${
+                            order.paymentStatus === "PAID"
+                              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                              : "bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                          }`}
+                        >
+                          {order.paymentStatus || "PENDING"}
+                        </span>
+                      </td>
+
+                      {/* Status */}
+                      <td className="px-4 py-3.5">
+                        <StatusBadge status={statusLabels[status] || status} />
+                      </td>
+
+                      {/* Placed At */}
+                      <td className="px-4 py-3.5 whitespace-nowrap text-stone-500 dark:text-stone-400">
+                        {formatDate(order.createdAt)}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="px-4 py-3.5 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Next Workflow Action Button */}
+                          {nextAction ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="h-7 rounded-xl bg-emerald-600 px-2.5 text-xs text-white hover:bg-emerald-700"
+                              onClick={() => handleStatusAction(order)}
+                              disabled={isPendingThis}
+                            >
+                              {isPendingThis ? "Updating..." : nextAction.label}
                             </Button>
-                          ) : status === "PICKED_UP" || status === "CANCELLED" ? (
-                            <span className="text-xs text-stone-500">{status === "PICKED_UP" ? "Completed" : "Cancelled"}</span>
                           ) : null}
 
+                          {/* View Details Drawer */}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100"
+                            onClick={() => onViewOrder(order)}
+                            title="View order details"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                          </Button>
+
+                          {/* Cancel if eligible */}
                           {canCancelOrder(status) ? (
                             <Button
                               type="button"
-                              variant="outline"
-                              size="sm"
-                              className="border-rose-200 text-rose-700 hover:bg-rose-50 dark:border-rose-900 dark:text-rose-300 dark:hover:bg-rose-950/40"
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-stone-400 hover:text-rose-600"
                               onClick={() => handleCancelOrder(order)}
-                              disabled={pendingMutation}
+                              title="Reject / Cancel Order"
+                              disabled={isPendingThis}
                             >
-                              {pendingMutation ? "Pending..." : "Cancel Order"}
+                              <XCircle className="h-3.5 w-3.5" />
                             </Button>
                           ) : null}
-
-                          <Button type="button" variant="outline" size="sm" onClick={() => router.push(`/store/orders/${encodeURIComponent(order.orderId)}`)}>View</Button>
                         </div>
                       </td>
                     </tr>
@@ -301,17 +645,14 @@ export function StoreOrdersTable({ filters, onFiltersChange }: StoreOrdersTableP
             </table>
           </div>
 
-          {pagination ? (
-            <div className="mt-4">
-              <Pagination page={pagination.page} totalPages={totalPages} onPageChange={(page) => updateFilter({ page })} />
-            </div>
-          ) : null}
-
-          {!pagination && orders.length >= filters.limit ? (
-            <div className="mt-4">
-              <Pagination page={filters.page} totalPages={totalPages} onPageChange={(page) => updateFilter({ page })} />
-            </div>
-          ) : null}
+          {/* Pagination */}
+          <div className="mt-4">
+            <Pagination
+              page={filters.page}
+              totalPages={totalPages}
+              onPageChange={(page) => updateFilter({ page })}
+            />
+          </div>
         </>
       ) : null}
     </DashboardCard>

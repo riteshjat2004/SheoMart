@@ -245,3 +245,15 @@ export const updateThumbnail = async (
     new ApiResponse(true, "Thumbnail updated successfully", { product })
   );
 };
+
+export const duplicateProduct = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const productId = Array.isArray(req.params.productId) ? req.params.productId[0] : req.params.productId;
+  const product = await ProductService.duplicateProduct(productId, req.user?.userId as string, req.user?.role);
+
+  res.status(201).json(
+    new ApiResponse(true, "Product duplicated successfully", { product })
+  );
+};

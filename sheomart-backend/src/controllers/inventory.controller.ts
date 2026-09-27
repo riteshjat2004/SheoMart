@@ -67,3 +67,19 @@ export const updateInventoryStatus = async (
     new ApiResponse(true, "Inventory status updated successfully", { inventory })
   );
 };
+
+export const getInventoryLedger = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const productId = Array.isArray(req.params.productId) ? req.params.productId[0] : req.params.productId;
+  const entries = await InventoryService.getInventoryLedger(
+    productId,
+    req.user?.userId as string,
+    req.user?.role
+  );
+
+  res.status(200).json(
+    new ApiResponse(true, "Inventory ledger fetched successfully", { ledger: entries, entries })
+  );
+};

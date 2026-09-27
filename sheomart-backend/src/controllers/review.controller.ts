@@ -167,6 +167,17 @@ export const getReview = async (
   );
 };
 
+export const getMyReviews = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const reviews = await ReviewService.getMyReviews(req.user?.userId as string);
+
+  res.status(200).json(
+    new ApiResponse(true, "Your reviews fetched successfully", { reviews })
+  );
+};
+
 export const updateReview = async (
   req: AuthRequest,
   res: Response
@@ -218,4 +229,63 @@ export const updateVisibility = async (
     new ApiResponse(true, "Review visibility updated successfully", { review })
   );
 };
+
+export const getStoreReviewsHandler = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const query = {
+    page: req.query.page ? Number(req.query.page) : undefined,
+    limit: req.query.limit ? Number(req.query.limit) : undefined,
+    search: req.query.search as string | undefined,
+    rating: req.query.rating ? Number(req.query.rating) : undefined,
+    status: req.query.status as string | undefined,
+    sortBy: req.query.sortBy as string | undefined,
+  };
+
+  const result = await ReviewService.getStoreReviews(req.user?.userId as string, query);
+  res.status(200).json(
+    new ApiResponse(true, "Store reviews fetched successfully", result)
+  );
+};
+
+export const replyToStoreReviewHandler = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const reviewId = Array.isArray(req.params.reviewId) ? req.params.reviewId[0] : req.params.reviewId;
+  const { comment } = req.body || {};
+  if (!comment || typeof comment !== "string" || !comment.trim()) {
+    throw new AppError("Reply comment is required", 400);
+  }
+
+  const review = await ReviewService.replyToStoreReview(
+    req.user?.userId as string,
+    reviewId,
+    comment
+  );
+
+  res.status(200).json(
+    new ApiResponse(true, "Reply posted successfully", { review })
+  );
+};
+
+export const reportStoreReviewHandler = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const reviewId = Array.isArray(req.params.reviewId) ? req.params.reviewId[0] : req.params.reviewId;
+  const { reason } = req.body || {};
+
+  const review = await ReviewService.reportStoreReview(
+    req.user?.userId as string,
+    reviewId,
+    reason || "Reported by store owner"
+  );
+
+  res.status(200).json(
+    new ApiResponse(true, "Review reported to admin moderation", { review })
+  );
+};
+
 

@@ -4,6 +4,7 @@ import { Review, REVIEW_STATUS, ReviewStatus, IReview } from "../models/review.m
 import { Store } from "../models/store.model";
 import { User } from "../models/user.model";
 import { Category } from "../models/category.model";
+import { Order, ORDER_STATUS } from "../models/order.model";
 import { USER_ROLES } from "../constants/roles";
 import {
   AdminReviewListQuery,
@@ -608,6 +609,16 @@ export class ReviewService {
       throw new AppError("Store owners cannot review their own products", 403);
     }
 
+    const hasPurchased = await Order.exists({
+      userId,
+      "orderItems.productId": productId,
+      status: { $nin: [ORDER_STATUS.CANCELLED, ORDER_STATUS.FAILED] },
+    });
+
+    if (!hasPurchased) {
+      throw new AppError("Only customers who have purchased this product can write a review", 403);
+    }
+
     const review = await Review.create({
       productId,
       storeId: product.storeId || "",
@@ -616,7 +627,7 @@ export class ReviewService {
       title: data.title || "",
       comment: data.comment || "",
       images: data.images || [],
-      isVerifiedPurchase: data.isVerifiedPurchase ?? false,
+      isVerifiedPurchase: true,
       isVisible: true,
       isDeleted: false,
       status: REVIEW_STATUS.APPROVED,
@@ -624,6 +635,20 @@ export class ReviewService {
 
     await this.recalculateRatings(productId, product.storeId);
     return review;
+  }
+
+  static async getMyReviews(userId: string) {
+    const reviews = await Review.find({ userId, isDeleted: false }).sort({ createdAt: -1 }).lean();
+    const productIds = reviews.map((r) => r.productId);
+    const products = await Product.find({ productId: { $in: productIds } })
+      .select("productId name thumbnail sku brand price discountPrice")
+      .lean();
+    const productMap = new Map(products.map((p) => [p.productId, p]));
+
+    return reviews.map((r) => ({
+      ...r,
+      product: productMap.get(r.productId) || null,
+    }));
   }
 
   static async getProductReviews(productId: string) {
@@ -701,6 +726,166 @@ export class ReviewService {
     review.status = data.isVisible ? REVIEW_STATUS.APPROVED : REVIEW_STATUS.HIDDEN;
     await review.save();
     await this.recalculateRatings(review.productId, review.storeId);
+    return review;
+  }
+
+  static async getStoreReviews(
+    ownerId: string,
+    query: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      rating?: number;
+      status?: string;
+      sortBy?: string;
+    }
+  ) {
+    const store = await Store.findOne({ ownerId, isDeleted: false });
+    if (!store) {
+      return {
+        reviews: [],
+        pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
+        stats: { averageRating: 0, totalReviews: 0, breakdown: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 } },
+      };
+    }
+
+    const filter: Record<string, unknown> = {
+      storeId: store.storeId,
+      isDeleted: false,
+    };
+
+    if (query.rating && query.rating >= 1 && query.rating <= 5) {
+      filter.rating = query.rating;
+    }
+
+    if (query.status && query.status !== "all") {
+      filter.status = query.status;
+    }
+
+    if (query.search && query.search.trim()) {
+      filter.$or = [
+        { comment: { $regex: query.search.trim(), $options: "i" } },
+        { title: { $regex: query.search.trim(), $options: "i" } },
+      ];
+    }
+
+    const page = Math.max(1, query.page || 1);
+    const limit = Math.min(50, Math.max(1, query.limit || 10));
+    const skip = (page - 1) * limit;
+
+    let sort: Record<string, 1 | -1> = { createdAt: -1 };
+    if (query.sortBy === "oldest") sort = { createdAt: 1 };
+    if (query.sortBy === "highest") sort = { rating: -1, createdAt: -1 };
+    if (query.sortBy === "lowest") sort = { rating: 1, createdAt: -1 };
+
+    const [reviews, total, allStoreReviews] = await Promise.all([
+      Review.find(filter).sort(sort).skip(skip).limit(limit).lean(),
+      Review.countDocuments(filter),
+      Review.find({ storeId: store.storeId, isDeleted: false }).select("rating").lean(),
+    ]);
+
+    const breakdown = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    let ratingSum = 0;
+    allStoreReviews.forEach((r) => {
+      const star = Math.min(5, Math.max(1, Math.round(r.rating))) as 1 | 2 | 3 | 4 | 5;
+      breakdown[star] = (breakdown[star] || 0) + 1;
+      ratingSum += r.rating;
+    });
+
+    const averageRating = allStoreReviews.length > 0 ? Number((ratingSum / allStoreReviews.length).toFixed(1)) : 0;
+
+    const productIds = [...new Set(reviews.map((r) => r.productId))];
+    const userIds = [...new Set(reviews.map((r) => r.userId))];
+
+    const [products, users] = await Promise.all([
+      Product.find({ productId: { $in: productIds } }).select("productId name thumbnail price discountPrice").lean(),
+      User.find({ userId: { $in: userIds } }).select("userId name email").lean(),
+    ]);
+
+    const productMap = new Map(products.map((p) => [p.productId, p]));
+    const userMap = new Map(users.map((u) => [u.userId, u]));
+
+    const populatedReviews = reviews.map((r) => {
+      const product = productMap.get(r.productId);
+      const user = userMap.get(r.userId);
+      return {
+        ...r,
+        product: product
+          ? {
+              productId: product.productId,
+              name: product.name,
+              thumbnail: product.thumbnail,
+              price: product.discountPrice || product.price,
+            }
+          : null,
+        user: user
+          ? {
+              userId: user.userId,
+              name: user.name || "Customer",
+              email: user.email,
+            }
+          : null,
+      };
+    });
+
+    return {
+      reviews: populatedReviews,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+      stats: {
+        averageRating,
+        totalReviews: allStoreReviews.length,
+        breakdown,
+      },
+    };
+  }
+
+  static async replyToStoreReview(ownerId: string, reviewId: string, comment: string) {
+    const store = await Store.findOne({ ownerId, isDeleted: false });
+    if (!store) {
+      throw new AppError("Store not found for seller", 404);
+    }
+
+    const review = await Review.findOne({ reviewId, storeId: store.storeId, isDeleted: false });
+    if (!review) {
+      throw new AppError("Review not found for this store", 404);
+    }
+
+    review.sellerReply = {
+      comment: comment.trim(),
+      repliedAt: new Date(),
+      repliedBy: ownerId,
+    };
+
+    await review.save();
+    return review;
+  }
+
+  static async reportStoreReview(ownerId: string, reviewId: string, reason: string) {
+    const store = await Store.findOne({ ownerId, isDeleted: false });
+    if (!store) {
+      throw new AppError("Store not found for seller", 404);
+    }
+
+    const review = await Review.findOne({ reviewId, storeId: store.storeId, isDeleted: false });
+    if (!review) {
+      throw new AppError("Review not found for this store", 404);
+    }
+
+    review.reportCount = (review.reportCount || 0) + 1;
+    if (reason && reason.trim()) {
+      review.reportReasons = review.reportReasons || [];
+      review.reportReasons.push(`[Seller Report]: ${reason.trim()}`);
+    }
+    if (review.status === REVIEW_STATUS.APPROVED) {
+      review.status = REVIEW_STATUS.REPORTED;
+    }
+
+    await review.save();
     return review;
   }
 }

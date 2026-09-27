@@ -1,8 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, CircleHelp } from "lucide-react";
-import { useParams } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
+import { useState } from "react";
+import {
+  ArrowLeft,
+  CircleHelp,
+  Printer,
+  RotateCcw,
+  XCircle,
+  Truck,
+  Store,
+  CheckCircle2,
+  Calendar,
+  CreditCard,
+  Package,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/layout/container";
 import { PageWrapper } from "@/components/layout/page-wrapper";
@@ -17,68 +30,319 @@ import { OrderStatusTimeline } from "@/components/profile/OrderStatusTimeline";
 import { ErrorState } from "@/components/common/error-state";
 import { EmptyState } from "@/components/common/empty-state";
 import { LoadingSkeleton } from "@/components/dashboard/LoadingSkeleton";
-import { useOrders } from "@/hooks/use-orders";
+import { useOrders, useCancelCustomerOrder } from "@/hooks/use-orders";
+import { useAddCartItem } from "@/hooks/use-cart";
 import type { OrderRecord } from "@/services/orders";
 
-const statusLabel = (status?: string) => ({ ACCEPTED: "Seller Accepted", PREPARING: "Preparing", READY_FOR_PICKUP: "Ready for Pickup", READY_FOR_DISPATCH: "Ready for Dispatch", OUT_FOR_DELIVERY: "Out for Delivery", PICKED_UP: "Picked Up", DELIVERED: "Delivered", CANCELLED: "Cancelled" }[status ?? ""] ?? "Order Placed");
-const paymentLabel = (status?: string) => status === "PAID" ? "Paid" : "Pending";
-type LiveOrder = OrderRecord & { invoiceNumber?: string; storeName?: string; paymentMethod?: string };
+const statusLabel = (status?: string) =>
+  ({
+    ORDER_PLACED: "Order Placed",
+    ACCEPTED: "Seller Accepted",
+    PREPARING: "Packing Items",
+    READY_FOR_PICKUP: "Ready for Pickup",
+    READY_FOR_DISPATCH: "Ready for Dispatch",
+    OUT_FOR_DELIVERY: "Out for Delivery",
+    PICKED_UP: "Picked Up",
+    DELIVERED: "Delivered",
+    CANCELLED: "Cancelled",
+  }[status ?? ""] ?? "Order Placed");
+
+type LiveOrder = OrderRecord & {
+  invoiceNumber?: string;
+  storeName?: string;
+  paymentMethod?: string;
+};
 
 export default function OrderDetailsPage() {
+  const router = useRouter();
   const { orderId } = useParams<{ orderId: string }>();
   const ordersQuery = useOrders();
+  const cancelOrderMutation = useCancelCustomerOrder();
+  const addCartItem = useAddCartItem();
+
+  const [feedback, setFeedback] = useState<string | null>(null);
+
   const order = ordersQuery.data?.find((item) => item.orderId === orderId) as LiveOrder | undefined;
 
-  if (ordersQuery.isLoading) return <PageWrapper><Section className="py-8"><Container><LoadingSkeleton rows={6} /></Container></Section></PageWrapper>;
-  if (ordersQuery.isError) return <PageWrapper><Section className="space-y-4 py-8"><Container><ErrorState message={ordersQuery.error.message} /><Button type="button" variant="outline" onClick={() => ordersQuery.refetch()}>Retry</Button></Container></Section></PageWrapper>;
-  if (!order) return <PageWrapper><Section className="space-y-6 py-8"><Container><Button asChild variant="outline"><Link href="/orders"><ArrowLeft className="mr-2 h-4 w-4" />Back to orders</Link></Button><EmptyState title="Order not found" description="This order is no longer available." /></Container></Section></PageWrapper>;
+  const rawStatus = (order?.pickupStatus || order?.status || "ORDER_PLACED").toUpperCase();
+  const isCancellable = rawStatus === "ORDER_PLACED" || rawStatus === "CONFIRMED";
+  const isDelivery = order?.fulfillmentType === "delivery" || order?.deliveryMethod === "delivery";
+
+  const handleCancelOrder = () => {
+    if (!order?.orderId) return;
+    const confirmed = window.confirm("Are you sure you want to cancel this order?");
+    if (!confirmed) return;
+
+    setFeedback(null);
+    cancelOrderMutation.mutate(
+      { orderId: order.orderId, reason: "Cancelled by customer before acceptance" },
+      {
+        onSuccess: () => {
+          setFeedback("Order cancelled successfully.");
+        },
+        onError: (err) => {
+          setFeedback(err instanceof Error ? err.message : "Failed to cancel order.");
+        },
+      }
+    );
+  };
+
+  const handleReorder = async () => {
+    if (!order?.orderItems || order.orderItems.length === 0) return;
+    setFeedback(null);
+
+    let addedCount = 0;
+    for (const item of order.orderItems) {
+      if (item.productId) {
+        try {
+          await addCartItem.mutateAsync({
+            productId: item.productId,
+            quantity: item.quantity || 1,
+          });
+          addedCount++;
+        } catch {
+          // continue
+        }
+      }
+    }
+
+    if (addedCount > 0) {
+      router.push("/cart");
+    } else {
+      setFeedback("Unable to reorder items at this moment.");
+    }
+  };
+
+  const handlePrintInvoice = () => {
+    window.print();
+  };
+
+  if (ordersQuery.isLoading)
+    return (
+      <PageWrapper>
+        <Section className="py-8">
+          <Container>
+            <LoadingSkeleton rows={6} />
+          </Container>
+        </Section>
+      </PageWrapper>
+    );
+
+  if (ordersQuery.isError)
+    return (
+      <PageWrapper>
+        <Section className="space-y-4 py-8">
+          <Container>
+            <ErrorState message={ordersQuery.error.message} />
+            <Button type="button" variant="outline" onClick={() => ordersQuery.refetch()}>
+              Retry
+            </Button>
+          </Container>
+        </Section>
+      </PageWrapper>
+    );
+
+  if (!order)
+    return (
+      <PageWrapper>
+        <Section className="space-y-6 py-8">
+          <Container>
+            <Button asChild variant="outline">
+              <Link href="/orders">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to orders
+              </Link>
+            </Button>
+            <EmptyState title="Order not found" description="This order is no longer available." />
+          </Container>
+        </Section>
+      </PageWrapper>
+    );
 
   return (
     <PageWrapper>
-      <Section className="space-y-6 py-8 sm:py-10 lg:py-12">
+      <Section className="space-y-6 py-6 sm:py-8 lg:py-10">
         <Container className="space-y-6">
-          <Button asChild variant="outline" className="h-fit">
-            <Link href="/orders"><ArrowLeft className="mr-2 h-4 w-4" />Back to orders</Link>
-          </Button>
+          {/* Top Actions */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Button asChild variant="outline" size="sm">
+              <Link href="/orders">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Orders
+              </Link>
+            </Button>
 
-          <SectionHeading eyebrow="Order Details" title={`Order ${order.orderId}`} description={order.fulfillmentType === "delivery" || order.deliveryMethod === "delivery" ? "Review your delivery order, payment summary, and live fulfillment updates." : "Review your pickup order, payment summary, and store information."} />
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={handlePrintInvoice}>
+                <Printer className="mr-1.5 h-4 w-4" />
+                Print Invoice
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleReorder}
+                className="text-emerald-700 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
+              >
+                <RotateCcw className="mr-1.5 h-4 w-4" />
+                Reorder Items
+              </Button>
+              {isCancellable && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCancelOrder}
+                  disabled={cancelOrderMutation.isPending}
+                  className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900"
+                >
+                  <XCircle className="mr-1.5 h-4 w-4" />
+                  Cancel Order
+                </Button>
+              )}
+            </div>
+          </div>
 
+          {feedback && (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-semibold text-emerald-800 dark:border-emerald-950 dark:bg-emerald-950/40 dark:text-emerald-300">
+              {feedback}
+            </div>
+          )}
+
+          {/* Heading */}
+          <SectionHeading
+            eyebrow="Order Tracking & Invoice"
+            title={`Order #${order.orderId?.slice(-8).toUpperCase()}`}
+            description={
+              isDelivery
+                ? "Review delivery progress, live updates, and payment breakdown."
+                : "Review store pickup timing, status timeline, and payment information."
+            }
+          />
+
+          {/* Meta card */}
           <section className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm dark:border-stone-800 dark:bg-stone-900">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500 dark:text-stone-400">Invoice Number</p><p className="mt-2 font-semibold text-stone-900 dark:text-stone-50">{order.invoiceNumber ?? "Not available"}</p></div>
-                <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500 dark:text-stone-400">Order ID</p><p className="mt-2 font-semibold text-stone-900 dark:text-stone-50">{order.orderId}</p></div>
-                <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500 dark:text-stone-400">Order Date</p><p className="mt-2 font-semibold text-stone-900 dark:text-stone-50">{order.createdAt ? new Date(order.createdAt).toLocaleDateString() : "Recently"}</p></div>
-                <div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500 dark:text-stone-400">Store Name</p><p className="mt-2 font-semibold text-stone-900 dark:text-stone-50">{order.store?.storeName ?? order.storeName ?? "Store details unavailable"}</p></div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500 dark:text-stone-400">
+                    Invoice Number
+                  </p>
+                  <p className="mt-1 font-bold text-stone-900 dark:text-stone-50">
+                    {order.invoiceNumber ?? `INV-${order.orderId?.slice(-6).toUpperCase()}`}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500 dark:text-stone-400">
+                    Order ID
+                  </p>
+                  <p className="mt-1 font-bold text-stone-900 dark:text-stone-50">{order.orderId}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500 dark:text-stone-400">
+                    Order Date
+                  </p>
+                  <p className="mt-1 font-bold text-stone-900 dark:text-stone-50">
+                    {order.createdAt
+                      ? new Date(order.createdAt).toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : "Recently"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500 dark:text-stone-400">
+                    Store Partner
+                  </p>
+                  <p className="mt-1 font-bold text-stone-900 dark:text-stone-50">
+                    {order.store?.storeName ?? order.storeName ?? "SheoMart Neighborhood Store"}
+                  </p>
+                </div>
               </div>
+
               <div className="flex flex-wrap gap-2 lg:justify-end">
-                <StatusBadge status={statusLabel(order.pickupStatus)} />
-                <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">Payment: {order.paymentStatus === "PAID" ? "Payment Received" : "Pending (Pay at Shop)"}</span>
+                <StatusBadge status={statusLabel(order.pickupStatus || order.status)} />
+                <span className="inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                  {order.paymentStatus === "PAID" ? "Payment Received" : "Cash / UPI on Handover"}
+                </span>
               </div>
             </div>
           </section>
 
-          <div className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200">
-            {order.pickupStatus === "PICKED_UP" ? "Your order has been completed." : order.pickupStatus === "READY_FOR_PICKUP" ? "Your order is ready for pickup. Bring your order ID when collecting it." : "Your order status is being updated."}
-          </div>
-          {order.fulfillmentType === "delivery" || order.deliveryMethod === "delivery" ? <LiveDeliveryEtaCard estimatedDeliveryAt={order.estimatedDeliveryAt} /> : null}
+          {/* Delivery ETA if applicable */}
+          {isDelivery && <LiveDeliveryEtaCard estimatedDeliveryAt={order.estimatedDeliveryAt} />}
 
-          <OrderItemsList items={(order.orderItems ?? []).map((item) => ({ name: item.name ?? "Product", quantity: item.quantity ?? 0, price: `₹${item.discountPrice ?? item.price ?? 0}`, total: `₹${item.totalPrice ?? 0}` }))} />
+          {/* Items breakdown */}
+          <OrderItemsList
+            items={(order.orderItems ?? []).map((item) => ({
+              name: item.name ?? "Product",
+              quantity: item.quantity ?? 0,
+              price: `₹${item.discountPrice ?? item.price ?? 0}`,
+              total: `₹${item.totalPrice ?? (item.price ?? 0) * (item.quantity ?? 1)}`,
+            }))}
+          />
 
+          {/* Payment & Pickup / Delivery info */}
           <div className="grid gap-6 lg:grid-cols-2">
-            <div><PaymentSummaryCard subtotal={order.subtotal} discount={order.discount} deliveryCharge={order.deliveryCharge} platformFee={order.platformFee} grandTotal={order.grandTotal} amountPaid={order.amountPaid} remainingAmount={order.remainingAmount} paymentMethod={order.paymentMethod} paymentStatus={order.paymentStatus === "PAID" ? "Paid" : "Pending"} />{order.paymentStatus === "PAID" && order.razorpayPaymentId ? <div className="mt-3 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200"><p className="font-semibold">Paid online</p><p className="mt-1 break-all">Payment ID: {order.razorpayPaymentId}</p>{order.paidAt ? <p className="mt-1">Paid at: {new Date(order.paidAt).toLocaleString()}</p> : null}</div> : null}</div>
+            <div>
+              <PaymentSummaryCard
+                subtotal={order.subtotal}
+                discount={order.discount}
+                deliveryCharge={order.deliveryCharge}
+                platformFee={order.platformFee}
+                grandTotal={order.grandTotal}
+                amountPaid={order.amountPaid}
+                remainingAmount={order.remainingAmount}
+                paymentMethod={order.paymentMethod}
+                paymentStatus={order.paymentStatus === "PAID" ? "Paid" : "Pending"}
+              />
+            </div>
             <PickupInfoCard order={order} />
           </div>
-          {order.fulfillmentType === "delivery" || order.deliveryMethod === "delivery" ? <section className="rounded-[2rem] border border-blue-200 bg-blue-50 p-6 dark:border-blue-900/60 dark:bg-blue-950/30"><h2 className="text-lg font-semibold text-blue-950 dark:text-blue-100">Delivery summary</h2><dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2"><div><dt className="text-blue-700 dark:text-blue-300">Delivery address</dt><dd className="mt-1 font-semibold text-blue-950 dark:text-blue-100">{[order.shippingAddress?.house, order.shippingAddress?.street, order.shippingAddress?.city, order.shippingAddress?.state, order.shippingAddress?.pincode].filter(Boolean).join(", ") || "Not available"}</dd></div><div><dt className="text-blue-700 dark:text-blue-300">Delivery slot</dt><dd className="mt-1 font-semibold text-blue-950 dark:text-blue-100">{order.deliverySlotLabel ?? order.deliverySlot ?? "Not selected"}{order.deliveryWindowStart ? ` (${order.deliveryWindowStart} - ${order.deliveryWindowEnd})` : ""}</dd></div><div><dt className="text-blue-700 dark:text-blue-300">Expected delivery window</dt><dd className="mt-1 font-semibold text-blue-950 dark:text-blue-100">{order.estimatedDeliveryWindow ?? order.deliverySlotLabel ?? "Not available"}</dd></div><div><dt className="text-blue-700 dark:text-blue-300">Delivery fee</dt><dd className="mt-1 font-semibold text-blue-950 dark:text-blue-100">₹{(order.deliveryFeeCharged ?? order.deliveryCharge ?? 0).toLocaleString("en-IN")}</dd></div><div><dt className="text-blue-700 dark:text-blue-300">Live ETA</dt><dd className="mt-1 font-semibold text-blue-950 dark:text-blue-100">{order.estimatedDeliveryAt ? new Date(order.estimatedDeliveryAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "Seller will update soon"}</dd></div><div><dt className="text-blue-700 dark:text-blue-300">Delivery status</dt><dd className="mt-1 font-semibold text-blue-950 dark:text-blue-100">{statusLabel(order.pickupStatus ?? order.status)}</dd></div></dl></section> : null}
 
-          <div className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm dark:border-stone-800 dark:bg-stone-900"><p className="text-sm font-semibold uppercase tracking-[0.28em] text-emerald-600">Order timeline</p><div className="mt-5"><OrderStatusTimeline pickupStatus={order.pickupStatus} statusUpdatedAt={order.statusUpdatedAt} paymentStatus={order.paymentStatus} createdAt={order.createdAt} fulfillmentType={order.fulfillmentType} acceptedAt={order.acceptedAt} preparingAt={order.preparingAt} readyForDispatchAt={order.readyForDispatchAt} readyForPickupAt={order.readyForPickupAt} outForDeliveryAt={order.outForDeliveryAt} deliveredAt={order.deliveredAt} pickedUpAt={order.pickedUpAt} /></div></div>
+          {/* Order Timeline */}
+          <div className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm dark:border-stone-800 dark:bg-stone-900">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-600">
+              Live Order Milestones
+            </p>
+            <div className="mt-5">
+              <OrderStatusTimeline
+                pickupStatus={order.pickupStatus || order.status}
+                statusUpdatedAt={order.statusUpdatedAt}
+                paymentStatus={order.paymentStatus}
+                createdAt={order.createdAt}
+                fulfillmentType={order.fulfillmentType}
+                acceptedAt={order.acceptedAt}
+                preparingAt={order.preparingAt}
+                readyForDispatchAt={order.readyForDispatchAt}
+                readyForPickupAt={order.readyForPickupAt}
+                outForDeliveryAt={order.outForDeliveryAt}
+                deliveredAt={order.deliveredAt}
+                pickedUpAt={order.pickedUpAt}
+              />
+            </div>
+          </div>
 
+          {/* Support helper */}
           <section className="flex flex-col gap-4 rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-stone-800 dark:bg-stone-900">
             <div className="flex items-start gap-3">
               <CircleHelp className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-              <div><h2 className="font-semibold text-stone-900 dark:text-stone-50">Need help with this order?</h2><p className="mt-1 text-sm text-stone-600 dark:text-stone-300">Store support will be available here in a future update.</p></div>
+              <div>
+                <h2 className="font-semibold text-stone-900 dark:text-stone-50">
+                  Have questions about this order?
+                </h2>
+                <p className="mt-0.5 text-xs text-stone-500">
+                  Need to change address or delivery details? Contact customer support or store directly.
+                </p>
+              </div>
             </div>
-            <Button type="button" variant="outline" disabled>Contact Store</Button>
+            <Button asChild variant="outline">
+              <Link href="/support">Customer Support</Link>
+            </Button>
           </section>
         </Container>
       </Section>

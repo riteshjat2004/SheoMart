@@ -101,4 +101,5 @@ export interface StoreCustomerData {
   totalOfflinePurchases: number;
   totalOnlinePurchases: number;
   lastPurchaseAt?: Date | null;
+  notes?: string;
 }

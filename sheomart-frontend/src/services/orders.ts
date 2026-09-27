@@ -98,3 +98,9 @@ export async function createDraftOrder(payload: {
   const response = await api.post<ApiResponse<{ order: OrderRecord }>>("/api/v1/orders", payload);
   return response.data.data?.order;
 }
+
+export async function cancelCustomerOrder(orderId: string, reason?: string) {
+  const response = await api.patch<ApiResponse<{ order: OrderRecord }>>(`/api/v1/orders/${orderId}/cancel`, { reason });
+  return response.data.data?.order;
+}
+

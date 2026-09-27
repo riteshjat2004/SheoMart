@@ -5,6 +5,7 @@ import {
   createBulkProducts,
   createProduct,
   deleteProduct,
+  duplicateProduct,
   getMyProducts,
   getAdminProducts,
   getProductById,
@@ -56,6 +57,12 @@ router.post(
   authorize(USER_ROLES.STORE_OWNER, USER_ROLES.PLATFORM_ADMIN),
   uploadProductImage,
   asyncHandler(createProduct)
+);
+router.post(
+  "/:productId/duplicate",
+  authenticate,
+  authorize(USER_ROLES.STORE_OWNER, USER_ROLES.PLATFORM_ADMIN),
+  asyncHandler(duplicateProduct)
 );
 router.patch(
   "/:productId",

@@ -9,6 +9,7 @@ import { useAuthStore } from "@/store/auth-store";
 import { usePathname, useRouter } from "next/navigation";
 import { useCart } from "@/hooks/use-cart";
 import { NavbarSearch } from "@/components/layout/NavbarSearch";
+import { CustomerNotificationCenter } from "@/components/layout/CustomerNotificationCenter";
 import { useState } from "react";
 
 export function Navbar() {
@@ -42,17 +43,20 @@ export function Navbar() {
             {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
           {isAuthenticated && user?.role === "customer" ? (
-            <Button asChild variant="ghost" size="sm" className="relative">
-              <Link href="/cart" aria-label="Open shopping cart">
-                <ShoppingCart className="mr-2 h-4 w-4" />
-                Cart
-                {(cartQuery.data?.summary.totalItems ?? 0) > 0 ? (
-                  <span className="ml-1 inline-flex min-w-5 items-center justify-center rounded-full bg-emerald-600 px-1.5 text-xs font-semibold text-white">
-                    {cartQuery.data?.summary.totalItems}
-                  </span>
-                ) : null}
-              </Link>
-            </Button>
+            <>
+              <CustomerNotificationCenter />
+              <Button asChild variant="ghost" size="sm" className="relative">
+                <Link href="/cart" aria-label="Open shopping cart">
+                  <ShoppingCart className="mr-2 h-4 w-4" />
+                  Cart
+                  {(cartQuery.data?.summary.totalItems ?? 0) > 0 ? (
+                    <span className="ml-1 inline-flex min-w-5 items-center justify-center rounded-full bg-emerald-600 px-1.5 text-xs font-semibold text-white">
+                      {cartQuery.data?.summary.totalItems}
+                    </span>
+                  ) : null}
+                </Link>
+              </Button>
+            </>
           ) : null}
           {isAuthenticated ? (
             <>

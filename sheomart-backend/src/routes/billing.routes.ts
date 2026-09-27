@@ -7,10 +7,14 @@ import {
   createOfflineInvoice,
   getInvoiceById,
   getStoreCustomer,
+  getStoreCustomerOrders,
+  getStoreCustomersAnalytics,
+  getStoreCustomersSummary,
   listInvoices,
   listPickupOrders,
   listStoreCustomers,
   updatePlusCustomer,
+  updateStoreCustomerNotes,
 } from "../controllers/billing.controller";
 import { authenticate } from "../middleware/auth.middleware";
 import { authorize } from "../middleware/role.middleware";
@@ -65,6 +69,34 @@ router.get(
   authenticate,
   authorize(USER_ROLES.STORE_OWNER),
   asyncHandler(listStoreCustomers)
+);
+
+router.get(
+  "/customers/summary",
+  authenticate,
+  authorize(USER_ROLES.STORE_OWNER),
+  asyncHandler(getStoreCustomersSummary)
+);
+
+router.get(
+  "/customers/analytics",
+  authenticate,
+  authorize(USER_ROLES.STORE_OWNER),
+  asyncHandler(getStoreCustomersAnalytics)
+);
+
+router.get(
+  "/customers/:customerId/orders",
+  authenticate,
+  authorize(USER_ROLES.STORE_OWNER),
+  asyncHandler(getStoreCustomerOrders)
+);
+
+router.patch(
+  "/customers/:customerId/notes",
+  authenticate,
+  authorize(USER_ROLES.STORE_OWNER),
+  asyncHandler(updateStoreCustomerNotes)
 );
 
 router.get(

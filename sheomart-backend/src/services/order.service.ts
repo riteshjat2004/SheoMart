@@ -289,7 +289,16 @@ export class OrderService {
           }
         }
 
-        const timestampField: Record<string, string> = { ACCEPTED: "acceptedAt", PREPARING: "preparingAt", READY_FOR_DISPATCH: "readyForDispatchAt", READY_FOR_PICKUP: "readyForPickupAt", OUT_FOR_DELIVERY: "outForDeliveryAt", DELIVERED: "deliveredAt", PICKED_UP: "pickedUpAt" };
+        const timestampField: Record<string, string> = {
+          ACCEPTED: "acceptedAt",
+          PREPARING: "preparingAt",
+          READY_FOR_DISPATCH: "readyForDispatchAt",
+          READY_FOR_PICKUP: "readyForPickupAt",
+          OUT_FOR_DELIVERY: "outForDeliveryAt",
+          DELIVERED: "deliveredAt",
+          PICKED_UP: "pickedUpAt",
+          CANCELLED: "cancelledAt",
+        };
         const now = new Date();
         const timestampUpdate = timestampField[nextStatus] ? { [timestampField[nextStatus]]: now } : {};
         updatedOrder = await Order.findOneAndUpdate(
@@ -320,6 +329,29 @@ export class OrderService {
     } finally {
       await session.endSession();
     }
+  }
+
+  static async cancelCustomerOrder(userId: string, orderId: string, reason?: string) {
+    const order = await Order.findOne({ orderId, userId });
+    if (!order) {
+      throw new AppError("Order not found", 404);
+    }
+
+    const currentStatus = order.pickupStatus || order.status;
+    if (currentStatus !== "ORDER_PLACED" && currentStatus !== "CONFIRMED") {
+      throw new AppError("Orders can only be cancelled before they are accepted by the store", 400);
+    }
+
+    const now = new Date();
+    order.pickupStatus = "CANCELLED";
+    order.status = ORDER_STATUS.CANCELLED;
+    order.statusUpdatedAt = now;
+    order.cancelledAt = now;
+    if (reason) {
+      order.orderNotes = reason;
+    }
+    await order.save();
+    return order;
   }
 
   private static async upsertStoreCustomer(
@@ -679,5 +711,194 @@ export class OrderService {
         store: store ? { storeId: store.storeId, storeName: store.storeName, phone: store.phone, address: store.address, preparationTimeMinutes: store.preparationTimeMinutes } : null,
       };
     });
+  }
+
+  static async getStoreOrders(
+    ownerId: string,
+    filters: {
+      page?: number | string;
+      limit?: number | string;
+      search?: string;
+      orderStatus?: string;
+      paymentStatus?: string;
+      fulfillmentType?: string;
+      from?: string;
+      to?: string;
+      sortBy?: string;
+    }
+  ) {
+    const store = await Store.findOne({ ownerId }).select("storeId storeName").lean();
+    if (!store) {
+      throw new AppError("Store not found for seller", 403);
+    }
+
+    const page = Math.max(1, Number(filters.page) || 1);
+    const limit = Math.max(1, Math.min(100, Number(filters.limit) || 10));
+
+    const baseQuery: Record<string, unknown> = {
+      storeId: store.storeId,
+      status: { $ne: ORDER_STATUS.DRAFT },
+    };
+
+    if (filters.orderStatus) {
+      baseQuery.$or = [
+        { pickupStatus: filters.orderStatus },
+        { status: filters.orderStatus },
+      ];
+    }
+
+    if (filters.paymentStatus) {
+      baseQuery.paymentStatus = filters.paymentStatus;
+    }
+
+    if (filters.fulfillmentType) {
+      baseQuery.fulfillmentType = filters.fulfillmentType;
+    }
+
+    if (filters.from || filters.to) {
+      const dateQuery: Record<string, Date> = {};
+      if (filters.from) {
+        const fromDate = new Date(filters.from);
+        fromDate.setHours(0, 0, 0, 0);
+        dateQuery.$gte = fromDate;
+      }
+      if (filters.to) {
+        const toDate = new Date(filters.to);
+        toDate.setHours(23, 59, 59, 999);
+        dateQuery.$lte = toDate;
+      }
+      baseQuery.createdAt = dateQuery;
+    }
+
+    if (filters.search && typeof filters.search === "string" && filters.search.trim()) {
+      const searchRegex = new RegExp(filters.search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+      const matchedUsers = await User.find({
+        $or: [{ name: searchRegex }, { mobile: searchRegex }, { email: searchRegex }],
+      }).select("userId").lean();
+      const userIds = matchedUsers.map((u) => u.userId);
+
+      const searchConditions = [
+        { orderId: searchRegex },
+        { invoiceNumber: searchRegex },
+        { userId: { $in: userIds } },
+        { "orderItems.name": searchRegex },
+        { "orderItems.sku": searchRegex },
+      ];
+
+      if (baseQuery.$or) {
+        baseQuery.$and = [{ $or: baseQuery.$or }, { $or: searchConditions }];
+        delete baseQuery.$or;
+      } else {
+        baseQuery.$or = searchConditions;
+      }
+    }
+
+    let sort: Record<string, 1 | -1> = { createdAt: -1 };
+    if (filters.sortBy === "oldest") sort = { createdAt: 1 };
+    else if (filters.sortBy === "amount_desc") sort = { grandTotal: -1 };
+    else if (filters.sortBy === "amount_asc") sort = { grandTotal: 1 };
+
+    const skip = (page - 1) * limit;
+
+    const [orders, total, allStoreOrders] = await Promise.all([
+      Order.find(baseQuery).sort(sort).skip(skip).limit(limit).lean(),
+      Order.countDocuments(baseQuery),
+      Order.find({ storeId: store.storeId, status: { $ne: ORDER_STATUS.DRAFT } })
+        .select("grandTotal pickupStatus status createdAt")
+        .lean(),
+    ]);
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    let todayRevenue = 0;
+    let pendingCount = 0;
+    let acceptedCount = 0;
+    let preparingCount = 0;
+    let readyCount = 0;
+    let outForDeliveryCount = 0;
+    let deliveredCount = 0;
+    let cancelledCount = 0;
+
+    for (const o of allStoreOrders) {
+      const st = o.pickupStatus || o.status;
+      if (st === "ORDER_PLACED" || st === "CONFIRMED") pendingCount++;
+      else if (st === "ACCEPTED") acceptedCount++;
+      else if (st === "PREPARING" || st === "PROCESSING") preparingCount++;
+      else if (st === "READY_FOR_PICKUP" || st === "READY_FOR_DISPATCH" || st === "PACKED") readyCount++;
+      else if (st === "OUT_FOR_DELIVERY") outForDeliveryCount++;
+      else if (st === "DELIVERED" || st === "PICKED_UP") {
+        deliveredCount++;
+        if (o.createdAt && new Date(o.createdAt).toISOString().slice(0, 10) === todayStr) {
+          todayRevenue += o.grandTotal || 0;
+        }
+      } else if (st === "CANCELLED") {
+        cancelledCount++;
+      }
+    }
+
+    const customerIds = [...new Set(orders.map((o) => o.userId))];
+    const customers = await User.find({ userId: { $in: customerIds } })
+      .select("userId name mobile email")
+      .lean();
+    const customerMap = new Map(customers.map((c) => [c.userId, c]));
+
+    const enrichedOrders = orders.map((order) => {
+      const customer = customerMap.get(order.userId);
+      return {
+        ...order,
+        orderStatus: order.pickupStatus || order.status,
+        customerName: customer?.name,
+        customerMobile: customer?.mobile,
+        customerEmail: customer?.email,
+        customer: customer ? { name: customer.name, mobile: customer.mobile, email: customer.email } : null,
+        storeName: store.storeName,
+      };
+    });
+
+    return {
+      orders: enrichedOrders,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit) || 1,
+      },
+      summary: {
+        totalOrders: allStoreOrders.length,
+        pending: pendingCount,
+        accepted: acceptedCount,
+        packed: preparingCount + readyCount,
+        outForDelivery: outForDeliveryCount,
+        delivered: deliveredCount,
+        cancelled: cancelledCount,
+        todayRevenue,
+      },
+    };
+  }
+
+  static async bulkUpdateSellerOrderStatus(ownerId: string, orderIds: string[], status: string) {
+    const results = [];
+    const errors = [];
+    for (const orderId of orderIds) {
+      try {
+        const updated = await this.updateSellerOrderStatus(ownerId, orderId, status);
+        results.push(updated);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to update";
+        errors.push({ orderId, message });
+      }
+    }
+    return { updatedCount: results.length, errors };
+  }
+
+  static async updateSellerNotes(ownerId: string, orderId: string, sellerNotes: string) {
+    const store = await Store.findOne({ ownerId }).select("storeId").lean();
+    if (!store) throw new AppError("Store not found for seller", 403);
+    const order = await Order.findOneAndUpdate(
+      { orderId, storeId: store.storeId },
+      { $set: { sellerNotes, updatedBySellerAt: new Date() } },
+      { new: true }
+    );
+    if (!order) throw new AppError("Order not found", 404);
+    return order;
   }
 }

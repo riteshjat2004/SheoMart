@@ -58,3 +58,29 @@ export async function submitProductReview(
   return response.data.data;
 }
 
+export async function createStoreProduct(payload: FormData | Record<string, unknown>) {
+  const response = await api.post<ApiResponse<{ product: ProductItem }>>("/api/v1/products", payload);
+  return response.data.data?.product;
+}
+
+export async function updateStoreProduct(productId: string, payload: FormData | Record<string, unknown>) {
+  const response = await api.patch<ApiResponse<{ product: ProductItem }>>(`/api/v1/products/${productId}`, payload);
+  return response.data.data?.product;
+}
+
+export async function deleteStoreProduct(productId: string) {
+  const response = await api.delete<ApiResponse<{ product: ProductItem }>>(`/api/v1/products/${productId}`);
+  return response.data.data?.product;
+}
+
+export async function updateStoreProductStatus(productId: string, isActive: boolean) {
+  const response = await api.patch<ApiResponse<{ product: ProductItem }>>(`/api/v1/products/${productId}/status`, { isActive });
+  return response.data.data?.product;
+}
+
+export async function duplicateStoreProduct(productId: string) {
+  const response = await api.post<ApiResponse<{ product: ProductItem }>>(`/api/v1/products/${productId}/duplicate`);
+  return response.data.data?.product;
+}
+
+

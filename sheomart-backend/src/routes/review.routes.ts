@@ -6,6 +6,7 @@ import {
   getAdminReviewDetails,
   getAdminReviews,
   getAdminReviewStats,
+  getMyReviews,
   getProductReviews,
   getReview,
   markSpamOrAbuse,
@@ -15,6 +16,9 @@ import {
   softDeleteAdminReview,
   updateReview,
   updateVisibility,
+  getStoreReviewsHandler,
+  replyToStoreReviewHandler,
+  reportStoreReviewHandler,
 } from "../controllers/review.controller";
 import { authenticate } from "../middleware/auth.middleware";
 import { authorize } from "../middleware/role.middleware";
@@ -82,6 +86,12 @@ router.post(
 
 // Public / Customer Review Routes
 router.get("/products/:productId/reviews", asyncHandler(getProductReviews));
+router.get(
+  "/reviews/me",
+  authenticate,
+  authorize(USER_ROLES.CUSTOMER),
+  asyncHandler(getMyReviews)
+);
 router.get("/reviews/:reviewId", asyncHandler(getReview));
 
 router.post(
@@ -116,6 +126,35 @@ router.post(
   "/reviews/:reviewId/report",
   authenticate,
   asyncHandler(reportReview)
+);
+
+// Seller Store Review Routes
+router.get(
+  "/reviews/store/all",
+  authenticate,
+  authorize(USER_ROLES.STORE_OWNER),
+  asyncHandler(getStoreReviewsHandler)
+);
+
+router.get(
+  "/store/reviews",
+  authenticate,
+  authorize(USER_ROLES.STORE_OWNER),
+  asyncHandler(getStoreReviewsHandler)
+);
+
+router.post(
+  "/reviews/:reviewId/store-reply",
+  authenticate,
+  authorize(USER_ROLES.STORE_OWNER),
+  asyncHandler(replyToStoreReviewHandler)
+);
+
+router.post(
+  "/reviews/:reviewId/store-report",
+  authenticate,
+  authorize(USER_ROLES.STORE_OWNER),
+  asyncHandler(reportStoreReviewHandler)
 );
 
 export default router;

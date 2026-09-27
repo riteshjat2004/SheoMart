@@ -32,6 +32,7 @@ import sellerPasswordResetRoutes from "./routes/seller-password-reset.routes";
 import adminPasswordResetRoutes from "./routes/admin-password-reset.routes";
 import settingsRoutes from "./routes/settings.routes";
 import securityRoutes from "./routes/security.routes";
+import sellerCouponRoutes from "./routes/seller-coupon.routes";
 import { checkMaintenanceMode } from "./middleware/maintenance.middleware";
 
 const app = express();
@@ -88,6 +89,8 @@ app.use("/api/v1/payments", paymentRoutes);
 app.use("/api/v1/analytics", analyticsRoutes);
 app.use("/api/v1/search", searchRoutes);
 app.use("/api/v1/promotions", promotionRoutes);
+app.use("/api/v1/seller/coupons", sellerCouponRoutes);
+app.use("/api/v1/store/coupons", sellerCouponRoutes);
 app.use("/api/v1/platform-fee", platformFeeRoutes);
 app.use("/api/v1", sellerPasswordResetRoutes);
 app.use("/api/v1/admin", adminPasswordResetRoutes);

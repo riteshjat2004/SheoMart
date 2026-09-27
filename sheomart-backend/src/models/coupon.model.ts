@@ -37,6 +37,9 @@ export interface ICoupon extends Document {
   storeId: string | null;
   categoryId: string | null;
   productId: string | null;
+  categoryIds?: string[];
+  productIds?: string[];
+  verifiedOnly?: boolean;
   isFeatured: boolean;
   showOnBanner: boolean;
   autoApply: boolean;
@@ -74,6 +77,9 @@ const couponSchema = new Schema<ICoupon>(
     storeId: { type: String, default: null, index: true },
     categoryId: { type: String, default: null, index: true },
     productId: { type: String, default: null, index: true },
+    categoryIds: { type: [String], default: [] },
+    productIds: { type: [String], default: [] },
+    verifiedOnly: { type: Boolean, default: false },
     isFeatured: { type: Boolean, default: false, index: true },
     showOnBanner: { type: Boolean, default: false },
     autoApply: { type: Boolean, default: false },

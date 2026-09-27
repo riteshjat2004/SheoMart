@@ -92,6 +92,9 @@ export interface IOrder extends Document {
   outForDeliveryAt?: Date;
   deliveredAt?: Date;
   pickedUpAt?: Date;
+  cancelledAt?: Date;
+  sellerNotes?: string;
+  orderNotes?: string;
 
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
@@ -281,6 +284,9 @@ const orderSchema = new Schema<IOrder>(
     outForDeliveryAt: { type: Date, default: null },
     deliveredAt: { type: Date, default: null },
     pickedUpAt: { type: Date, default: null },
+    cancelledAt: { type: Date, default: null },
+    sellerNotes: { type: String, default: "" },
+    orderNotes: { type: String, default: "" },
     razorpayOrderId: {
       type: String,
       default: null,

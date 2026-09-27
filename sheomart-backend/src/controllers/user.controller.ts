@@ -194,3 +194,14 @@ export const deleteAccount = async (
     new ApiResponse(true, "Account deleted successfully", result)
   );
 };
+
+export const getUserNotifications = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const notifications = await UserService.getUserNotifications(req.user?.userId as string);
+
+  res.status(200).json(
+    new ApiResponse(true, "Notifications fetched successfully", { notifications })
+  );
+};
