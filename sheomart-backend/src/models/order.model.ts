@@ -60,8 +60,8 @@ export interface IOrder extends Document {
   invoiceNumber?: string;
   userId: string;
   storeId: string;
-  addressId: string;
-  shippingAddress: IShippingAddress;
+  addressId?: string;
+  shippingAddress?: IShippingAddress;
   deliveryDate: string;
   deliverySlot: string;
   deliveryMethod: string;
@@ -208,11 +208,11 @@ const orderSchema = new Schema<IOrder>(
     },
     addressId: {
       type: String,
-      required: true,
+      default: "",
     },
     shippingAddress: {
       type: shippingAddressSchema,
-      required: true,
+      required: false,
     },
     deliveryDate: {
       type: String,

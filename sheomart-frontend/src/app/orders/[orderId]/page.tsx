@@ -266,8 +266,18 @@ export default function OrderDetailsPage() {
 
               <div className="flex flex-wrap gap-2 lg:justify-end">
                 <StatusBadge status={statusLabel(order.pickupStatus || order.status)} />
-                <span className="inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-                  {order.paymentStatus === "PAID" ? "Payment Received" : "Cash / UPI on Handover"}
+                <span
+                  className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${
+                    (order.paymentStatus ?? "").toUpperCase() === "PAID"
+                      ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                      : "bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
+                  }`}
+                >
+                  {(order.paymentStatus ?? "").toUpperCase() === "PAID"
+                    ? `Payment Received${order.paymentReceivedMethod ? ` (${order.paymentReceivedMethod})` : ""}`
+                    : isDelivery
+                    ? "Pay on Delivery (Cash / UPI)"
+                    : "Pay at Shop on Pickup"}
                 </span>
               </div>
             </div>
@@ -298,7 +308,10 @@ export default function OrderDetailsPage() {
                 amountPaid={order.amountPaid}
                 remainingAmount={order.remainingAmount}
                 paymentMethod={order.paymentMethod}
-                paymentStatus={order.paymentStatus === "PAID" ? "Paid" : "Pending"}
+                paymentStatus={order.paymentStatus}
+                fulfillmentType={order.fulfillmentType}
+                paidAt={order.paidAt}
+                paymentReceivedMethod={order.paymentReceivedMethod}
               />
             </div>
             <PickupInfoCard order={order} />

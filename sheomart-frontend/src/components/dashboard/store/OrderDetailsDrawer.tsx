@@ -26,7 +26,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import type { StoreOrder } from "@/types/store-order";
-import { updateSellerNotes } from "@/services/store-orders";
+import { updateSellerNotes, type PaymentReceivedMethod } from "@/services/store-orders";
+import { useConfirmOrderPayment } from "@/hooks/use-collect-pickup-payment";
+import { ConfirmPaymentModal } from "@/components/dashboard/store/ConfirmPaymentModal";
 
 interface OrderDetailsDrawerProps {
   order: StoreOrder | null;
@@ -74,6 +76,18 @@ export function OrderDetailsDrawer({
   const [sellerNotes, setSellerNotes] = useState(order.sellerNotes || "");
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [notesSavedSuccess, setNotesSavedSuccess] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+
+  const confirmPaymentMutation = useConfirmOrderPayment({
+    onSuccess: () => {
+      setIsPaymentModalOpen(false);
+    },
+  });
+
+  const isPaid = (order.paymentStatus ?? "").toUpperCase() === "PAID";
+  const paymentEligible =
+    ["DELIVERED", "PICKED_UP"].includes(currentStatus.toUpperCase()) &&
+    ["PENDING", "UNPAID"].includes((order.paymentStatus ?? "").toUpperCase());
 
   const handleSaveNotes = async () => {
     try {
@@ -228,15 +242,17 @@ export function OrderDetailsDrawer({
 
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-stone-500">Payment:</span>
-              <span
-                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                  order.paymentStatus === "PAID"
-                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300"
-                    : "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"
-                }`}
-              >
-                {order.paymentStatus || "PENDING"} ({order.paymentMethod || "COD"})
-              </span>
+              {isPaid ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Paid {order.paymentReceivedMethod ? `(${order.paymentReceivedMethod})` : `(${order.paymentMethod || "Online"})`}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
+                  <Clock className="h-3.5 w-3.5" />
+                  Payment Pending ({order.paymentMethod || "Pay on Delivery"})
+                </span>
+              )}
             </div>
           </div>
 
@@ -419,8 +435,61 @@ export function OrderDetailsDrawer({
                   {formatCurrency(order.grandTotal)}
                 </span>
               </div>
+
+              {/* Payment Details */}
+              <div className="mt-2 border-t border-dashed border-stone-200/70 pt-2 text-[11px] text-stone-500 dark:border-stone-800/70">
+                <div className="flex justify-between">
+                  <span>Payment Status:</span>
+                  <span className={`font-semibold ${isPaid ? "text-emerald-600" : "text-amber-600"}`}>
+                    {isPaid ? `Paid (${order.paymentReceivedMethod || order.paymentMethod || "Settled"})` : "Pending Collection"}
+                  </span>
+                </div>
+                {isPaid && order.paidAt ? (
+                  <div className="flex justify-between mt-1">
+                    <span>Payment Received At:</span>
+                    <span>{formatDateTime(order.paidAt)}</span>
+                  </div>
+                ) : null}
+                <div className="flex justify-between mt-1">
+                  <span>Amount Paid:</span>
+                  <span className="font-semibold text-stone-800 dark:text-stone-200">
+                    {formatCurrency(isPaid ? (order.amountPaid ?? order.grandTotal) : 0)}
+                  </span>
+                </div>
+                {!isPaid ? (
+                  <div className="flex justify-between mt-1 font-semibold text-amber-600">
+                    <span>Balance to Collect:</span>
+                    <span>{formatCurrency(order.remainingAmount ?? order.grandTotal)}</span>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
+
+          {/* Prominent Payment Pending Alert & Quick Collection Callout */}
+          {paymentEligible ? (
+            <div className="flex flex-col gap-3 rounded-2xl border border-amber-300 bg-amber-50/70 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-amber-900/60 dark:bg-amber-950/30">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900 dark:text-amber-300">
+                  <AlertCircle className="h-4 w-4 text-amber-600" />
+                  Payment Pending Collection
+                </div>
+                <p className="text-xs text-amber-800 dark:text-amber-300/80">
+                  Order is completed (Picked Up). Collect {formatCurrency(order.grandTotal)} from the customer.
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                className="h-8 rounded-xl bg-emerald-600 px-3.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 shrink-0 flex items-center gap-1.5"
+                onClick={() => setIsPaymentModalOpen(true)}
+                disabled={confirmPaymentMutation.isPending}
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Mark Payment Received
+              </Button>
+            </div>
+          ) : null}
 
           {/* Stepped Order Timeline */}
           <div className="space-y-3">
@@ -547,8 +616,37 @@ export function OrderDetailsDrawer({
                 {isUpdatingStatus ? "Updating..." : nextAction.label}
               </Button>
             ) : null}
+
+            {paymentEligible ? (
+              <Button
+                type="button"
+                className="h-10 rounded-xl bg-emerald-600 px-4 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 flex items-center gap-1.5"
+                onClick={() => setIsPaymentModalOpen(true)}
+                disabled={confirmPaymentMutation.isPending}
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                Collect {formatCurrency(order.grandTotal)}
+              </Button>
+            ) : null}
           </div>
         </div>
+
+        {isPaymentModalOpen ? (
+          <ConfirmPaymentModal
+            isOpen={isPaymentModalOpen}
+            onClose={() => setIsPaymentModalOpen(false)}
+            onConfirm={async (method: PaymentReceivedMethod) => {
+              await confirmPaymentMutation.mutateAsync({
+                orderId: order.orderId,
+                paymentMethod: method,
+              });
+            }}
+            orderId={order.orderId}
+            customerName={order.customerName || order.customer?.name}
+            grandTotal={order.grandTotal ?? 0}
+            isPending={confirmPaymentMutation.isPending}
+          />
+        ) : null}
       </aside>
     </>
   );

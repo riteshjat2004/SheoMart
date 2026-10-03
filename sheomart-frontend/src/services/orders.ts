@@ -41,6 +41,7 @@ export interface OrderRecord {
   pickupSlotLabel?: string;
   freeDeliveryApplied?: boolean;
   paymentMethod?: string;
+  paymentReceivedMethod?: string;
   amountPaid?: number;
   remainingAmount?: number;
   subtotal?: number;

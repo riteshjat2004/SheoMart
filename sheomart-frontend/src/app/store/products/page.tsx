@@ -55,6 +55,9 @@ function toProductRequest(payload: ProductFormValues): FormData | Record<string,
   if (!payload.imageFile) {
     const jsonPayload = { ...payload } as Record<string, unknown>;
     delete jsonPayload.imageFile;
+    if (jsonPayload.quantity === undefined) {
+      delete jsonPayload.quantity;
+    }
     return jsonPayload;
   }
 
@@ -65,7 +68,9 @@ function toProductRequest(payload: ProductFormValues): FormData | Record<string,
   formData.append("sku", payload.sku);
   formData.append("price", String(payload.price));
   formData.append("discountPrice", String(payload.discountPrice));
-  formData.append("quantity", String(payload.quantity ?? 0));
+  if (payload.quantity !== undefined) {
+    formData.append("quantity", String(payload.quantity));
+  }
   formData.append("categoryId", payload.categoryId);
   formData.append("isPublished", String(payload.isPublished));
   formData.append("isActive", String(payload.isActive));
@@ -661,6 +666,7 @@ export default function StoreProductsPage() {
               sku: editingProduct.sku ?? "",
               price: editingProduct.price,
               discountPrice: editingProduct.discountPrice ?? 0,
+              quantity: editingProduct.quantity ?? 0,
               categoryId: editingProduct.categoryId ?? "",
               images: editingProduct.images ?? [],
               imageUrl: editingProduct.image?.url,

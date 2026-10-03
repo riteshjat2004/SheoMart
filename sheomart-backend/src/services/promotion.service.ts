@@ -556,4 +556,20 @@ export class PromotionService {
     await coupon.save();
     return usage;
   }
+
+  static async getCouponByCode(code: string) {
+    return Coupon.findOne({
+      code: code.trim().toUpperCase(),
+      isDeleted: { $ne: true },
+    });
+  }
+
+  static async restoreCouponUsage(couponId: string, customerId: string, orderId?: string) {
+    const coupon = await Coupon.findOne({ couponId });
+    if (coupon && coupon.usageCount > 0) {
+      coupon.usageCount -= 1;
+      await coupon.save();
+    }
+    await CouponUsage.deleteOne({ couponId, customerId, ...(orderId ? { orderId } : {}) });
+  }
 }

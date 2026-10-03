@@ -3,8 +3,34 @@ import { AppError } from "../errors/AppError";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { ApiResponse } from "../utils/apiResponse";
 import { OrderService } from "../services/order.service";
-import { createOrderSchema, orderIdParamSchema } from "../validators/checkout.validator";
+import {
+  checkoutQuoteSchema,
+  createOrderSchema,
+  orderIdParamSchema,
+} from "../validators/checkout.validator";
 import { z } from "zod";
+
+export const getCheckoutQuote = async (req: AuthRequest, res: Response): Promise<void> => {
+  const payload = (req.body && typeof req.body === "object" ? req.body : {}) as Record<
+    string,
+    unknown
+  >;
+  const result = checkoutQuoteSchema.safeParse(payload);
+
+  if (!result.success) {
+    const message = result.error.issues[0]?.message || "Invalid quote payload";
+    throw new AppError(message, 400);
+  }
+
+  const quote = await OrderService.calculateOrderSummary(
+    req.user?.userId as string,
+    result.data.storeId,
+    result.data.deliveryMethod,
+    result.data.couponCode
+  );
+
+  res.status(200).json(new ApiResponse(true, "Checkout quote calculated successfully", { quote }));
+};
 
 export const createOrder = async (req: AuthRequest, res: Response): Promise<void> => {
   const payload = (req.body && typeof req.body === "object" ? req.body : {}) as Record<

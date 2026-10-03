@@ -23,7 +23,9 @@ import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { useUpdateOrderStatus } from "@/hooks/use-update-order-status";
 import { useStoreOrders } from "@/hooks/use-store-orders";
-import { bulkUpdateOrderStatus } from "@/services/store-orders";
+import { useConfirmOrderPayment } from "@/hooks/use-collect-pickup-payment";
+import { ConfirmPaymentModal } from "@/components/dashboard/store/ConfirmPaymentModal";
+import { bulkUpdateOrderStatus, type PaymentReceivedMethod } from "@/services/store-orders";
 import {
   STORE_ORDER_STATUSES,
   STORE_PAYMENT_STATUSES,
@@ -113,6 +115,13 @@ const getNextAction = (
 const canCancelOrder = (status: string) =>
   status === "ORDER_PLACED" || status === "ACCEPTED" || status === "PREPARING";
 
+const isPaymentCollectionEligible = (order: StoreOrder) => {
+  const status = getStatus(order).toUpperCase();
+  const paymentStatus = (order.paymentStatus ?? "").toUpperCase();
+  const isCompletedStatus = status === "DELIVERED" || status === "PICKED_UP";
+  return isCompletedStatus && (paymentStatus === "PENDING" || paymentStatus === "UNPAID");
+};
+
 export function StoreOrdersTable({
   filters,
   onFiltersChange,
@@ -122,6 +131,27 @@ export function StoreOrdersTable({
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+  const [paymentModalOrder, setPaymentModalOrder] = useState<StoreOrder | null>(null);
+
+  const confirmPaymentMutation = useConfirmOrderPayment({
+    onSuccess: (_data, variables) => {
+      setToast({
+        type: "success",
+        message: `Payment confirmed for order #${variables.orderId.slice(-8).toUpperCase()}.`,
+      });
+      setPaymentModalOrder(null);
+      void ordersQuery.refetch();
+    },
+    onError: (error, variables) => {
+      setToast({
+        type: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : `Unable to record payment for order #${variables.orderId.slice(-8).toUpperCase()}.`,
+      });
+    },
+  });
 
   const updateOrderStatusMutation = useUpdateOrderStatus({
     onSuccess: (_data, variables) => {
@@ -485,6 +515,7 @@ export function StoreOrdersTable({
                   const status = getStatus(order);
                   const isPickup = isPickupOrder(order);
                   const nextAction = getNextAction(status, isPickup);
+                  const paymentEligible = isPaymentCollectionEligible(order);
                   const isSelected = selectedOrderIds.includes(order.orderId);
                   const isPendingThis =
                     updateOrderStatusMutation.isPending &&
@@ -573,15 +604,17 @@ export function StoreOrdersTable({
 
                       {/* Payment */}
                       <td className="px-4 py-3.5">
-                        <span
-                          className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold ${
-                            order.paymentStatus === "PAID"
-                              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                              : "bg-amber-500/10 text-amber-700 dark:text-amber-300"
-                          }`}
-                        >
-                          {order.paymentStatus || "PENDING"}
-                        </span>
+                        {(order.paymentStatus ?? "").toUpperCase() === "PAID" ? (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                            <CheckCircle2 className="h-3 w-3" />
+                            Paid {order.paymentReceivedMethod ? `(${order.paymentReceivedMethod})` : ""}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+                            <Clock className="h-3 w-3" />
+                            Pending
+                          </span>
+                        )}
                       </td>
 
                       {/* Status */}
@@ -607,6 +640,21 @@ export function StoreOrdersTable({
                               disabled={isPendingThis}
                             >
                               {isPendingThis ? "Updating..." : nextAction.label}
+                            </Button>
+                          ) : null}
+
+                          {/* Payment Collection Action Button */}
+                          {paymentEligible ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="h-7 rounded-xl bg-emerald-600 px-2.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 flex items-center gap-1 shrink-0"
+                              onClick={() => setPaymentModalOrder(order)}
+                              disabled={confirmPaymentMutation.isPending}
+                              title="Collect customer payment"
+                            >
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              Collect ₹{(order.grandTotal ?? 0).toLocaleString("en-IN")}
                             </Button>
                           ) : null}
 
@@ -654,6 +702,23 @@ export function StoreOrdersTable({
             />
           </div>
         </>
+      ) : null}
+
+      {paymentModalOrder ? (
+        <ConfirmPaymentModal
+          isOpen={Boolean(paymentModalOrder)}
+          onClose={() => setPaymentModalOrder(null)}
+          onConfirm={async (method: PaymentReceivedMethod) => {
+            await confirmPaymentMutation.mutateAsync({
+              orderId: paymentModalOrder.orderId,
+              paymentMethod: method,
+            });
+          }}
+          orderId={paymentModalOrder.orderId}
+          customerName={paymentModalOrder.customerName || paymentModalOrder.customer?.name}
+          grandTotal={paymentModalOrder.grandTotal ?? 0}
+          isPending={confirmPaymentMutation.isPending}
+        />
       ) : null}
     </DashboardCard>
   );

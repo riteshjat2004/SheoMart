@@ -44,22 +44,296 @@ export class OrderService {
     return order;
   }
 
+  static async deductOrderInventory(
+    order: {
+      orderId: string;
+      storeId: string;
+      orderItems: Array<{ productId: string; quantity: number; name?: string }>;
+    },
+    performedBy: string,
+    session?: mongoose.ClientSession
+  ) {
+    const existingLedger = await InventoryLedger.findOne({
+      storeId: order.storeId,
+      movementType: "SALE_ONLINE",
+      referenceType: "ONLINE_ORDER",
+      referenceId: order.orderId,
+    }).session(session ?? null);
+
+    if (existingLedger) {
+      return;
+    }
+
+    for (const item of order.orderItems) {
+      const inventory = await Inventory.findOneAndUpdate(
+        {
+          productId: item.productId,
+          availableQuantity: { $gte: item.quantity },
+        },
+        {
+          $inc: {
+            availableQuantity: -item.quantity,
+            soldQuantity: item.quantity,
+          },
+          $set: { updatedBy: performedBy },
+        },
+        { new: true, session }
+      );
+
+      if (!inventory) {
+        throw new AppError(`Insufficient stock for product ${item.name || item.productId}`, 409);
+      }
+
+      await InventoryLedger.create(
+        [
+          {
+            storeId: order.storeId,
+            productId: item.productId,
+            movementType: "SALE_ONLINE",
+            source: "ONLINE_ORDER",
+            referenceType: "ONLINE_ORDER",
+            referenceId: order.orderId,
+            quantityChange: -item.quantity,
+            previousQuantity: inventory.availableQuantity + item.quantity,
+            newQuantity: inventory.availableQuantity,
+            performedBy,
+          },
+        ],
+        { session }
+      );
+
+      await Product.findOneAndUpdate(
+        { productId: item.productId, storeId: order.storeId },
+        { $set: { quantity: inventory.availableQuantity, updatedBy: performedBy } },
+        { session }
+      );
+    }
+  }
+
+  static async restoreOrderInventory(
+    order: {
+      orderId: string;
+      storeId: string;
+      userId?: string;
+      couponCode?: string;
+      orderItems: Array<{ productId: string; quantity: number; name?: string }>;
+    },
+    performedBy: string,
+    session?: mongoose.ClientSession
+  ) {
+    for (const item of order.orderItems) {
+      const saleLedger = await InventoryLedger.findOne({
+        storeId: order.storeId,
+        productId: item.productId,
+        movementType: "SALE_ONLINE",
+        referenceType: "ONLINE_ORDER",
+        referenceId: order.orderId,
+      }).session(session ?? null);
+
+      if (!saleLedger || saleLedger.quantityChange >= 0) {
+        continue;
+      }
+
+      const quantityToRestore = Math.abs(saleLedger.quantityChange);
+      const alreadyRestored = await InventoryLedger.exists({
+        storeId: order.storeId,
+        productId: item.productId,
+        movementType: "CANCEL_ORDER",
+        referenceType: "ONLINE_ORDER",
+        referenceId: order.orderId,
+      }).session(session ?? null);
+
+      if (alreadyRestored) {
+        continue;
+      }
+
+      const inventory = await Inventory.findOneAndUpdate(
+        {
+          productId: item.productId,
+          soldQuantity: { $gte: quantityToRestore },
+        },
+        {
+          $inc: {
+            availableQuantity: quantityToRestore,
+            soldQuantity: -quantityToRestore,
+          },
+          $set: { updatedBy: performedBy },
+        },
+        { new: true, session }
+      );
+
+      if (!inventory) {
+        continue;
+      }
+
+      await InventoryLedger.create(
+        [
+          {
+            storeId: order.storeId,
+            productId: item.productId,
+            movementType: "CANCEL_ORDER",
+            source: "ORDER_CANCELLED_RESTORE",
+            referenceType: "ONLINE_ORDER",
+            referenceId: order.orderId,
+            quantityChange: quantityToRestore,
+            previousQuantity: inventory.availableQuantity - quantityToRestore,
+            newQuantity: inventory.availableQuantity,
+            performedBy,
+          },
+        ],
+        { session }
+      );
+
+      await Product.findOneAndUpdate(
+        { productId: item.productId, storeId: order.storeId },
+        { $set: { quantity: inventory.availableQuantity, updatedBy: performedBy } },
+        { session }
+      );
+    }
+
+    if (order.couponCode && order.userId) {
+      const coupon = await PromotionService.getCouponByCode(order.couponCode);
+      if (coupon) {
+        await PromotionService.restoreCouponUsage(coupon.couponId, order.userId, order.orderId);
+      }
+    }
+  }
+
+  static async calculateOrderSummary(
+    userId: string,
+    storeId: string,
+    deliveryMethod: "pickup" | "delivery" = "delivery",
+    couponCode?: string
+  ) {
+    const cartItems = await CartItem.find({ userId });
+    if (!cartItems.length) {
+      throw new AppError("Cart is empty", 400);
+    }
+
+    const store = await Store.findOne({ storeId }).lean();
+    if (!store) {
+      throw new AppError("Store not found", 404);
+    }
+
+    const productIds = cartItems.map((item) => item.productId);
+    const products = await Product.find({
+      productId: { $in: productIds },
+      isActive: true,
+      isPublished: true,
+    });
+    const productMap = new Map(products.map((p) => [p.productId, p]));
+
+    let originalTotal = 0;
+    let discountedTotal = 0;
+    const itemsSummary = [];
+
+    for (const item of cartItems) {
+      const product = productMap.get(item.productId);
+      if (!product) {
+        throw new AppError(`Product ${item.productId} is unavailable`, 400);
+      }
+      const inventory = await Inventory.findOne({ productId: item.productId });
+      const availableQty = inventory?.availableQuantity ?? product.quantity;
+      if (availableQty < item.quantity) {
+        throw new AppError(`Insufficient stock for ${product.name}`, 400);
+      }
+
+      const price = product.price;
+      const discountPrice = product.discountPrice ?? product.price;
+      const itemTotal = discountPrice * item.quantity;
+
+      originalTotal += price * item.quantity;
+      discountedTotal += itemTotal;
+
+      itemsSummary.push({
+        productId: product.productId,
+        name: product.name,
+        image: product.images?.[0] || "",
+        unit: "",
+        quantity: item.quantity,
+        price,
+        discountPrice,
+        totalPrice: itemTotal,
+      });
+    }
+
+    const { festivalSavings } = await PromotionService.calculateFestivalDiscounts(
+      itemsSummary.map((item) => ({
+        categoryId: productMap.get(item.productId)?.categoryId ?? "",
+        quantity: item.quantity,
+        price: item.discountPrice,
+      }))
+    );
+
+    const couponValidation = couponCode
+      ? await PromotionService.validateCoupon(couponCode, userId, discountedTotal, {
+          storeId,
+          categoryIds: [...new Set(products.map((p) => p.categoryId).filter(Boolean))],
+          productIds,
+        })
+      : null;
+
+    const festivalDiscount = Math.min(discountedTotal, festivalSavings);
+    const couponDiscount = Math.min(
+      Math.max(0, discountedTotal - festivalDiscount),
+      couponValidation?.discount ?? 0
+    );
+    const productSavings = Math.max(0, originalTotal - discountedTotal);
+    const freeDeliveryThreshold = store.freeDeliveryThreshold ?? store.freeDeliveryAbove;
+    const freeDeliveryApplied =
+      deliveryMethod === "delivery" &&
+      freeDeliveryThreshold > 0 &&
+      discountedTotal >= freeDeliveryThreshold;
+
+    const deliveryFee =
+      deliveryMethod === "pickup" ? 0 : freeDeliveryApplied ? 0 : store.deliveryFee;
+    const platformFee = PlatformFeeService.calculate(
+      await PlatformFeeService.getConfig(),
+      discountedTotal
+    );
+    const finalAmount = Math.max(
+      0,
+      discountedTotal - festivalDiscount - couponDiscount + deliveryFee + platformFee
+    );
+
+    return {
+      storeId,
+      storeName: store.storeName,
+      items: itemsSummary,
+      itemCount: cartItems.reduce((acc, it) => acc + it.quantity, 0),
+      originalTotal,
+      subtotal: discountedTotal,
+      productSavings,
+      festivalDiscount,
+      couponDiscount,
+      couponCode: couponValidation?.code || (couponCode && couponDiscount > 0 ? couponCode : ""),
+      deliveryMethod,
+      deliveryFee,
+      freeDeliveryApplied,
+      freeDeliveryThreshold,
+      platformFee,
+      finalAmount,
+    };
+  }
+
   static async calculateCheckoutAmount(userId: string, data: CreateOrderInput) {
     const cartItems = await CartItem.find({ userId });
     if (!cartItems.length) throw new AppError("Cart is empty", 400);
-    const address = await Address.findOne({ addressId: data.addressId, userId });
-    if (!address) throw new AppError("Delivery address not found", 404);
     const store = await Store.findOne({ storeId: data.storeId }).lean();
     if (!store) throw new AppError("Store not found", 404);
     const fulfillmentType = data.fulfillmentType ?? data.deliveryMethod;
     if (fulfillmentType === "pickup" && store.supportsPickup !== true) throw new AppError("Pickup is not available for this store", 400);
     if (fulfillmentType === "delivery" && store.supportsDelivery !== true) throw new AppError("Delivery is not available for this store", 400);
+
+    const address = fulfillmentType === "delivery" && data.addressId ? await Address.findOne({ addressId: data.addressId, userId }) : null;
+    if (fulfillmentType === "delivery" && !address) throw new AppError("Delivery address not found", 404);
+
     await linkPendingPlusMember(data.storeId, userId);
     const plusCustomer = await StoreCustomer.findOne({ storeId: data.storeId, customerId: userId }).select("isPlusCustomer").lean();
     if (!plusCustomer?.isPlusCustomer && data.paymentMethod !== "ONLINE") throw new AppError("Online payment is required for non-Plus customers", 403);
     if (data.paymentMethod === "PAY_AT_PICKUP" && fulfillmentType !== "pickup") throw new AppError("Pay During Pickup requires pickup fulfillment", 400);
     if (data.paymentMethod === "PAY_AT_DELIVERY" && fulfillmentType !== "delivery") throw new AppError("Pay During Delivery requires delivery fulfillment", 400);
-    const distance = fulfillmentType === "delivery" ? distanceInKm(store, address) : null;
+    const distance = fulfillmentType === "delivery" && address ? distanceInKm(store, address) : null;
     if (distance !== null && store.deliveryRadiusKm > 0 && distance > store.deliveryRadiusKm) throw new AppError("Delivery unavailable for this address", 400);
     const selectedSlot = fulfillmentType === "delivery" ? (store.deliverySlots ?? []).find((slot) => (slot.slotId === data.deliverySlotId || slot.id === data.deliverySlotId) && (slot.isActive || slot.active)) : undefined;
     if (fulfillmentType === "delivery" && !selectedSlot) throw new AppError("Select an active delivery slot", 400);
@@ -88,7 +362,13 @@ export class OrderService {
       orderItems.push({ productId: product.productId, quantity: item.quantity, discountPrice });
     }
     const { festivalSavings } = await PromotionService.calculateFestivalDiscounts(orderItems.map((item) => ({ categoryId: productMap.get(item.productId)?.categoryId ?? "", quantity: item.quantity, price: item.discountPrice })));
-    const couponValidation = data.couponCode ? await PromotionService.validateCoupon(data.couponCode, userId, originalTotal) : null;
+    const couponValidation = data.couponCode
+      ? await PromotionService.validateCoupon(data.couponCode, userId, discountedTotal, {
+          storeId: data.storeId,
+          categoryIds: [...new Set(products.map((p) => p.categoryId).filter(Boolean))],
+          productIds: cartItems.map((item) => item.productId),
+        })
+      : null;
     const festivalDiscount = Math.min(discountedTotal, festivalSavings);
     const couponDiscount = Math.min(Math.max(0, discountedTotal - festivalDiscount), couponValidation?.discount ?? 0);
     const discount = Math.max(0, originalTotal - discountedTotal);
@@ -109,26 +389,49 @@ export class OrderService {
       throw new AppError("Store not found for seller", 403);
     }
 
-    const order = await Order.findOneAndUpdate(
-      {
-        orderId,
-        storeId: store.storeId,
-        pickupStatus: "PICKED_UP",
-        paymentStatus: { $in: [PAYMENT_STATUS.PENDING, PAYMENT_STATUS.UNPAID] },
-      },
-      {
-        $set: {
-          paymentStatus: PAYMENT_STATUS.PAID,
-          paymentMethod,
-          paidAt: new Date(),
-        },
-      },
-      { new: true, runValidators: false }
-    );
+    const order = await Order.findOne({
+      orderId,
+      storeId: store.storeId,
+    });
 
     if (!order) {
-      throw new AppError("Only picked up pending orders can be marked as paid", 409);
+      throw new AppError("Order not found", 404);
     }
+
+    const isCompletedStatus =
+      order.status === ORDER_STATUS.DELIVERED || order.pickupStatus === "PICKED_UP";
+    const isPendingPayment =
+      order.paymentStatus === PAYMENT_STATUS.PENDING ||
+      order.paymentStatus === PAYMENT_STATUS.UNPAID;
+    const isVerifiedOnlinePayment = Boolean(order.razorpayPaymentId || order.razorpayOrderId);
+
+    if (!isCompletedStatus) {
+      throw new AppError(
+        "Only delivered or picked-up orders with pending payment can be marked as paid",
+        409
+      );
+    }
+
+    if (!isPendingPayment) {
+      throw new AppError("This order is not eligible for manual payment collection", 409);
+    }
+
+    if (order.paymentStatus === PAYMENT_STATUS.PAID || Number(order.amountPaid ?? 0) > 0) {
+      throw new AppError("This order is already marked as paid", 409);
+    }
+
+    if (isVerifiedOnlinePayment) {
+      throw new AppError("Verified online payments cannot be manually overridden", 409);
+    }
+
+    order.paymentStatus = PAYMENT_STATUS.PAID;
+    order.paymentMethod = paymentMethod;
+    order.amountPaid = order.grandTotal;
+    order.remainingAmount = 0;
+    order.paidAt = new Date();
+    order.statusUpdatedAt = new Date();
+
+    await order.save();
 
     return order;
   }
@@ -170,123 +473,12 @@ export class OrderService {
           throw new AppError(`Cannot change order from ${currentStatus} to ${nextStatus}`, 409);
         }
 
-        if ((currentStatus === "ORDER_PLACED" || currentStatus === "ACCEPTED") && nextStatus === "PREPARING") {
-          for (const item of order.orderItems) {
-            const inventory = await Inventory.findOneAndUpdate(
-              {
-                productId: item.productId,
-                availableQuantity: { $gte: item.quantity },
-              },
-              {
-                $inc: {
-                  availableQuantity: -item.quantity,
-                  soldQuantity: item.quantity,
-                },
-                $set: { updatedBy: ownerId },
-              },
-              { new: true, session }
-            );
-
-            if (!inventory) {
-              throw new AppError(`Insufficient inventory for ${item.name}`, 409);
-            }
-
-            await InventoryLedger.create(
-              [
-                {
-                  storeId: store.storeId,
-                  productId: item.productId,
-                  movementType: "SALE_ONLINE",
-                  source: "ONLINE_ORDER",
-                  referenceType: "ONLINE_ORDER",
-                  referenceId: order.orderId,
-                  quantityChange: -item.quantity,
-                  previousQuantity: inventory.availableQuantity + item.quantity,
-                  newQuantity: inventory.availableQuantity,
-                  performedBy: ownerId,
-                },
-              ],
-              { session }
-            );
-
-            await Product.findOneAndUpdate(
-              { productId: item.productId, storeId: store.storeId },
-              { $set: { quantity: inventory.availableQuantity, updatedBy: ownerId } },
-              { session }
-            );
-          }
+        if (nextStatus === "PREPARING") {
+          await this.deductOrderInventory(order, ownerId, session);
         }
 
-        if (nextStatus === "CANCELLED" && currentStatus !== "ORDER_PLACED") {
-          for (const item of order.orderItems) {
-            const saleLedger = await InventoryLedger.findOne({
-              storeId: store.storeId,
-              productId: item.productId,
-              movementType: "SALE_ONLINE",
-              referenceType: "ONLINE_ORDER",
-              referenceId: order.orderId,
-            }).session(session);
-
-            if (!saleLedger || saleLedger.quantityChange >= 0) {
-              continue;
-            }
-
-            const quantityToRestore = Math.abs(saleLedger.quantityChange);
-            const alreadyRestored = await InventoryLedger.exists({
-              storeId: store.storeId,
-              productId: item.productId,
-              source: "ORDER_CANCELLED_RESTORE",
-              referenceType: "ONLINE_ORDER",
-              referenceId: order.orderId,
-            }).session(session);
-
-            if (alreadyRestored) {
-              continue;
-            }
-
-            const inventory = await Inventory.findOneAndUpdate(
-              {
-                productId: item.productId,
-                soldQuantity: { $gte: quantityToRestore },
-              },
-              {
-                $inc: {
-                  availableQuantity: quantityToRestore,
-                  soldQuantity: -quantityToRestore,
-                },
-                $set: { updatedBy: ownerId },
-              },
-              { new: true, session }
-            );
-
-            if (!inventory) {
-              throw new AppError(`Unable to restore inventory for ${item.name}`, 409);
-            }
-
-            await InventoryLedger.create(
-              [
-                {
-                  storeId: store.storeId,
-                  productId: item.productId,
-                  movementType: "CANCEL_ORDER",
-                  source: "ORDER_CANCELLED_RESTORE",
-                  referenceType: "ONLINE_ORDER",
-                  referenceId: order.orderId,
-                  quantityChange: quantityToRestore,
-                  previousQuantity: inventory.availableQuantity - quantityToRestore,
-                  newQuantity: inventory.availableQuantity,
-                  performedBy: ownerId,
-                },
-              ],
-              { session }
-            );
-
-            await Product.findOneAndUpdate(
-              { productId: item.productId, storeId: store.storeId },
-              { $set: { quantity: inventory.availableQuantity, updatedBy: ownerId } },
-              { session }
-            );
-          }
+        if (nextStatus === "CANCELLED") {
+          await this.restoreOrderInventory(order, ownerId, session);
         }
 
         const timestampField: Record<string, string> = {
@@ -351,6 +543,7 @@ export class OrderService {
       order.orderNotes = reason;
     }
     await order.save();
+    await this.restoreOrderInventory(order, userId);
     return order;
   }
 
@@ -393,11 +586,6 @@ export class OrderService {
       throw new AppError("Cart is empty", 400);
     }
 
-    const address = await Address.findOne({ addressId: data.addressId, userId });
-    if (!address) {
-      throw new AppError("Delivery address not found", 404);
-    }
-
     const store = await Store.findOne({ storeId: data.storeId }).lean();
     if (!store) {
       throw new AppError("Store not found", 404);
@@ -410,6 +598,14 @@ export class OrderService {
     if (fulfillmentType === "delivery" && store.supportsDelivery !== true) {
       throw new AppError("Delivery is not available for this store", 400);
     }
+
+    const address = fulfillmentType === "delivery" && data.addressId
+      ? await Address.findOne({ addressId: data.addressId, userId })
+      : null;
+    if (fulfillmentType === "delivery" && !address) {
+      throw new AppError("Delivery address not found", 404);
+    }
+
     await linkPendingPlusMember(data.storeId, userId);
     const plusCustomer = await StoreCustomer.findOne({ storeId: data.storeId, customerId: userId }).select("isPlusCustomer").lean();
     const isPlusCustomer = plusCustomer?.isPlusCustomer === true;
@@ -425,11 +621,11 @@ export class OrderService {
     const paymentRequiredBeforeConfirmation = data.paymentMethod === "ONLINE";
     const nextPaymentStatus = paymentRequiredBeforeConfirmation ? PAYMENT_STATUS.PENDING : PAYMENT_STATUS.UNPAID;
     const nextOrderStatus = paymentRequiredBeforeConfirmation ? ORDER_STATUS.PENDING_PAYMENT : ORDER_STATUS.CONFIRMED;
-    const distance = fulfillmentType === "delivery" ? distanceInKm(store, address) : null;
+    const distance = fulfillmentType === "delivery" && address ? distanceInKm(store, address) : null;
     if (distance !== null && store.deliveryRadiusKm > 0 && distance > store.deliveryRadiusKm) {
       throw new AppError("Delivery unavailable for this address", 400);
     }
-    const selectedSlot = fulfillmentType === "delivery" ? (store.deliverySlots ?? []).find((slot) => (slot.slotId === data.deliverySlotId || slot.id === data.deliverySlotId) && (slot.isActive || slot.active)) : undefined;
+    const selectedSlot = fulfillmentType === "delivery" ? (store.deliverySlots ?? []).find((slot: { slotId?: string; id?: string; isActive?: boolean; active?: boolean }) => (slot.slotId === data.deliverySlotId || slot.id === data.deliverySlotId) && (slot.isActive || slot.active)) : undefined;
     if (fulfillmentType === "delivery" && !selectedSlot) throw new AppError("Select an active delivery slot", 400);
     if (selectedSlot && data.deliveryDate === new Date().toISOString().slice(0, 10)) {
       const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
@@ -513,7 +709,11 @@ export class OrderService {
       })),
     );
     const couponValidation = data.couponCode
-      ? await PromotionService.validateCoupon(data.couponCode, userId, originalTotal)
+      ? await PromotionService.validateCoupon(data.couponCode, userId, discountedTotal, {
+          storeId: data.storeId,
+          categoryIds: [...new Set(products.map((p) => p.categoryId).filter(Boolean))],
+          productIds,
+        })
       : null;
     const festivalDiscount = Math.min(discountedTotal, festivalSavings);
     const couponDiscount = Math.min(Math.max(0, discountedTotal - festivalDiscount), couponValidation?.discount ?? 0);
@@ -531,20 +731,23 @@ export class OrderService {
       ? new Date(estimatedReadyTime.getTime() + 60 * 60 * 1000)
       : undefined;
 
-    if (existingDraft) {
-      existingDraft.addressId = address.addressId;
+    const shippingAddress = address
+      ? {
+          fullName: address.fullName,
+          mobile: address.mobile,
+          house: address.house,
+          street: address.street,
+          landmark: address.landmark,
+          city: address.city,
+          state: address.state,
+          pincode: address.pincode,
+          addressType: address.addressType,
+        }
+      : undefined;
 
-      existingDraft.shippingAddress = {
-        fullName: address.fullName,
-        mobile: address.mobile,
-        house: address.house,
-        street: address.street,
-        landmark: address.landmark,
-        city: address.city,
-        state: address.state,
-        pincode: address.pincode,
-        addressType: address.addressType,
-      };
+    if (existingDraft) {
+      existingDraft.addressId = address?.addressId || "";
+      existingDraft.shippingAddress = shippingAddress;
 
       existingDraft.deliveryDate = data.deliveryDate;
       existingDraft.deliverySlot = data.deliverySlot;
@@ -554,7 +757,7 @@ export class OrderService {
       existingDraft.deliveryFee = deliveryCharge;
       existingDraft.estimatedReadyTime = estimatedReadyTime;
       existingDraft.estimatedDeliveryTime = estimatedDeliveryTime;
-      existingDraft.selectedAddressId = data.selectedAddressId ?? address.addressId;
+      existingDraft.selectedAddressId = data.selectedAddressId ?? address?.addressId;
       existingDraft.deliverySlotId = data.deliverySlotId;
       existingDraft.deliverySlotLabel = selectedSlot?.label ?? data.deliverySlotLabel;
       existingDraft.deliveryWindowStart = selectedSlot?.startTime ?? data.deliveryWindowStart;
@@ -589,6 +792,9 @@ export class OrderService {
 
       await existingDraft.save();
       if (couponValidation) await PromotionService.recordCouponUsage(couponValidation.couponId, userId, existingDraft.orderId);
+      if (!paymentRequiredBeforeConfirmation) {
+        await this.deductOrderInventory(existingDraft, userId);
+      }
       await CartItem.deleteMany({ userId });
 
       return existingDraft;
@@ -598,18 +804,8 @@ export class OrderService {
       userId,
       invoiceNumber: await createInvoiceNumber(data.storeId, new Date()),
       storeId: data.storeId,
-      addressId: address.addressId,
-      shippingAddress: {
-        fullName: address.fullName,
-        mobile: address.mobile,
-        house: address.house,
-        street: address.street,
-        landmark: address.landmark,
-        city: address.city,
-        state: address.state,
-        pincode: address.pincode,
-        addressType: address.addressType,
-      },
+      addressId: address?.addressId || "",
+      shippingAddress,
       deliveryDate: data.deliveryDate,
       deliverySlot: data.deliverySlot,
       deliveryMethod: data.deliveryMethod,
@@ -617,7 +813,7 @@ export class OrderService {
       deliveryFee: deliveryCharge,
       estimatedReadyTime,
       estimatedDeliveryTime,
-      selectedAddressId: data.selectedAddressId ?? address.addressId,
+      selectedAddressId: data.selectedAddressId ?? address?.addressId,
       deliverySlotId: data.deliverySlotId,
       deliverySlotLabel: selectedSlot?.label ?? data.deliverySlotLabel,
       deliveryWindowStart: selectedSlot?.startTime ?? data.deliveryWindowStart,
@@ -648,6 +844,9 @@ export class OrderService {
     });
 
     if (couponValidation) await PromotionService.recordCouponUsage(couponValidation.couponId, userId, order.orderId);
+    if (!paymentRequiredBeforeConfirmation) {
+      await this.deductOrderInventory(order, userId);
+    }
     await CartItem.deleteMany({ userId });
 
     return order;

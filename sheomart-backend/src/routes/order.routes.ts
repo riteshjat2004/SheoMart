@@ -7,6 +7,7 @@ import {
   bulkUpdateSellerOrderStatus,
   cancelCustomerOrder,
   createOrder,
+  getCheckoutQuote,
   getOrder,
   getOrders,
   getStoreOrders,
@@ -19,6 +20,7 @@ import {
 const router = Router();
 
 router.use(authenticate);
+router.post("/quote", authorize(USER_ROLES.CUSTOMER), asyncHandler(getCheckoutQuote));
 router.post("/", authorize(USER_ROLES.CUSTOMER), asyncHandler(createOrder));
 router.get("/", authorize(USER_ROLES.CUSTOMER), asyncHandler(getOrders));
 

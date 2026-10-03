@@ -23,6 +23,10 @@ export interface StoreOrder {
   orderStatus?: string;
   paymentStatus?: string;
   paymentMethod?: string;
+  paymentReceivedMethod?: string;
+  paidAt?: string;
+  amountPaid?: number;
+  remainingAmount?: number;
   shippingAddress?: StoreOrderAddress | null;
   pickupStore?: string;
   pickupAddress?: string;

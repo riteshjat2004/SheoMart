@@ -318,8 +318,18 @@ export default function OrdersPage() {
                         <p className="text-xl font-extrabold text-stone-900 dark:text-stone-50">
                           ₹{order.grandTotal ?? 0}
                         </p>
-                        <p className="text-[11px] font-medium text-emerald-600">
-                          {order.paymentStatus === "PAID" ? "Payment Received" : "Cash / UPI at Pickup"}
+                        <p
+                          className={`text-[11px] font-medium ${
+                            (order.paymentStatus ?? "").toUpperCase() === "PAID"
+                              ? "text-emerald-600 dark:text-emerald-400 font-semibold"
+                              : "text-amber-600 dark:text-amber-400"
+                          }`}
+                        >
+                          {(order.paymentStatus ?? "").toUpperCase() === "PAID"
+                            ? `✓ Payment Received${order.paymentReceivedMethod ? ` (${order.paymentReceivedMethod})` : ""}`
+                            : isDelivery
+                            ? "⏳ Pay on Delivery"
+                            : "⏳ Pay at Pickup"}
                         </p>
                       </div>
                     </div>

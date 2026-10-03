@@ -59,6 +59,7 @@ export function ProductForm({ initialValues, categories, onSubmit, formId, isEdi
     ...emptyValues,
     ...initialValues,
     images: initialImages,
+    quantity: initialValues?.quantity !== undefined ? initialValues.quantity : emptyValues.quantity,
   });
   const [imageInput, setImageInput] = useState(initialImages.join("\n"));
   const [imageFile, setImageFile] = useState<File | undefined>();
@@ -159,7 +160,7 @@ export function ProductForm({ initialValues, categories, onSubmit, formId, isEdi
       brand: values.brand.trim(),
       price: mrp,
       discountPrice,
-      quantity: toNumber(values.quantity ?? 0),
+      quantity: toNumber(values.quantity !== undefined ? values.quantity : (initialValues?.quantity ?? 0)),
       images,
       imageUrl: imageFile ? undefined : imageInput !== initialImageInput ? images[0] : undefined,
       imageFile,
@@ -284,22 +285,20 @@ export function ProductForm({ initialValues, categories, onSubmit, formId, isEdi
             />
           </label>
 
-          {!isEdit ? (
-            <label className="space-y-1.5 text-xs font-medium text-stone-700 dark:text-stone-300">
-              <span>Initial Stock Quantity</span>
-              <input
-                type="number"
-                min="0"
-                step="1"
-                value={values.quantity ?? 0}
-                onChange={(event) =>
-                  setValues((current) => ({ ...current, quantity: toNumber(event.target.value) }))
-                }
-                className="w-full rounded-2xl border border-stone-200 bg-white px-3.5 py-2.5 text-sm outline-none transition-all focus:border-emerald-500 dark:border-stone-800 dark:bg-stone-950"
-                placeholder="0"
-              />
-            </label>
-          ) : null}
+          <label className="space-y-1.5 text-xs font-medium text-stone-700 dark:text-stone-300">
+            <span>{isEdit ? "Stock Quantity" : "Initial Stock Quantity"}</span>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={values.quantity ?? 0}
+              onChange={(event) =>
+                setValues((current) => ({ ...current, quantity: toNumber(event.target.value) }))
+              }
+              className="w-full rounded-2xl border border-stone-200 bg-white px-3.5 py-2.5 text-sm outline-none transition-all focus:border-emerald-500 dark:border-stone-800 dark:bg-stone-950"
+              placeholder="0"
+            />
+          </label>
         </div>
 
         {/* Pricing Insight Card */}

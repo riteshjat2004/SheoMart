@@ -1,21 +1,29 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { collectPickupPayment, type PickupPaymentMethod } from "@/services/store-orders";
+import {
+  confirmOrderPayment,
+  collectPickupPayment,
+  type PaymentReceivedMethod,
+  type PickupPaymentMethod,
+} from "@/services/store-orders";
 import type { StoreOrder } from "@/types/store-order";
 
-interface CollectPickupPaymentVariables {
+export interface ConfirmOrderPaymentVariables {
   orderId: string;
-  paymentMethod: PickupPaymentMethod;
+  paymentMethod: PaymentReceivedMethod;
 }
 
-export function useCollectPickupPayment(options?: {
-  onSuccess?: (data: StoreOrder | null, variables: CollectPickupPaymentVariables) => void;
-  onError?: (error: unknown, variables: CollectPickupPaymentVariables) => void;
+export type CollectPickupPaymentVariables = ConfirmOrderPaymentVariables;
+
+export function useConfirmOrderPayment(options?: {
+  onSuccess?: (data: StoreOrder | null, variables: ConfirmOrderPaymentVariables) => void;
+  onError?: (error: unknown, variables: ConfirmOrderPaymentVariables) => void;
 }) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ orderId, paymentMethod }: CollectPickupPaymentVariables) => collectPickupPayment(orderId, paymentMethod),
+    mutationFn: ({ orderId, paymentMethod }: ConfirmOrderPaymentVariables) =>
+      confirmOrderPayment(orderId, paymentMethod),
     onSuccess: (data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ["store-orders"] });
       void queryClient.invalidateQueries({ queryKey: ["store-order", variables.orderId] });
@@ -26,3 +34,6 @@ export function useCollectPickupPayment(options?: {
     onError: options?.onError,
   });
 }
+
+export const useCollectPickupPayment = useConfirmOrderPayment;
+export const useMarkPaymentReceived = useConfirmOrderPayment;

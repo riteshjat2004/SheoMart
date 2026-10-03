@@ -75,24 +75,7 @@ export class PaymentService {
 
     const order = await OrderService.createOrder(userId, checkout);
 
-    for (const item of order.orderItems) {
-      const inventory = await Inventory.findOne({ productId: item.productId });
-
-      if (!inventory) {
-        continue;
-      }
-
-      const nextQuantity = Math.max(0, inventory.availableQuantity - item.quantity);
-      inventory.availableQuantity = nextQuantity;
-      inventory.soldQuantity += item.quantity;
-      inventory.updatedBy = userId;
-      await inventory.save();
-
-      await Product.updateOne(
-        { productId: item.productId },
-        { $set: { quantity: nextQuantity, updatedBy: userId } }
-      );
-    }
+    await OrderService.deductOrderInventory(order, userId);
 
     order.paymentStatus = PAYMENT_STATUS.PAID;
     order.status = ORDER_STATUS.CONFIRMED;

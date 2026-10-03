@@ -83,11 +83,12 @@ export async function fetchStoreOrder(orderId: string): Promise<StoreOrder | nul
   return response.data.data?.order ?? null;
 }
 
-export type PickupPaymentMethod = "CASH" | "UPI" | "CARD";
+export type PaymentReceivedMethod = "CASH" | "UPI" | "CARD";
+export type PickupPaymentMethod = PaymentReceivedMethod;
 
-export async function collectPickupPayment(
+export async function confirmOrderPayment(
   orderId: string,
-  paymentMethod: PickupPaymentMethod
+  paymentMethod: PaymentReceivedMethod
 ): Promise<StoreOrder | null> {
   const response = await api.patch<ApiResponse<{ order?: StoreOrder }>>(
     `/api/v1/orders/${encodeURIComponent(orderId)}/payment`,
@@ -95,6 +96,8 @@ export async function collectPickupPayment(
   );
   return response.data.data?.order ?? null;
 }
+
+export const collectPickupPayment = confirmOrderPayment;
 
 export async function updateDeliveryEta(
   orderId: string,
