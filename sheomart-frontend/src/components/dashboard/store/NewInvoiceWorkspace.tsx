@@ -11,11 +11,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { LoadingSkeleton } from "@/components/dashboard/LoadingSkeleton";
+import { useQueryClient } from "@tanstack/react-query";
 import { CustomerSelector, type CustomerMode } from "@/components/dashboard/store/CustomerSelector";
 import { BillingCartItem, type BillingCartItemData } from "@/components/dashboard/store/BillingCartItem";
+import { InvoiceReceiptModal, type InvoiceReceiptData } from "@/components/dashboard/store/InvoiceReceiptModal";
 import { usePosCatalog } from "@/hooks/use-pos-catalog";
 import { useCreateOfflineInvoice } from "@/hooks/use-create-offline-invoice";
 import type { PosCatalogProduct, StockStatus } from "@/services/billing";
+import type { StoreCustomer } from "@/types/store-customer";
 
 // Debounce hook (300ms) to avoid re-filtering on every keystroke
 function useDebounced<T>(value: T, delayMs: number): T {
@@ -62,6 +65,11 @@ export function NewInvoiceWorkspace() {
   const [selectedCustomerId, setSelectedCustomerId] = useState<
     string | undefined
   >();
+  const [selectedCustomer, setSelectedCustomer] = useState<StoreCustomer | null>(null);
+  const [generatedReceipt, setGeneratedReceipt] = useState<InvoiceReceiptData | null>(null);
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+
+  const queryClient = useQueryClient();
 
   // ── Data (single unified request — zero N+1) ────────────────────────────
   const { data: catalog, isLoading, isFetching, isError, error, refetch } =
@@ -205,12 +213,62 @@ export function NewInvoiceWorkspace() {
       })),
     };
 
+    const currentCartCopy = [...cartItems];
+    const currentCustomerName =
+      customerName.trim() ||
+      (customerMode === "walk-in" ? "Walk-in Customer" : selectedCustomer?.name || "Customer");
+    const currentCustomerPhone = mobileNumber;
+    const currentGrandTotal = grandTotal;
+    const currentSubtotal = subtotal;
+    const currentAmountPaid = normalizedAmountPaid;
+    const currentRemaining = remainingAmount;
+    const currentPaymentStatus = paymentStatus;
+    const currentPaymentMethod = paymentMethod;
+    const currentIsPlus =
+      customerMode === "plus" || selectedCustomer?.isPlusCustomer === true;
+
     try {
       const invoice = await createInvoiceMutation.mutateAsync(payload);
+
+      const receiptData: InvoiceReceiptData = {
+        invoiceNumber: invoice.invoiceNumber,
+        storeName: catalog?.store?.storeName || "SheoMart Store POS",
+        createdAt: new Date().toISOString(),
+        customerName: currentCustomerName,
+        customerPhone: currentCustomerPhone,
+        customerEmail: selectedCustomer?.email,
+        customerType: customerMode,
+        isPlusCustomer: currentIsPlus,
+        paymentMethod: currentPaymentMethod,
+        paymentStatus: currentPaymentStatus,
+        subtotal: currentSubtotal,
+        discount: 0,
+        grandTotal: currentGrandTotal,
+        amountPaid: currentAmountPaid,
+        remainingAmount: currentRemaining,
+        items: currentCartCopy.map((item) => ({
+          name: item.productName,
+          sku: item.sku,
+          quantity: item.quantity,
+          price: item.price,
+          lineTotal: item.lineTotal,
+        })),
+      };
+
+      setGeneratedReceipt(receiptData);
+      setIsReceiptModalOpen(true);
+
+      // Invalidate queries so history, KPI cards, and register balances update immediately
+      void queryClient.invalidateQueries({ queryKey: ["billing-invoices"] });
+      void queryClient.invalidateQueries({ queryKey: ["seller-analytics"] });
+      void queryClient.invalidateQueries({ queryKey: ["daily-cash-summary"] });
+      await refetch();
+
       setFeedback({
         type: "success",
-        message: `Invoice ${invoice.invoiceNumber} created successfully.`,
+        message: `Invoice #${invoice.invoiceNumber} created successfully.`,
       });
+
       setCartItems([]);
       setAmountPaid("");
       setPaymentMethod("CASH");
@@ -218,8 +276,7 @@ export function NewInvoiceWorkspace() {
       setCustomerName("");
       setMobileNumber("");
       setSelectedCustomerId(undefined);
-      // Refetch unified catalog so stock counts are fresh
-      await refetch();
+      setSelectedCustomer(null);
     } catch (err) {
       setFeedback({
         type: "error",
@@ -233,7 +290,7 @@ export function NewInvoiceWorkspace() {
   const categories = catalog?.categories ?? [];
 
   return (
-    <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,7fr)_minmax(320px,3fr)]">
+    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1.4fr)_380px]">
       {/* ── Left: Product Catalog ─────────────────────────────────────────── */}
       <div className="space-y-6">
         <CustomerSelector
@@ -244,6 +301,10 @@ export function NewInvoiceWorkspace() {
           onModeChange={setCustomerMode}
           onCustomerNameChange={setCustomerName}
           onMobileNumberChange={setMobileNumber}
+          onCustomerSelect={(c) => {
+            setSelectedCustomer(c);
+            setSelectedCustomerId(c?.customerId);
+          }}
         />
 
         {customerSelectionRequired ? (
@@ -372,7 +433,7 @@ export function NewInvoiceWorkspace() {
             ) : null}
 
             {!isLoading && !isError && filteredProducts.length > 0 ? (
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2">
                 {filteredProducts.map((product) => {
                   const badge = STOCK_BADGE[product.stockStatus];
                   const sellingPrice =
@@ -450,28 +511,39 @@ export function NewInvoiceWorkspace() {
       </div>
 
       {/* ── Right: Billing Cart ───────────────────────────────────────────── */}
-      <section className="rounded-xl border border-stone-200 bg-white/80 p-5 shadow-sm backdrop-blur dark:border-stone-800 dark:bg-stone-900/80 xl:sticky xl:top-6">
-        <div className="flex items-start justify-between gap-4">
+      <section className="rounded-xl border border-stone-200 bg-white/95 p-4 sm:p-5 shadow-sm backdrop-blur dark:border-stone-800 dark:bg-stone-900/95 lg:sticky lg:top-4 xl:top-6 lg:max-h-[calc(100vh-5.5rem)] flex flex-col overflow-y-auto scrollbar-thin">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-4 pb-3 border-b border-stone-200/80 dark:border-stone-800/80 shrink-0">
           <div>
-            <h2 className="text-base font-semibold text-stone-900 dark:text-stone-50">
-              Billing Cart
-            </h2>
-            <p className="mt-1.5 text-sm leading-6 text-stone-600 dark:text-stone-300">
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-semibold text-stone-900 dark:text-stone-50">
+                Billing Cart
+              </h2>
+              {cartItems.length > 0 && (
+                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                  {itemCount} {itemCount === 1 ? "item" : "items"}
+                </span>
+              )}
+            </div>
+            <p className="mt-0.5 text-xs text-stone-500 dark:text-stone-400">
               Review items before generating an invoice.
             </p>
           </div>
-          <ShoppingBag className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+          <ShoppingBag className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
         </div>
 
-        {cartItems.length === 0 ? (
-          <div className="mt-5">
-            <EmptyState
-              title="No products added."
-              description="Search the catalog to start building this invoice."
-            />
-          </div>
-        ) : (
-          <div className="mt-5">
+        {/* Scrollable Cart Items */}
+        <div className="flex-1 overflow-y-auto max-h-[220px] lg:max-h-[250px] py-1 pr-1 scrollbar-thin">
+          {cartItems.length === 0 ? (
+            <div className="py-5 text-center">
+              <p className="text-sm font-semibold text-stone-700 dark:text-stone-300">
+                No products added
+              </p>
+              <p className="mt-1 text-xs text-stone-400 dark:text-stone-500">
+                Click &ldquo;Add to Bill&rdquo; on any product to build this invoice.
+              </p>
+            </div>
+          ) : (
             <div className="divide-y divide-stone-200 dark:divide-stone-800">
               {cartItems.map((item) => (
                 <BillingCartItem
@@ -487,101 +559,120 @@ export function NewInvoiceWorkspace() {
                 />
               ))}
             </div>
-          </div>
-        )}
-
-        {/* Totals */}
-        <div className="mt-5 space-y-3 border-t border-stone-200 pt-5 text-sm dark:border-stone-800">
-          <div className="flex justify-between text-stone-600 dark:text-stone-300">
-            <span>Items</span>
-            <span>{itemCount}</span>
-          </div>
-          <div className="flex justify-between text-stone-600 dark:text-stone-300">
-            <span>Subtotal</span>
-            <span>₹{subtotal.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between text-stone-600 dark:text-stone-300">
-            <span>Discount</span>
-            <span>₹0</span>
-          </div>
-          <div className="flex justify-between border-t border-stone-200 pt-3 font-semibold text-stone-900 dark:border-stone-800 dark:text-stone-50">
-            <span>Grand Total</span>
-            <span>₹{grandTotal.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between text-stone-600 dark:text-stone-300">
-            <span>Payment Status</span>
-            <span className="font-semibold text-emerald-700 dark:text-emerald-300">
-              {paymentStatus}
-            </span>
-          </div>
+          )}
         </div>
 
-        {/* Payment method */}
-        <fieldset className="mt-5 space-y-3">
-          <legend className="text-sm font-medium text-stone-700 dark:text-stone-200">
-            Payment Method
-          </legend>
-          <div className="grid grid-cols-3 gap-2">
-            {(["CASH", "UPI", "CREDIT"] as const).map((method) => (
-              <button
-                key={method}
-                type="button"
-                onClick={() => setPaymentMethod(method)}
-                className={`rounded-lg border px-2 py-2 text-xs font-semibold transition ${
-                  paymentMethod === method
-                    ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
-                    : "border-stone-200 text-stone-600 hover:border-stone-300 dark:border-stone-700 dark:text-stone-300 dark:hover:border-stone-600"
-                }`}
-              >
-                {method === "CASH" ? "Cash" : method === "UPI" ? "UPI" : "Credit"}
-              </button>
-            ))}
+        {/* Fixed Bottom Section (Totals, Payment, Button) */}
+        <div className="shrink-0 border-t border-stone-200/80 dark:border-stone-800/80 pt-3 space-y-3 overflow-y-auto max-h-[calc(100vh-22rem)] scrollbar-thin">
+          {/* Totals */}
+          <div className="space-y-1.5 text-sm">
+            <div className="flex justify-between text-stone-600 dark:text-stone-300 text-xs">
+              <span>Items</span>
+              <span className="font-medium">{itemCount}</span>
+            </div>
+            <div className="flex justify-between text-stone-600 dark:text-stone-300 text-xs">
+              <span>Subtotal</span>
+              <span className="font-medium">₹{subtotal.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-stone-600 dark:text-stone-300 text-xs">
+              <span>Discount</span>
+              <span className="font-medium">₹0</span>
+            </div>
+            <div className="flex justify-between border-t border-stone-200/80 pt-1.5 font-semibold text-stone-900 dark:border-stone-800 dark:text-stone-50">
+              <span>Grand Total</span>
+              <span className="text-base text-emerald-700 dark:text-emerald-400">₹{grandTotal.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-xs text-stone-600 dark:text-stone-300">
+              <span>Payment Status</span>
+              <span className="font-semibold text-emerald-700 dark:text-emerald-300">
+                {paymentStatus}
+              </span>
+            </div>
           </div>
-        </fieldset>
 
-        {/* Amount paid */}
-        <label className="mt-5 block text-sm font-medium text-stone-700 dark:text-stone-200">
-          Amount Paid
-          <input
-            type="number"
-            min="0"
-            value={amountPaid}
-            onChange={(e) => setAmountPaid(e.target.value)}
-            placeholder="₹0"
-            className="mt-2 h-11 w-full rounded-lg border border-stone-200 bg-white px-3 text-sm text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-50"
-          />
-        </label>
+          {/* Payment method */}
+          <fieldset className="space-y-1.5">
+            <legend className="text-[11px] font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+              Payment Method
+            </legend>
+            <div className="grid grid-cols-3 gap-1.5">
+              {(["CASH", "UPI", "CREDIT"] as const).map((method) => (
+                <button
+                  key={method}
+                  type="button"
+                  onClick={() => setPaymentMethod(method)}
+                  className={`rounded-lg border px-2 py-1.5 text-xs font-semibold transition ${
+                    paymentMethod === method
+                      ? "border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
+                      : "border-stone-200 text-stone-600 hover:border-stone-300 dark:border-stone-700 dark:text-stone-300 dark:hover:border-stone-600"
+                  }`}
+                >
+                  {method === "CASH" ? "Cash" : method === "UPI" ? "UPI" : "Credit"}
+                </button>
+              ))}
+            </div>
+          </fieldset>
 
-        {paymentMethod === "CREDIT" ? (
-          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">
-            Remaining amount will be collected later.
+          {/* Amount paid */}
+          <label className="block text-[11px] font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+            Amount Paid
+            <input
+              type="number"
+              min="0"
+              value={amountPaid}
+              onChange={(e) => setAmountPaid(e.target.value)}
+              placeholder="₹0"
+              className="mt-1 h-9 w-full rounded-lg border border-stone-200 bg-white px-3 text-sm text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-50"
+            />
+          </label>
+
+          {paymentMethod === "CREDIT" ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">
+              Remaining amount will be collected later.
+            </div>
+          ) : null}
+
+          {/* Remaining */}
+          <div className="rounded-lg bg-stone-100 p-2 dark:bg-stone-800/80">
+            <div className="flex items-center justify-between text-xs font-semibold text-stone-900 dark:text-stone-50">
+              <span>Remaining Amount</span>
+              <span>₹{remainingAmount.toFixed(2)}</span>
+            </div>
           </div>
-        ) : null}
 
-        {/* Remaining */}
-        <div className="mt-5 rounded-lg bg-stone-100 p-4 dark:bg-stone-800">
-          <div className="flex items-center justify-between text-sm font-semibold text-stone-900 dark:text-stone-50">
-            <span>Remaining Amount</span>
-            <span>₹{remainingAmount.toFixed(2)}</span>
-          </div>
+          <Button
+            type="button"
+            className="w-full"
+            size="default"
+            disabled={
+              cartItems.length === 0 ||
+              customerSelectionRequired ||
+              createInvoiceMutation.isPending
+            }
+            onClick={generateInvoice}
+          >
+            {createInvoiceMutation.isPending
+              ? "Generating Invoice..."
+              : "Generate Invoice"}
+          </Button>
         </div>
-
-        <Button
-          type="button"
-          className="mt-5 w-full"
-          size="lg"
-          disabled={
-            cartItems.length === 0 ||
-            customerSelectionRequired ||
-            createInvoiceMutation.isPending
-          }
-          onClick={generateInvoice}
-        >
-          {createInvoiceMutation.isPending
-            ? "Generating Invoice..."
-            : "Generate Invoice"}
-        </Button>
       </section>
+
+      <InvoiceReceiptModal
+        isOpen={isReceiptModalOpen}
+        onClose={() => setIsReceiptModalOpen(false)}
+        invoice={generatedReceipt}
+        onNewSale={() => {
+          setIsReceiptModalOpen(false);
+          setCartItems([]);
+          setAmountPaid("");
+          setCustomerMode("walk-in");
+          setCustomerName("");
+          setMobileNumber("");
+          setSelectedCustomerId(undefined);
+          setSelectedCustomer(null);
+        }}
+      />
     </div>
   );
 }

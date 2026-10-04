@@ -18,9 +18,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isAuthRoute =
     pathname === "/login" ||
     pathname === "/register" ||
+    pathname === "/forgot-password" ||
     pathname.startsWith("/auth") ||
     pathname.startsWith("/admin-reset-password") ||
-    pathname.startsWith("/seller-reset-password");
+    pathname.startsWith("/seller-reset-password") ||
+    pathname.startsWith("/reset-password");
 
   const {
     isMaintenanceActive,
@@ -66,8 +68,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main className="flex-1">
         <RouteGuard>{children}</RouteGuard>
       </main>
-      <Footer />
-      <FloatingCartButton />
+      {!isAuthRoute ? <Footer /> : null}
+      {!isAuthRoute ? <FloatingCartButton /> : null}
     </div>
   );
 }

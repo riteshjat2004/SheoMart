@@ -403,18 +403,21 @@ export class OrderService {
       throw new AppError("Order not found", 404);
     }
 
-    const isCompletedStatus =
+    const isCompletedOrReadyStatus =
       order.status === ORDER_STATUS.DELIVERED ||
       order.pickupStatus === "PICKED_UP" ||
-      order.pickupStatus === "DELIVERED";
+      order.pickupStatus === "DELIVERED" ||
+      order.pickupStatus === "READY_FOR_PICKUP" ||
+      order.status === ORDER_STATUS.PACKED ||
+      order.status === ORDER_STATUS.CONFIRMED;
     const isPendingPayment =
       order.paymentStatus === PAYMENT_STATUS.PENDING ||
       order.paymentStatus === PAYMENT_STATUS.UNPAID;
     const isVerifiedOnlinePayment = Boolean(order.razorpayPaymentId || order.razorpayOrderId);
 
-    if (!isCompletedStatus) {
+    if (!isCompletedOrReadyStatus) {
       throw new AppError(
-        "Only delivered or picked-up orders with pending payment can be marked as paid",
+        "Only orders ready for pickup or delivered with pending payment can be marked as paid",
         409
       );
     }
@@ -431,15 +434,25 @@ export class OrderService {
       throw new AppError("Verified online payments cannot be manually overridden", 409);
     }
 
+    const now = new Date();
     order.paymentStatus = PAYMENT_STATUS.PAID;
     order.paymentMethod = paymentMethod;
     order.paymentReceivedMethod = paymentMethod;
     order.amountPaid = order.grandTotal;
     order.remainingAmount = 0;
-    order.paidAt = new Date();
-    order.statusUpdatedAt = new Date();
+    order.paidAt = now;
+    order.statusUpdatedAt = now;
+
+    // If order was ready for pickup or being handed over, advance to picked up/delivered
+    if (order.pickupStatus !== "PICKED_UP" && order.pickupStatus !== "DELIVERED") {
+      order.pickupStatus = "PICKED_UP";
+      order.status = ORDER_STATUS.DELIVERED;
+      order.pickedUpAt = now;
+      order.deliveredAt = now;
+    }
 
     await order.save();
+    await this.upsertStoreCustomer(order);
 
     return order;
   }
@@ -475,17 +488,38 @@ export class OrderService {
         const currentStatus = order.pickupStatus || "ORDER_PLACED";
         const isDelivery = order.fulfillmentType === "delivery" || order.deliveryMethod === "delivery";
         const transitions: Record<string, string[]> = isDelivery
-          ? { ORDER_PLACED: ["ACCEPTED", "CANCELLED"], ACCEPTED: ["PREPARING", "CANCELLED"], PREPARING: ["READY_FOR_DISPATCH", "CANCELLED"], READY_FOR_DISPATCH: ["OUT_FOR_DELIVERY", "CANCELLED"], OUT_FOR_DELIVERY: ["DELIVERED"] }
-          : { ORDER_PLACED: ["ACCEPTED", "CANCELLED"], ACCEPTED: ["PREPARING", "CANCELLED"], PREPARING: ["READY_FOR_PICKUP", "CANCELLED"], READY_FOR_PICKUP: ["PICKED_UP", "CANCELLED"] };
-        if (!transitions[currentStatus]?.includes(nextStatus)) {
+          ? {
+              ORDER_PLACED: ["ACCEPTED", "PREPARING", "READY_FOR_DISPATCH", "CANCELLED"],
+              ACCEPTED: ["PREPARING", "READY_FOR_DISPATCH", "CANCELLED"],
+              PREPARING: ["READY_FOR_DISPATCH", "CANCELLED"],
+              READY_FOR_DISPATCH: ["OUT_FOR_DELIVERY", "CANCELLED"],
+              OUT_FOR_DELIVERY: ["DELIVERED"],
+            }
+          : {
+              ORDER_PLACED: ["ACCEPTED", "PREPARING", "READY_FOR_PICKUP", "PICKED_UP", "DELIVERED", "CANCELLED"],
+              ACCEPTED: ["PREPARING", "READY_FOR_PICKUP", "PICKED_UP", "DELIVERED", "CANCELLED"],
+              PREPARING: ["READY_FOR_PICKUP", "PICKED_UP", "DELIVERED", "CANCELLED"],
+              READY_FOR_PICKUP: ["PICKED_UP", "DELIVERED", "CANCELLED"],
+            };
+
+        const normalizedNextStatus = (!isDelivery && nextStatus === "DELIVERED") ? "PICKED_UP" : nextStatus;
+
+        if (!transitions[currentStatus]?.includes(nextStatus) && !transitions[currentStatus]?.includes(normalizedNextStatus)) {
           throw new AppError(`Cannot change order from ${currentStatus} to ${nextStatus}`, 409);
         }
 
-        if (nextStatus === "PREPARING") {
+        if (
+          (normalizedNextStatus === "PREPARING" ||
+            normalizedNextStatus === "READY_FOR_PICKUP" ||
+            normalizedNextStatus === "READY_FOR_DISPATCH" ||
+            normalizedNextStatus === "PICKED_UP" ||
+            normalizedNextStatus === "DELIVERED") &&
+          !order.preparingAt
+        ) {
           await this.deductOrderInventory(order, ownerId, session);
         }
 
-        if (nextStatus === "CANCELLED") {
+        if (normalizedNextStatus === "CANCELLED") {
           await this.restoreOrderInventory(order, ownerId, session);
         }
 
@@ -500,17 +534,27 @@ export class OrderService {
           CANCELLED: "cancelledAt",
         };
         const now = new Date();
-        const timestampUpdate = timestampField[nextStatus] ? { [timestampField[nextStatus]]: now } : {};
+        const timestampUpdate = timestampField[normalizedNextStatus] ? { [timestampField[normalizedNextStatus]]: now } : {};
         updatedOrder = await Order.findOneAndUpdate(
-          { orderId, storeId: store.storeId, pickupStatus: currentStatus },
+          {
+            orderId,
+            storeId: store.storeId,
+            $or: [
+              { pickupStatus: currentStatus },
+              { pickupStatus: currentStatus === "ORDER_PLACED" ? null : currentStatus },
+              { pickupStatus: { $exists: false } },
+            ],
+          },
           {
             $set: {
-              pickupStatus: nextStatus,
-              status: statusMap[nextStatus],
+              pickupStatus: normalizedNextStatus,
+              status: statusMap[normalizedNextStatus] || "DELIVERED",
               statusUpdatedAt: now,
               updatedBySellerAt: now,
               ...timestampUpdate,
-              ...(nextStatus === "DELIVERED" || nextStatus === "PICKED_UP" ? { deliveredAt: nextStatus === "DELIVERED" ? now : order.deliveredAt, pickedUpAt: nextStatus === "PICKED_UP" ? now : order.pickedUpAt } : {}),
+              ...(normalizedNextStatus === "DELIVERED" || normalizedNextStatus === "PICKED_UP"
+                ? { deliveredAt: now, pickedUpAt: now }
+                : {}),
             },
           },
           { new: true, runValidators: false, strict: false, session }
@@ -591,7 +635,7 @@ export class OrderService {
       grandTotal: number;
       createdAt: Date;
     },
-    session: mongoose.ClientSession
+    session?: mongoose.ClientSession
   ) {
     if (!order.storeId) {
       return;
@@ -613,7 +657,7 @@ export class OrderService {
           lastPurchaseAt: new Date(),
         },
       },
-      { upsert: true, new: true, runValidators: true, session }
+      { upsert: true, new: true, runValidators: true, ...(session ? { session } : {}) }
     );
   }
 
@@ -976,24 +1020,45 @@ export class OrderService {
     const page = Math.max(1, Number(filters.page) || 1);
     const limit = Math.max(1, Math.min(100, Number(filters.limit) || 10));
 
-    const baseQuery: Record<string, unknown> = {
-      storeId: store.storeId,
-      status: { $ne: ORDER_STATUS.DRAFT },
-    };
+    const andConditions: Array<Record<string, unknown>> = [
+      { storeId: store.storeId },
+      { status: { $ne: ORDER_STATUS.DRAFT } },
+    ];
 
     if (filters.orderStatus) {
-      baseQuery.$or = [
-        { pickupStatus: filters.orderStatus },
-        { status: filters.orderStatus },
-      ];
+      andConditions.push({
+        $or: [
+          { pickupStatus: filters.orderStatus },
+          { status: filters.orderStatus },
+        ],
+      });
     }
 
     if (filters.paymentStatus) {
-      baseQuery.paymentStatus = filters.paymentStatus;
+      andConditions.push({ paymentStatus: filters.paymentStatus });
     }
 
     if (filters.fulfillmentType) {
-      baseQuery.fulfillmentType = filters.fulfillmentType;
+      if (filters.fulfillmentType === "pickup") {
+        andConditions.push({
+          $or: [
+            { fulfillmentType: "pickup" },
+            { deliveryMethod: "pickup" },
+            { deliveryMethod: "store_pickup" },
+            { pickupSlot: { $exists: true, $ne: null } },
+            { pickupStatus: { $exists: true, $ne: null } },
+          ],
+        });
+      } else if (filters.fulfillmentType === "delivery") {
+        andConditions.push({
+          $or: [
+            { fulfillmentType: "delivery" },
+            { deliveryMethod: "delivery" },
+          ],
+        });
+      } else {
+        andConditions.push({ fulfillmentType: filters.fulfillmentType });
+      }
     }
 
     if (filters.from || filters.to) {
@@ -1008,7 +1073,7 @@ export class OrderService {
         toDate.setHours(23, 59, 59, 999);
         dateQuery.$lte = toDate;
       }
-      baseQuery.createdAt = dateQuery;
+      andConditions.push({ createdAt: dateQuery });
     }
 
     if (filters.search && typeof filters.search === "string" && filters.search.trim()) {
@@ -1018,21 +1083,20 @@ export class OrderService {
       }).select("userId").lean();
       const userIds = matchedUsers.map((u) => u.userId);
 
-      const searchConditions = [
-        { orderId: searchRegex },
-        { invoiceNumber: searchRegex },
-        { userId: { $in: userIds } },
-        { "orderItems.name": searchRegex },
-        { "orderItems.sku": searchRegex },
-      ];
-
-      if (baseQuery.$or) {
-        baseQuery.$and = [{ $or: baseQuery.$or }, { $or: searchConditions }];
-        delete baseQuery.$or;
-      } else {
-        baseQuery.$or = searchConditions;
-      }
+      andConditions.push({
+        $or: [
+          { orderId: searchRegex },
+          { invoiceNumber: searchRegex },
+          { userId: { $in: userIds } },
+          { "orderItems.name": searchRegex },
+          { "orderItems.sku": searchRegex },
+          { "shippingAddress.fullName": searchRegex },
+          { "shippingAddress.mobile": searchRegex },
+        ],
+      });
     }
+
+    const baseQuery = { $and: andConditions };
 
     let sort: Record<string, 1 | -1> = { createdAt: -1 };
     if (filters.sortBy === "oldest") sort = { createdAt: 1 };

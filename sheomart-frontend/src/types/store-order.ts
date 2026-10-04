@@ -21,6 +21,8 @@ export interface StoreOrder {
   store?: { name?: string; storeName?: string; address?: string; pickupAddress?: string; pickupHours?: string; preparationTimeMinutes?: number; } | null;
   status?: string;
   orderStatus?: string;
+  pickupStatus?: string;
+  pickupSlot?: string;
   paymentStatus?: string;
   paymentMethod?: string;
   paymentReceivedMethod?: string;

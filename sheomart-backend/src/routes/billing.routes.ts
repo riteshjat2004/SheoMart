@@ -4,6 +4,7 @@ import { USER_ROLES } from "../constants/roles";
 import {
   cancelInvoice,
   completePickupPayment,
+  confirmInvoicePayment,
   createOfflineInvoice,
   getInvoiceById,
   getPosCatalog,
@@ -50,6 +51,13 @@ router.get(
   authenticate,
   authorize(USER_ROLES.STORE_OWNER),
   asyncHandler(getInvoiceById)
+);
+
+router.patch(
+  "/invoices/:invoiceId/payment",
+  authenticate,
+  authorize(USER_ROLES.STORE_OWNER),
+  asyncHandler(confirmInvoicePayment)
 );
 
 router.patch(

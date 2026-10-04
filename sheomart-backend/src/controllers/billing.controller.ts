@@ -11,6 +11,7 @@ import type {
 import {
   cancelInvoice as cancelInvoiceService,
   completePickupPayment as completePickupPaymentService,
+  confirmInvoicePayment as confirmInvoicePaymentService,
   createOfflineInvoice as createOfflineInvoiceService,
   getInvoiceById as getInvoiceByIdService,
   getPosCatalog as getPosCatalogService,
@@ -26,6 +27,7 @@ import {
   updateStoreCustomerNotes as updateStoreCustomerNotesService,
 } from "../services/billing.service";
 import {
+  confirmInvoicePaymentSchema,
   createOfflineInvoiceSchema,
   customerIdParamSchema,
   invoiceIdParamSchema,
@@ -141,6 +143,36 @@ export const cancelInvoice = async (req: AuthRequest, res: Response): Promise<vo
   res.status(501).json({
     success: false,
     message: "Billing service is not implemented yet.",
+  });
+};
+
+export const confirmInvoicePayment = async (req: AuthRequest, res: Response): Promise<void> => {
+  const invoiceId = Array.isArray(req.params.invoiceId)
+    ? req.params.invoiceId[0]
+    : req.params.invoiceId;
+  const paramResult = invoiceIdParamSchema.safeParse({ invoiceId });
+
+  if (!paramResult.success) {
+    const message = paramResult.error.issues[0]?.message || "Invalid invoice ID";
+    throw new AppError(message, 400);
+  }
+
+  const bodyResult = confirmInvoicePaymentSchema.safeParse(req.body);
+  if (!bodyResult.success) {
+    const message = bodyResult.error.issues[0]?.message || "Invalid payment details";
+    throw new AppError(message, 400);
+  }
+
+  const updatedInvoice = await confirmInvoicePaymentService(
+    req.user?.userId as string,
+    paramResult.data.invoiceId,
+    bodyResult.data
+  );
+
+  res.status(200).json({
+    success: true,
+    message: "Invoice payment confirmed successfully",
+    data: updatedInvoice,
   });
 };
 

@@ -56,6 +56,7 @@ export default function CheckoutPage() {
   const [deliverySlotLabel, setDeliverySlotLabel] = useState("");
   const [deliverySlotDay, setDeliverySlotDay] = useState<"Today" | "Tomorrow">("Today");
   const [pickupSlot, setPickupSlot] = useState("");
+  const [pickupSlotDay, setPickupSlotDay] = useState<"Today" | "Tomorrow">("Today");
   const [paymentMethod, setPaymentMethod] = useState<CheckoutPaymentMethod>("ONLINE");
   const [deliveryMethod, setDeliveryMethod] = useState<"pickup" | "delivery">(
     "pickup",
@@ -211,10 +212,10 @@ export default function CheckoutPage() {
       const payload = {
         addressId: effectiveAddressId,
         selectedAddressId: effectiveAddressId,
-        deliveryDate: new Date(Date.now() + (deliverySlotDay === "Tomorrow" ? 86400000 : 0))
+        deliveryDate: new Date(Date.now() + ((deliveryMethod === "delivery" ? deliverySlotDay : pickupSlotDay) === "Tomorrow" ? 86400000 : 0))
           .toISOString()
           .slice(0, 10),
-        deliverySlot: deliveryMethod === "delivery" ? deliverySlotLabel : pickupSlot,
+        deliverySlot: deliveryMethod === "delivery" ? deliverySlotLabel : `${pickupSlotDay} • ${pickupSlot}`,
         paymentMethod,
         paymentRequiredBeforeConfirmation: paymentMethod === "ONLINE",
         deliveryMethod,
@@ -226,11 +227,11 @@ export default function CheckoutPage() {
         deliveryFee: deliveryMethod === "delivery" ? deliveryFee : 0,
         deliveryFeeCharged: deliveryMethod === "delivery" ? deliveryFee : 0,
         freeDeliveryApplied,
-        pickupSlot: deliveryMethod === "pickup" ? pickupSlot : undefined,
-        pickupSlotId: deliveryMethod === "pickup" ? pickupSlot : undefined,
-        pickupSlotLabel: deliveryMethod === "pickup" ? pickupSlot : undefined,
+        pickupSlot: deliveryMethod === "pickup" ? `${pickupSlotDay} • ${pickupSlot}` : undefined,
+        pickupSlotId: deliveryMethod === "pickup" ? `${pickupSlotDay.toLowerCase()}-${pickupSlot.replace(/\s+/g, "_")}` : undefined,
+        pickupSlotLabel: deliveryMethod === "pickup" ? `${pickupSlotDay} • ${pickupSlot}` : undefined,
         estimatedReadyTime: new Date(Date.now() + preparationTimeMinutes * 60000).toISOString(),
-        estimatedDeliveryWindow: deliveryMethod === "delivery" ? deliverySlotLabel : undefined,
+        estimatedDeliveryWindow: deliveryMethod === "delivery" ? deliverySlotLabel : `${pickupSlotDay} • ${pickupSlot}`,
         storeId: storeId || "",
         ...(appliedCoupon?.code ? { couponCode: appliedCoupon.code } : {}),
       };
@@ -284,7 +285,7 @@ export default function CheckoutPage() {
         try {
           await verifyPayment({ razorpayOrderId: response.razorpay_order_id, razorpayPaymentId: response.razorpay_payment_id, razorpaySignature: response.razorpay_signature, checkout: payload });
           await queryClient.invalidateQueries({ queryKey: ["cart"] });
-          setPaymentSuccess({ amount: payment.amount / 100, paymentId: response.razorpay_payment_id, readyText: deliveryMethod === "pickup" ? (pickupSlot || `Ready in ${preparationTimeMinutes} minutes`) : deliverySlotLabel });
+          setPaymentSuccess({ amount: payment.amount / 100, paymentId: response.razorpay_payment_id, readyText: deliveryMethod === "pickup" ? (pickupSlot ? `${pickupSlotDay} • ${pickupSlot}` : `Ready in ${preparationTimeMinutes} minutes`) : deliverySlotLabel });
         } catch (error) {
           setPaymentError(error instanceof Error ? error.message : "Payment verification failed. No order was created.");
         }
@@ -355,8 +356,8 @@ export default function CheckoutPage() {
                 >
                   <div className="space-y-6">
                     <FulfillmentInfoCard type={deliveryMethod} store={store ?? null} address={[selectedAddress?.house, selectedAddress?.street, selectedAddress?.city, selectedAddress?.state, selectedAddress?.pincode].filter(Boolean).join(", ")} preparationTimeMinutes={preparationTimeMinutes} deliveryFee={configuredDeliveryFee} freeDeliveryAbove={freeDeliveryAbove} subtotal={totals.subtotal} />
-                    {deliveryMethod === "delivery" ? <DeliverySlotPicker slots={store?.deliverySlots ?? []} value={deliverySlotId} preparationTimeMinutes={preparationTimeMinutes} onChange={(slot, day) => { setDeliverySlotDay(day); setDeliverySlotId(slot.slotId); setDeliverySlotLabel(`${slot.label} (${slot.startTime} - ${slot.endTime})`); }} /> : <PickupSlotPicker openingTime={store?.pickupOpeningTime ?? ""} closingTime={store?.pickupClosingTime ?? ""} preparationTimeMinutes={preparationTimeMinutes} value={pickupSlot} onChange={setPickupSlot} />}
-                    <EstimatedArrivalCard type={deliveryMethod} text={deliveryMethod === "delivery" ? (deliverySlotLabel || "Choose a delivery window") : (pickupSlot ? `Today • ${pickupSlot}` : `Ready in ${preparationTimeMinutes} minutes`)} />
+                    {deliveryMethod === "delivery" ? <DeliverySlotPicker slots={store?.deliverySlots ?? []} value={deliverySlotId} selectedDay={deliverySlotDay} preparationTimeMinutes={preparationTimeMinutes} onChange={(slot, day) => { setDeliverySlotDay(day); setDeliverySlotId(slot.slotId); setDeliverySlotLabel(`${slot.label} (${slot.startTime} - ${slot.endTime})`); }} /> : <PickupSlotPicker openingTime={store?.pickupOpeningTime ?? ""} closingTime={store?.pickupClosingTime ?? ""} preparationTimeMinutes={preparationTimeMinutes} value={pickupSlot} selectedDay={pickupSlotDay} onChange={(slot, day) => { setPickupSlot(slot); setPickupSlotDay(day); }} />}
+                    <EstimatedArrivalCard type={deliveryMethod} text={deliveryMethod === "delivery" ? (deliverySlotLabel ? `${deliverySlotDay} • ${deliverySlotLabel}` : "Choose a delivery window") : (pickupSlot ? `${pickupSlotDay} • ${pickupSlot}` : `Ready in ${preparationTimeMinutes} minutes`)} />
                     <MembershipBanner isPlusCustomer={isPlusCustomer} />
                     <PaymentSelector value={paymentMethod} onChange={setPaymentMethod} isPlusCustomer={isPlusCustomer} fulfillmentType={deliveryMethod} />
                     <PaymentValidationNotice isPlusCustomer={isPlusCustomer} method={paymentMethod} />
@@ -372,7 +373,7 @@ export default function CheckoutPage() {
                     </section>
                     <OrderSummaryCard
                       totalItems={totals.totalItems}
-                      estimatedPickup={deliveryMethod === "delivery" ? deliverySlotLabel || "Select a delivery window" : pickupSlot || `Ready in ${preparationTimeMinutes} minutes`}
+                      estimatedPickup={deliveryMethod === "delivery" ? (deliverySlotLabel ? `${deliverySlotDay} • ${deliverySlotLabel}` : "Select a delivery window") : pickupSlot ? `${pickupSlotDay} • ${pickupSlot}` : `Ready in ${preparationTimeMinutes} minutes`}
                       paymentMethod={paymentLabel}
                       paymentStatusPreview={paymentStatusPreview}
                       deliveryMethod={

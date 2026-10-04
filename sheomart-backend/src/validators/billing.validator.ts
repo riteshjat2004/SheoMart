@@ -62,9 +62,17 @@ export const updatePlusCustomerSchema = z.object({
   isPlusCustomer: z.boolean().optional(),
 });
 
+export const confirmInvoicePaymentSchema = z.object({
+  paymentMethod: z.enum(["CASH", "UPI", "CREDIT"]).optional(),
+  amount: z.number().positive("Amount must be greater than 0").optional(),
+  notes: z.string().trim().max(500, "Notes must be 500 characters or less").optional(),
+});
+
 export type CreateOfflineInvoiceInput = z.infer<typeof createOfflineInvoiceSchema>;
 export type InvoiceIdParamInput = z.infer<typeof invoiceIdParamSchema>;
 export type OrderIdParamInput = z.infer<typeof orderIdParamSchema>;
 export type CustomerIdParamInput = z.infer<typeof customerIdParamSchema>;
 export type BillingListQueryInput = z.infer<typeof listBillingQuerySchema>;
 export type UpdatePlusCustomerInput = z.infer<typeof updatePlusCustomerSchema>;
+export type ConfirmInvoicePaymentInput = z.infer<typeof confirmInvoicePaymentSchema>;
+

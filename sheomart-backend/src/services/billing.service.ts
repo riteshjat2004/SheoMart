@@ -12,7 +12,10 @@ import { Store } from "../models/store.model";
 import { StoreCustomer } from "../models/storeCustomer.model";
 import { Order, ORDER_STATUS } from "../models/order.model";
 import { User } from "../models/user.model";
-import type { CreateOfflineInvoiceInput } from "../validators/billing.validator";
+import type {
+  ConfirmInvoicePaymentInput,
+  CreateOfflineInvoiceInput,
+} from "../validators/billing.validator";
 import { generateInvoiceNumber } from "../utils/invoice-number.util";
 
 type CreateOfflineInvoiceServiceInput = CreateOfflineInvoiceInput & {
@@ -432,6 +435,67 @@ export const getInvoiceById = async (ownerId: string, invoiceId: string) => {
 
 export const cancelInvoice = async (): Promise<never> => {
   throw new AppError("TODO: cancelInvoice is not implemented yet", 501);
+};
+
+export const confirmInvoicePayment = async (
+  ownerId: string,
+  invoiceId: string,
+  input: ConfirmInvoicePaymentInput
+) => {
+  const store = await getStoreForOwner(ownerId);
+  const invoice = await OfflineInvoice.findOne({
+    invoiceId,
+    storeId: store.storeId,
+  });
+
+  if (!invoice) {
+    throw new AppError("Invoice not found", 404);
+  }
+
+  if (invoice.status === "CANCELLED") {
+    throw new AppError("Cannot collect payment for a cancelled invoice", 400);
+  }
+
+  if (invoice.paymentStatus === "PAID" && invoice.remainingAmount <= 0) {
+    throw new AppError("This invoice has already been fully paid", 400);
+  }
+
+  const payAmount = input.amount !== undefined ? input.amount : invoice.remainingAmount;
+
+  if (payAmount <= 0) {
+    throw new AppError("Payment amount must be greater than 0", 400);
+  }
+
+  if (payAmount > invoice.remainingAmount) {
+    throw new AppError(
+      `Payment amount cannot exceed remaining balance of ₹${invoice.remainingAmount}`,
+      400
+    );
+  }
+
+  invoice.amountPaid = Number((invoice.amountPaid + payAmount).toFixed(2));
+  invoice.remainingAmount = Number(Math.max(0, invoice.grandTotal - invoice.amountPaid).toFixed(2));
+  invoice.paymentStatus = invoice.remainingAmount === 0 ? "PAID" : "PARTIALLY_PAID";
+
+  if (input.paymentMethod) {
+    invoice.paymentMethod = input.paymentMethod;
+  }
+  if (input.notes) {
+    invoice.notes = invoice.notes ? `${invoice.notes}; ${input.notes}` : input.notes;
+  }
+
+  await invoice.save();
+
+  return {
+    invoiceId: invoice.invoiceId,
+    invoiceNumber: invoice.invoiceNumber,
+    paymentMethod: invoice.paymentMethod,
+    paymentStatus: invoice.paymentStatus,
+    grandTotal: invoice.grandTotal,
+    amountPaid: invoice.amountPaid,
+    remainingAmount: invoice.remainingAmount,
+    updatedAt: invoice.updatedAt,
+  };
 };
 
 export const listPickupOrders = async (ownerId: string, filters: BillingOrderListFilters) => {
