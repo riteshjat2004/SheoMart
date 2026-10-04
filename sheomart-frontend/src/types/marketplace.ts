@@ -48,6 +48,8 @@ export interface ProductItem {
   inventoryStatus?: string;
   category?: string;
   store?: string;
+  storePincode?: string;
+  storeCity?: string;
 }
 
 export interface CartItem {

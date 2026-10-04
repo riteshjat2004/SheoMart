@@ -33,7 +33,7 @@ import { useCustomerLocation } from "@/hooks/use-customer-location";
 import { LocationPickerModal } from "@/components/layout/LocationPickerModal";
 import { useAuthStore } from "@/store/auth-store";
 import { useCoupons, useOffers } from "@/hooks/use-promotions";
-import { ArrowRight, ShoppingCart, Sparkles, Store, Compass } from "lucide-react";
+import { ArrowRight, ShoppingCart, Sparkles, Store, Compass, MapPin } from "lucide-react";
 
 export default function Home() {
   const router = useRouter();
@@ -41,20 +41,36 @@ export default function Home() {
   const [locationModalOpen, setLocationModalOpen] = useState(false);
 
   const categoriesQuery = useCategories();
-  const productsQuery = useTrendingProducts();
   const isPlatformAdmin = useAuthStore((state) => state.user?.role === "platform_admin");
-  const { activePincode, locationLabel } = useCustomerLocation();
+  const { activePincode, locationLabel, activeAddress } = useCustomerLocation();
   const storesQuery = useStores(activePincode ? { pincode: activePincode } : undefined);
+  const productsQuery = useTrendingProducts(
+    activePincode
+      ? { pincode: activePincode, city: activeAddress?.city }
+      : activeAddress?.city
+      ? { city: activeAddress.city }
+      : undefined
+  );
   const offersQuery = useOffers();
   const couponsQuery = useCoupons();
 
   const categories = Array.isArray(categoriesQuery.data) ? categoriesQuery.data : [];
-  const products = Array.isArray(productsQuery.data) ? productsQuery.data : [];
+  const rawProducts = Array.isArray(productsQuery.data) ? productsQuery.data : [];
   const stores = Array.isArray(storesQuery.data) ? storesQuery.data : [];
 
+  // Hyperlocal filtering: If user has selected a specific PIN code, ensure products strictly belong
+  // to stores that deliver to their location (matching what ExplorePage already does).
+  const filteredProducts = useMemo(() => {
+    if (!activePincode) return rawProducts;
+    if (!storesQuery.isSuccess) return rawProducts;
+    const allowedStoreIds = new Set(stores.map((s) => s.storeId).filter(Boolean));
+    return rawProducts.filter((p) => p.storeId && allowedStoreIds.has(p.storeId));
+  }, [rawProducts, activePincode, stores, storesQuery.isSuccess]);
+
+  const isProductsLoading = productsQuery.isLoading || Boolean(activePincode && storesQuery.isLoading);
   const nearbyStores = stores.slice(0, 6);
   const featuredCategories = categories.slice(0, 8);
-  const featuredProducts = products.slice(0, 8);
+  const featuredProducts = filteredProducts.slice(0, 8);
   const allOffers = offersQuery.data ?? [];
   const allCoupons = couponsQuery.data ?? [];
 
@@ -94,20 +110,20 @@ export default function Home() {
           <section className="space-y-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-950/40 px-3.5 py-1 text-xs font-semibold uppercase tracking-wider text-emerald-300">
-                  <Sparkles className="h-3.5 w-3.5" />
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-50 px-3.5 py-1 text-xs font-semibold uppercase tracking-wider text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-950/40 dark:text-emerald-300">
+                  <Sparkles className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                   Explore Departments
                 </span>
-                <h2 className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+                <h2 className="mt-2 text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl dark:text-white">
                   Shop by category
                 </h2>
-                <p className="mt-1 text-sm text-stone-400">
+                <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">
                   Everything you need for your pantry, kitchen, and home routines.
                 </p>
               </div>
 
               {categories.length > featuredCategories.length && (
-                <Button asChild variant="outline" className="rounded-xl border-stone-800 text-stone-300 hover:bg-stone-800">
+                <Button asChild variant="outline" className="rounded-xl border-stone-200 text-stone-700 hover:bg-stone-100 hover:text-stone-900 dark:border-stone-800 dark:text-stone-300 dark:hover:bg-stone-800">
                   <Link href="/categories">
                     View All Categories ({categories.length})
                     <ArrowRight className="ml-2 h-4 w-4" />
@@ -119,7 +135,7 @@ export default function Home() {
             {categoriesQuery.isLoading ? (
               <CategorySkeleton />
             ) : categoriesQuery.isError ? (
-              <div className="space-y-4 rounded-3xl border border-stone-800 bg-stone-900/60 p-6 shadow-sm">
+              <div className="space-y-4 rounded-3xl border border-stone-200 bg-white/80 p-6 shadow-sm dark:border-stone-800 dark:bg-stone-900/60">
                 <ErrorState message={categoriesQuery.error instanceof Error ? categoriesQuery.error.message : "Unable to load categories."} />
                 <div className="flex justify-end">
                   <Button onClick={() => categoriesQuery.refetch()}>Retry</Button>
@@ -140,11 +156,15 @@ export default function Home() {
           <section className="space-y-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <SectionHeading
-                eyebrow="Popular in Sheopur"
-                title="Trending & daily essentials"
-                description="Fast-selling staples, fresh produce, and customer favorites."
+                eyebrow={activePincode ? `Delivering to ${activePincode}` : "Trending Now"}
+                title={activePincode ? `Trending near ${locationLabel}` : "Trending & daily essentials"}
+                description={
+                  activePincode
+                    ? `Fast-selling staples and popular favorites available in ${locationLabel}.`
+                    : "Fast-selling staples, fresh produce, and customer favorites."
+                }
               />
-              <Button asChild variant="outline" className="rounded-xl border-stone-800 text-stone-300 hover:bg-stone-800">
+              <Button asChild variant="outline" className="rounded-xl border-stone-200 text-stone-700 hover:bg-stone-100 hover:text-stone-900 dark:border-stone-800 dark:text-stone-300 dark:hover:bg-stone-800">
                 <Link href="/explore">
                   View All Products
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -152,10 +172,10 @@ export default function Home() {
               </Button>
             </div>
 
-            {productsQuery.isLoading ? (
+            {isProductsLoading ? (
               <ProductSkeleton />
             ) : productsQuery.isError ? (
-              <div className="space-y-4 rounded-3xl border border-stone-800 bg-stone-900/60 p-6 shadow-sm">
+              <div className="space-y-4 rounded-3xl border border-stone-200 bg-white/80 p-6 shadow-sm dark:border-stone-800 dark:bg-stone-900/60">
                 <ErrorState message={productsQuery.error instanceof Error ? productsQuery.error.message : "Unable to load products."} />
                 <div className="flex justify-end">
                   <Button onClick={() => productsQuery.refetch()}>Retry</Button>
@@ -166,21 +186,33 @@ export default function Home() {
                 <TrendingProducts products={featuredProducts} />
               </div>
             ) : (
-              <div className="rounded-3xl border border-stone-800 bg-stone-900/40 p-8 text-center space-y-3">
+              <div className="rounded-3xl border border-stone-200 bg-white/60 p-8 text-center space-y-3 dark:border-stone-800 dark:bg-stone-900/40">
                 <EmptyState
-                  title="No featured products yet."
-                  description="Curated daily essentials and trending products will appear here once featured by admin."
+                  title={activePincode ? `No trending products available in PIN ${activePincode}.` : "No featured products yet."}
+                  description={
+                    activePincode
+                      ? "There are currently no active stores or products delivering to your selected PIN code. Try changing your delivery location."
+                      : "Curated daily essentials and trending products will appear here once featured by admin."
+                  }
                 />
-                {isPlatformAdmin && (
-                  <div className="pt-2">
+                <div className="pt-2 flex justify-center gap-3">
+                  {activePincode ? (
+                    <Button
+                      onClick={() => setLocationModalOpen(true)}
+                      className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
+                    >
+                      <MapPin className="mr-1.5 h-4 w-4" />
+                      Change Delivery PIN
+                    </Button>
+                  ) : isPlatformAdmin ? (
                     <Button asChild size="sm" className="bg-amber-500 hover:bg-amber-600 text-stone-950 font-medium">
                       <Link href="/admin/products">
                         <Sparkles className="mr-1.5 h-3.5 w-3.5 fill-current" />
                         Manage Featured Products
                       </Link>
                     </Button>
-                  </div>
-                )}
+                  ) : null}
+                </div>
               </div>
             )}
           </section>
@@ -196,7 +228,7 @@ export default function Home() {
                 title={activePincode ? `Stores delivering to ${locationLabel}` : "Trusted local stores near you"}
                 description={activePincode ? `Verified sellers available to fulfill orders in PIN ${activePincode}.` : "Verified sellers ready to pack your order fresh and deliver locally."}
               />
-              <Button asChild variant="outline" className="rounded-xl border-stone-800 text-stone-300 hover:bg-stone-800">
+              <Button asChild variant="outline" className="rounded-xl border-stone-200 text-stone-700 hover:bg-stone-100 hover:text-stone-900 dark:border-stone-800 dark:text-stone-300 dark:hover:bg-stone-800">
                 <Link href="/stores">
                   Explore All Stores
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -207,7 +239,7 @@ export default function Home() {
             {storesQuery.isLoading ? (
               <StoreSkeleton />
             ) : storesQuery.isError ? (
-              <div className="space-y-4 rounded-3xl border border-stone-800 bg-stone-900/60 p-6 shadow-sm">
+              <div className="space-y-4 rounded-3xl border border-stone-200 bg-white/80 p-6 shadow-sm dark:border-stone-800 dark:bg-stone-900/60">
                 <ErrorState message={storesQuery.error instanceof Error ? storesQuery.error.message : "Unable to load stores."} />
                 <div className="flex justify-end">
                   <Button onClick={() => storesQuery.refetch()}>Retry</Button>
@@ -229,7 +261,7 @@ export default function Home() {
                   <Button variant="default" onClick={() => setLocationModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-500 text-white">
                     Change Delivery PIN
                   </Button>
-                  <Button asChild variant="outline" className="border-stone-700 text-stone-300 hover:bg-stone-800">
+                  <Button asChild variant="outline" className="border-stone-200 text-stone-700 hover:bg-stone-100 hover:text-stone-900 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800">
                     <Link href="/stores">Browse all stores</Link>
                   </Button>
                 </div>
@@ -258,7 +290,7 @@ export default function Home() {
       </Section>
 
       {/* Mobile Sticky Quick-Action Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-stone-800 bg-stone-950/95 p-3 backdrop-blur-md sm:hidden">
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-stone-200 bg-[#FBFBF9]/95 p-3 backdrop-blur-md dark:border-stone-800 dark:bg-stone-950/95 sm:hidden">
         <div className="flex items-center justify-between gap-3 px-2">
           <Button asChild className="w-full rounded-xl bg-emerald-600 font-bold text-white shadow-lg hover:bg-emerald-500">
             <Link href="/explore" className="flex items-center justify-center gap-2">
@@ -266,9 +298,9 @@ export default function Home() {
               <span>Explore All Groceries</span>
             </Link>
           </Button>
-          <Button asChild variant="outline" className="shrink-0 rounded-xl border-stone-800 px-4">
-            <Link href="/stores" className="flex items-center gap-1.5 text-xs text-stone-300">
-              <Store className="h-4 w-4 text-emerald-400" />
+          <Button asChild variant="outline" className="shrink-0 rounded-xl border-stone-200 bg-white px-4 text-stone-700 hover:bg-stone-100 dark:border-stone-800 dark:bg-transparent dark:text-stone-300 dark:hover:bg-stone-800">
+            <Link href="/stores" className="flex items-center gap-1.5 text-xs">
+              <Store className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
               <span>Stores</span>
             </Link>
           </Button>

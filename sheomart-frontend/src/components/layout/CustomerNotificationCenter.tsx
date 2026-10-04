@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Bell,
   Check,
@@ -15,12 +15,47 @@ import {
   X,
 } from "lucide-react";
 import { useCustomerNotifications } from "@/hooks/use-notifications";
+import { useAuthStore } from "@/store/auth-store";
 import type { CustomerNotificationItem } from "@/services/notifications";
 
 export function CustomerNotificationCenter() {
   const [isOpen, setIsOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<"all" | "order" | "offer" | "coupon">("all");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const user = useAuthStore((state) => state.user);
+  const storageKey = `sheomart_read_notifications_${user?.userId || "guest"}`;
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
+
+  // Load persisted readIds from localStorage
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setReadIds(new Set(parsed));
+          return;
+        }
+      }
+      setReadIds(new Set());
+    } catch {
+      setReadIds(new Set());
+    }
+  }, [storageKey]);
+
+  // Close panel on outside click
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isOpen]);
 
   const notificationsQuery = useCustomerNotifications();
   const rawNotifications = notificationsQuery.data ?? [];
@@ -33,11 +68,32 @@ export function CustomerNotificationCenter() {
   });
 
   const markAsRead = (id: string) => {
-    setReadIds((prev) => new Set([...prev, id]));
+    setReadIds((prev) => {
+      const next = new Set([...prev, id]);
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(Array.from(next)));
+        } catch {
+          // Ignored
+        }
+      }
+      return next;
+    });
   };
 
   const markAllAsRead = () => {
-    setReadIds(new Set(rawNotifications.map((n) => n.id)));
+    setReadIds((prev) => {
+      const allIds = rawNotifications.map((n) => n.id);
+      const next = new Set([...prev, ...allIds]);
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(Array.from(next)));
+        } catch {
+          // Ignored
+        }
+      }
+      return next;
+    });
   };
 
   const getIcon = (type: CustomerNotificationItem["type"]) => {
@@ -54,7 +110,7 @@ export function CustomerNotificationCenter() {
   };
 
   return (
-    <div className="relative">
+    <div ref={containerRef} className="relative">
       {/* Bell Button */}
       <button
         type="button"
@@ -84,7 +140,7 @@ export function CustomerNotificationCenter() {
             </div>
 
             <div className="flex items-center gap-2">
-              {unreadCount > 0 && (
+              {unreadCount > 0 ? (
                 <button
                   type="button"
                   onClick={markAllAsRead}
@@ -93,6 +149,11 @@ export function CustomerNotificationCenter() {
                   <CheckCheck className="h-3 w-3" />
                   Read all
                 </button>
+              ) : (
+                <span className="flex items-center gap-1 text-[11px] font-medium text-stone-400 dark:text-stone-500">
+                  <Check className="h-3 w-3 text-emerald-500" />
+                  All caught up
+                </span>
               )}
               <button
                 type="button"
@@ -148,9 +209,14 @@ export function CustomerNotificationCenter() {
 
                     <div className="flex-1 space-y-0.5 min-w-0">
                       <div className="flex items-center justify-between gap-1">
-                        <p className="text-xs font-bold text-stone-900 line-clamp-1 dark:text-stone-50">
-                          {notif.title}
-                        </p>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          {!isRead && (
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" title="Unread" />
+                          )}
+                          <p className={`text-xs line-clamp-1 ${isRead ? "font-medium text-stone-700 dark:text-stone-300" : "font-bold text-stone-900 dark:text-stone-50"}`}>
+                            {notif.title}
+                          </p>
+                        </div>
                         <span className="text-[10px] text-stone-400 shrink-0">
                           {new Date(notif.timestamp).toLocaleDateString("en-IN", {
                             day: "numeric",

@@ -204,6 +204,7 @@ export class StoreService {
 
   static async getAllStores(location?: { pincode?: string; city?: string; state?: string }) {
     const pincode = location?.pincode?.trim();
+    const city = location?.city?.trim();
     const query: Record<string, unknown> = {
       status: { $in: [STORE_STATUS.APPROVED, STORE_STATUS.ACTIVE] },
       isActive: { $ne: false },
@@ -212,6 +213,8 @@ export class StoreService {
 
     if (pincode) {
       query.pincode = { $regex: new RegExp(`^\\s*${pincode.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i") };
+    } else if (city) {
+      query.city = { $regex: new RegExp(`^\\s*${city.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i") };
     }
 
     const stores = await Store.find(query)
@@ -219,10 +222,14 @@ export class StoreService {
       .lean();
 
     const normalizedStores = stores.map((store) => StoreService.toFulfillmentResponse(store, true));
-    if (!pincode) return normalizedStores;
+    if (!pincode && !city) return normalizedStores;
 
-    const normalizedPin = pincode.toLowerCase();
-    return normalizedStores.filter((store) => typeof store.pincode === "string" && store.pincode.trim().toLowerCase() === normalizedPin);
+    if (pincode) {
+      const normalizedPin = pincode.toLowerCase();
+      return normalizedStores.filter((store) => typeof store.pincode === "string" && store.pincode.trim().toLowerCase() === normalizedPin);
+    }
+    const normalizedCity = city?.toLowerCase();
+    return normalizedStores.filter((store) => typeof store.city === "string" && store.city.trim().toLowerCase() === normalizedCity);
   }
 
   static async getAdminStores() {

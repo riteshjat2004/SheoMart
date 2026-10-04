@@ -110,7 +110,7 @@ export function ProductCard({ product, storeBadge }: ProductCardProps) {
       onKeyDown={handleCardKeyDown}
       className={`group flex h-full cursor-pointer flex-col overflow-hidden rounded-[1.6rem] border transition-all duration-300 hover:-translate-y-1 ${
         isRoyal
-          ? "border-amber-400/40 bg-gradient-to-b from-stone-950 via-zinc-950 to-stone-900 text-stone-100 shadow-[0_8px_30px_-15px_rgba(212,175,55,0.22)] hover:border-amber-400/80 hover:shadow-[0_16px_45px_-15px_rgba(212,175,55,0.4)]"
+          ? "border-amber-300/80 bg-gradient-to-b from-[#FFFDF7] via-[#FFFBF0] to-[#FFF8E7] text-stone-900 shadow-[0_8px_30px_-15px_rgba(217,119,6,0.15)] hover:border-amber-400 hover:shadow-[0_16px_45px_-15px_rgba(217,119,6,0.25)] dark:border-amber-400/40 dark:bg-gradient-to-b dark:from-stone-950 dark:via-zinc-950 dark:to-stone-900 dark:text-stone-100 dark:shadow-[0_8px_30px_-15px_rgba(212,175,55,0.22)] dark:hover:border-amber-400/80 dark:hover:shadow-[0_16px_45px_-15px_rgba(212,175,55,0.4)]"
           : isVerified
           ? "border-emerald-200/80 bg-white shadow-sm hover:border-emerald-400 hover:shadow-[0_12px_35px_-15px_rgba(16,185,129,0.3)] dark:border-emerald-900/60 dark:bg-zinc-900"
           : "border-stone-200/90 bg-white shadow-xs hover:border-emerald-300/85 hover:shadow-md dark:border-stone-800 dark:bg-stone-900 dark:hover:border-emerald-800/60"
@@ -119,7 +119,7 @@ export function ProductCard({ product, storeBadge }: ProductCardProps) {
       <div
         className={`relative h-52 overflow-hidden border-b ${
           isRoyal
-            ? "border-amber-400/20 bg-stone-950"
+            ? "border-amber-200/60 bg-amber-50/50 dark:border-amber-400/20 dark:bg-stone-950"
             : isVerified
             ? "border-emerald-100 bg-stone-100 dark:border-emerald-950/60 dark:bg-stone-950/40"
             : "border-stone-200 bg-stone-100 dark:border-stone-800 dark:bg-stone-950/40"
@@ -141,15 +141,15 @@ export function ProductCard({ product, storeBadge }: ProductCardProps) {
         ) : null}
 
         {product.isFeatured ? (
-          <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full border border-amber-400/50 bg-stone-950/85 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-300 shadow-md backdrop-blur-sm dark:bg-stone-900/90">
-            <Sparkles className="h-3 w-3 fill-amber-400 text-amber-400" />
+          <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-900 shadow-md backdrop-blur-sm dark:border-amber-400/50 dark:bg-stone-900/90 dark:text-amber-300">
+            <Sparkles className="h-3 w-3 fill-amber-500 text-amber-500 dark:fill-amber-400 dark:text-amber-400" />
             Trending
           </span>
         ) : null}
 
         {isRoyal ? (
-          <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full border border-amber-400/50 bg-black/80 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-300 shadow-sm backdrop-blur-sm">
-            <Crown className="h-2.5 w-2.5 fill-amber-400" />
+          <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-100/90 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-900 shadow-sm backdrop-blur-sm dark:border-amber-400/50 dark:bg-black/80 dark:text-amber-300">
+            <Crown className="h-2.5 w-2.5 fill-amber-500 text-amber-500 dark:fill-amber-400 dark:text-amber-400" />
             Royal
           </span>
         ) : isVerified ? (
@@ -170,12 +170,12 @@ export function ProductCard({ product, storeBadge }: ProductCardProps) {
           <div className="min-w-0 flex-1">
             <h3
               className={`line-clamp-2 text-base font-semibold leading-6 transition-colors duration-200 ${
-                isRoyal ? "text-white group-hover:text-amber-300" : "text-stone-900 group-hover:text-emerald-700 dark:text-stone-50 dark:group-hover:text-emerald-400"
+                isRoyal ? "text-stone-900 group-hover:text-amber-700 dark:text-white dark:group-hover:text-amber-300" : "text-stone-900 group-hover:text-emerald-700 dark:text-stone-50 dark:group-hover:text-emerald-400"
               }`}
             >
               {product.name}
             </h3>
-            <p className={`mt-1 text-xs ${isRoyal ? "text-amber-200/70" : isVerified ? "text-emerald-700 dark:text-emerald-400 font-medium" : "text-stone-500 dark:text-stone-400"}`}>
+            <p className={`mt-1 text-xs ${isRoyal ? "text-amber-800/80 dark:text-amber-200/70" : isVerified ? "text-emerald-700 dark:text-emerald-400 font-medium" : "text-stone-500 dark:text-stone-400"}`}>
               {product.brand ?? (isRoyal ? "Royal Selection" : isVerified ? "Verified Merchant" : "Local Merchant")}
             </p>
           </div>
@@ -184,7 +184,7 @@ export function ProductCard({ product, storeBadge }: ProductCardProps) {
             <div
               className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium ${
                 isRoyal
-                  ? "border border-amber-400/30 bg-amber-500/15 text-amber-300"
+                  ? "border border-amber-300 bg-amber-100/80 text-amber-900 dark:border-amber-400/30 dark:bg-amber-500/15 dark:text-amber-300"
                   : "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300"
               }`}
             >
@@ -194,13 +194,13 @@ export function ProductCard({ product, storeBadge }: ProductCardProps) {
           ) : null}
         </div>
 
-        <p className={`mt-3 text-sm ${isRoyal ? "text-stone-400" : "text-stone-500 dark:text-stone-400"}`}>
+        <p className={`mt-3 text-sm ${isRoyal ? "text-stone-500 dark:text-stone-400" : "text-stone-500 dark:text-stone-400"}`}>
           {product.unit ?? "Standard pack"}
         </p>
 
         <div className="mt-4 flex items-end justify-between gap-3">
           <div>
-            <p className={`text-xl font-bold ${isRoyal ? "text-white" : "text-stone-900 dark:text-stone-50"}`}>
+            <p className={`text-xl font-bold ${isRoyal ? "text-stone-900 dark:text-white" : "text-stone-900 dark:text-stone-50"}`}>
               ₹{displayPrice}
             </p>
             {displayPrice !== product.price ? (
@@ -211,7 +211,7 @@ export function ProductCard({ product, storeBadge }: ProductCardProps) {
             <span
               className={`rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] ${
                 isRoyal
-                  ? "border border-amber-400/30 bg-amber-500/15 text-amber-300"
+                  ? "border border-amber-300 bg-amber-100/80 text-amber-900 dark:border-amber-400/30 dark:bg-amber-500/15 dark:text-amber-300"
                   : isVerified
                   ? "border border-emerald-300/70 bg-emerald-50 font-bold text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
                   : "border border-emerald-200/90 bg-emerald-50 text-[10px] font-bold text-emerald-800 dark:border-emerald-800/40 dark:bg-emerald-950/40 dark:text-emerald-300"
@@ -253,7 +253,7 @@ export function ProductCard({ product, storeBadge }: ProductCardProps) {
                 isInWishlist
                   ? "border-red-200 bg-red-50 text-red-500 shadow-sm dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-400"
                   : isRoyal
-                  ? "border-amber-400/40 bg-stone-900/90 text-amber-200 hover:border-amber-400 hover:text-amber-300"
+                  ? "border-amber-300 bg-amber-50/80 text-amber-900 hover:border-amber-400 hover:text-amber-950 dark:border-amber-400/40 dark:bg-stone-900/90 dark:text-amber-200 dark:hover:border-amber-400 dark:hover:text-amber-300"
                   : isVerified
                   ? "border-emerald-200 bg-emerald-50/50 text-emerald-700 hover:border-emerald-400 hover:bg-emerald-100/60 dark:border-emerald-900/60 dark:bg-zinc-900 dark:text-emerald-300"
                   : "border-stone-200 bg-stone-50 text-stone-600 hover:border-emerald-200 hover:text-emerald-600 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-200 dark:hover:border-emerald-500/40 dark:hover:text-emerald-300"
@@ -263,9 +263,8 @@ export function ProductCard({ product, storeBadge }: ProductCardProps) {
             </button>
           </div>
 
-
           {message ? (
-            <p className={`mt-3 text-xs font-medium ${isRoyal ? "text-amber-300" : "text-emerald-600 dark:text-emerald-400"}`}>
+            <p className={`mt-3 text-xs font-medium ${isRoyal ? "text-amber-700 dark:text-amber-300" : "text-emerald-600 dark:text-emerald-400"}`}>
               {message}
             </p>
           ) : null}

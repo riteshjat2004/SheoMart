@@ -26,7 +26,26 @@ export class HomeService {
    * - Must belong to an active, approved, non-suspended store
    * - Ordered by featuredPriority DESC, featuredAt DESC, updatedAt DESC
    */
-  static async getTrendingProducts() {
+  static async getTrendingProducts(location?: { pincode?: string; city?: string }) {
+    const pincode = location?.pincode?.trim();
+    const city = location?.city?.trim();
+
+    const storeMatch: Record<string, unknown> = {
+      "storeData.status": { $in: [STORE_STATUS.APPROVED, STORE_STATUS.ACTIVE] },
+      "storeData.isActive": { $ne: false },
+      "storeData.isDeleted": { $ne: true },
+    };
+
+    if (pincode) {
+      storeMatch["storeData.pincode"] = {
+        $regex: new RegExp(`^\\s*${pincode.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i"),
+      };
+    } else if (city) {
+      storeMatch["storeData.city"] = {
+        $regex: new RegExp(`^\\s*${city.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i"),
+      };
+    }
+
     const featuredProducts = await Product.aggregate([
       {
         $match: {
@@ -48,11 +67,7 @@ export class HomeService {
         $unwind: "$storeData",
       },
       {
-        $match: {
-          "storeData.status": STORE_STATUS.APPROVED,
-          "storeData.isActive": { $ne: false },
-          "storeData.isDeleted": { $ne: true },
-        },
+        $match: storeMatch,
       },
       {
         $lookup: {
@@ -115,6 +130,8 @@ export class HomeService {
           updatedAt: 1,
           store: "$storeData.storeName",
           storeBadge: "$storeData.badge",
+          storePincode: "$storeData.pincode",
+          storeCity: "$storeData.city",
           category: "$categoryData.name",
         },
       },
@@ -122,7 +139,7 @@ export class HomeService {
 
     let finalProducts = [...featuredProducts];
 
-    // Ensure at least 8 trending products are always visible on the homepage
+    // Ensure at least 8 trending products are visible if available in this area
     if (finalProducts.length < 8) {
       const existingProductIds = finalProducts.map((p) => p.productId).filter(Boolean);
       const needed = 8 - finalProducts.length;
@@ -148,11 +165,7 @@ export class HomeService {
           $unwind: "$storeData",
         },
         {
-          $match: {
-            "storeData.status": STORE_STATUS.APPROVED,
-            "storeData.isActive": { $ne: false },
-            "storeData.isDeleted": { $ne: true },
-          },
+          $match: storeMatch,
         },
         {
           $lookup: {
@@ -214,6 +227,8 @@ export class HomeService {
             updatedAt: 1,
             store: "$storeData.storeName",
             storeBadge: "$storeData.badge",
+            storePincode: "$storeData.pincode",
+            storeCity: "$storeData.city",
             category: "$categoryData.name",
           },
         },
@@ -222,23 +237,50 @@ export class HomeService {
       finalProducts = [...finalProducts, ...fallbackProducts];
     }
 
+    if (pincode) {
+      const normalizedPin = pincode.toLowerCase();
+      finalProducts = finalProducts.filter(
+        (p) => typeof p.storePincode === "string" && p.storePincode.trim().toLowerCase() === normalizedPin
+      );
+    } else if (city) {
+      const normalizedCity = city.toLowerCase();
+      finalProducts = finalProducts.filter(
+        (p) => typeof p.storeCity === "string" && p.storeCity.trim().toLowerCase() === normalizedCity
+      );
+    }
+
     return finalProducts;
   }
 
-  static async getHeroCarousel(): Promise<HeroShowcaseItem[]> {
+  static async getHeroCarousel(location?: { pincode?: string; city?: string }): Promise<HeroShowcaseItem[]> {
+    const storeMatch: Record<string, unknown> = {
+      status: { $in: [STORE_STATUS.APPROVED, STORE_STATUS.ACTIVE] },
+      isActive: { $ne: false },
+      isDeleted: { $ne: true },
+    };
+    if (location?.pincode?.trim()) {
+      storeMatch.pincode = {
+        $regex: new RegExp(`^\\s*${location.pincode.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i"),
+      };
+    } else if (location?.city?.trim()) {
+      storeMatch.city = {
+        $regex: new RegExp(`^\\s*${location.city.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i"),
+      };
+    }
+
     const [products, categories, stores] = await Promise.all([
       Product.aggregate([
-        { $match: { isActive: true, isPublished: true } },
+        { $match: { isActive: true, isPublished: true, isDeleted: { $ne: true } } },
         { $sample: { size: 2 } },
         { $project: { productId: 1, name: 1, thumbnail: 1, images: 1, storeId: 1 } },
       ]),
       Category.aggregate([
-        { $match: { isActive: true } },
+        { $match: { isActive: true, isDeleted: { $ne: true } } },
         { $sample: { size: 2 } },
         { $project: { categoryId: 1, name: 1, image: 1 } },
       ]),
       Store.aggregate([
-        { $match: { status: STORE_STATUS.APPROVED } },
+        { $match: storeMatch },
         { $sample: { size: 1 } },
         { $project: { storeId: 1, storeName: 1, banner: 1, logo: 1, rating: 1, deliveryEnabled: 1, badge: 1 } },
       ]),

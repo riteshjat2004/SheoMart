@@ -33,6 +33,7 @@ import { fetchMyStore, updateMyStore, type DeliverySlot, type UpdateMyStorePaylo
 import { useAuthStore } from "@/store/auth-store";
 import type { StoreItem } from "@/types/marketplace";
 import { SellerSecurityRequestCard } from "@/components/security/SellerSecurityRequestCard";
+import { ThemeSelectionCard } from "@/components/common/ThemeSelectionCard";
 
 const settingsSchema = z.object({
   logo: z.string().url("Enter a valid logo URL").or(z.literal("")),
@@ -484,7 +485,9 @@ function StoreSettingsForm({
 
         {/* Tab 4: Appearance & Preview */}
         {activeTab === "appearance" && (
-          <DashboardCard title="Store Branding Preview" description="How your store appears to customers browsing the SheoMart app.">
+          <div className="space-y-6">
+            <ThemeSelectionCard />
+            <DashboardCard title="Store Branding Preview" description="How your store appears to customers browsing the SheoMart app.">
             <div className="overflow-hidden rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 shadow-sm">
               <div className="h-36 bg-stone-100 dark:bg-stone-800 relative">
                 {formValues.banner ? (
@@ -525,6 +528,7 @@ function StoreSettingsForm({
               </div>
             </div>
           </DashboardCard>
+          </div>
         )}
 
         {/* Tab 5: Security */}

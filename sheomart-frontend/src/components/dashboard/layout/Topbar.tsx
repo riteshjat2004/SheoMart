@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, AlertTriangle } from "lucide-react";
+import { Menu, AlertTriangle, Home, ExternalLink } from "lucide-react";
 import { useAppStore } from "@/store/app-store";
 import { useAdminSettings, useSystemHealth } from "@/hooks/use-admin-settings";
 import { QuickCreateDropdown } from "./QuickCreateDropdown";
@@ -37,8 +38,8 @@ export function Topbar({ role, isScrolled = false }: TopbarProps) {
       }`}
     >
       <div className="flex h-[60px] items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Left Section: Mobile Menu Trigger on small screens */}
-        <div className="flex items-center">
+        {/* Left Section: Mobile Menu Trigger + Home Page Button */}
+        <div className="flex items-center gap-2.5">
           <button
             type="button"
             onClick={() => setMobileMenuOpen(true)}
@@ -47,6 +48,16 @@ export function Topbar({ role, isScrolled = false }: TopbarProps) {
           >
             <Menu className="h-5 w-5" />
           </button>
+
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 rounded-xl border border-stone-200/90 bg-stone-50/90 px-3 py-1.5 text-xs font-bold text-stone-700 hover:border-emerald-500 hover:bg-emerald-50/80 hover:text-emerald-900 transition shadow-2xs dark:border-stone-800 dark:bg-stone-900/90 dark:text-stone-200 dark:hover:border-emerald-600 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-300"
+            title="Go to SheoMart Customer Home Page"
+          >
+            <Home className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span>Home Page</span>
+            <ExternalLink className="h-3 w-3 text-stone-400 shrink-0 hidden sm:inline" />
+          </Link>
         </div>
 
         {/* Right Section */}

@@ -11,11 +11,11 @@ function AuthBootstrap() {
 
 export function GlobalProviders({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider>
-      <QueryProvider>
+    <QueryProvider>
+      <ThemeProvider>
         <AuthBootstrap />
         {children}
-      </QueryProvider>
-    </ThemeProvider>
+      </ThemeProvider>
+    </QueryProvider>
   );
 }

@@ -16,11 +16,11 @@ export function RoyalShoppingConcierge() {
             </span>
           </div>
 
-          <h2 id="royal-shopping-concierge-heading" className={`mt-3 text-2xl font-bold tracking-tight text-white`}>
+          <h2 id="royal-shopping-concierge-heading" className="mt-3 text-2xl font-bold tracking-tight text-stone-900 dark:text-white">
             Personal Flagship Shopping Concierge
           </h2>
 
-          <p className="mt-2 text-sm leading-6 text-stone-300">
+          <p className="mt-2 text-sm leading-6 text-stone-600 dark:text-stone-300">
             Need a bespoke festive hamper, specific organic cut, or special delivery timing? Our personal shopping advisors curate directly with the seller on your behalf.
           </p>
         </div>
@@ -30,13 +30,13 @@ export function RoyalShoppingConcierge() {
             href="https://wa.me/?text=Hello%2C%20I%20would%20like%20to%20consult%20the%20SheoMart%20Royal%20Shopping%20Concierge."
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-full border border-amber-400/50 bg-stone-900/90 px-4 py-2.5 text-xs font-bold text-amber-200 transition-colors hover:border-amber-400 hover:bg-amber-400 hover:text-stone-950"
+            className="inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-4 py-2.5 text-xs font-bold text-amber-950 transition-colors hover:border-amber-400 hover:bg-amber-100 dark:border-amber-400/50 dark:bg-stone-900/90 dark:text-amber-200 dark:hover:border-amber-400 dark:hover:bg-amber-400 dark:hover:text-stone-950"
           >
             <MessageCircle className="h-4 w-4" /> WhatsApp Advisor
           </a>
           <a
             href="tel:1800123456"
-            className="inline-flex items-center gap-2 rounded-full border border-amber-400/50 bg-stone-900/90 px-4 py-2.5 text-xs font-bold text-amber-200 transition-colors hover:border-amber-400 hover:bg-amber-400 hover:text-stone-950"
+            className="inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-4 py-2.5 text-xs font-bold text-amber-950 transition-colors hover:border-amber-400 hover:bg-amber-100 dark:border-amber-400/50 dark:bg-stone-900/90 dark:text-amber-200 dark:hover:border-amber-400 dark:hover:bg-amber-400 dark:hover:text-stone-950"
           >
             <Phone className="h-4 w-4" /> Call Specialist
           </a>

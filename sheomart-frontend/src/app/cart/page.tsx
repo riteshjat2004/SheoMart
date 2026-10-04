@@ -179,7 +179,7 @@ export default function CartPage() {
           {/* Header */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-600">
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-600 dark:text-emerald-400">
                 Your Shopping Cart
               </p>
               <h1 className="mt-1 text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl dark:text-stone-50">
@@ -187,7 +187,7 @@ export default function CartPage() {
               </h1>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button asChild variant="outline" size="sm">
+              <Button asChild variant="outline" size="sm" className="rounded-xl border-stone-200 text-stone-700 hover:bg-stone-100 dark:border-stone-800 dark:text-stone-300 dark:hover:bg-stone-800">
                 <Link href="/explore">Continue Shopping</Link>
               </Button>
               {cartItems.length > 0 && (
@@ -196,7 +196,7 @@ export default function CartPage() {
                   size="sm"
                   onClick={handleClearCart}
                   disabled={isClearingCart}
-                  className="text-stone-500 hover:text-red-600"
+                  className="rounded-xl text-stone-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
                 >
                   Clear Cart
                 </Button>
@@ -206,10 +206,10 @@ export default function CartPage() {
 
           {/* Delivery progress bar */}
           {cartItems.length > 0 && (
-            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/80 p-4 dark:border-emerald-950 dark:bg-emerald-950/30">
+            <div className="rounded-2xl border border-emerald-200/80 bg-emerald-50/80 p-4 dark:border-emerald-950 dark:bg-emerald-950/30">
               <div className="flex items-center justify-between text-xs font-semibold text-emerald-800 dark:text-emerald-200">
                 <span className="flex items-center gap-1.5">
-                  <Truck className="h-4 w-4 text-emerald-600" />
+                  <Truck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                   {isFreeDelivery
                     ? "Congratulations! You have unlocked FREE Doorstep Delivery"
                     : `Add ₹${FREE_DELIVERY_THRESHOLD - rawSubtotal} more for FREE Delivery!`}
@@ -218,7 +218,7 @@ export default function CartPage() {
               </div>
               <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-emerald-200/60 dark:bg-emerald-900/60">
                 <div
-                  className="h-full bg-emerald-600 transition-all duration-300"
+                  className="h-full bg-emerald-600 transition-all duration-300 dark:bg-emerald-500"
                   style={{
                     width: `${Math.min(100, (rawSubtotal / FREE_DELIVERY_THRESHOLD) * 100)}%`,
                   }}
@@ -239,7 +239,7 @@ export default function CartPage() {
             <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
               {/* Items List */}
               <div className="space-y-4">
-                <div className="rounded-[2rem] border border-stone-200 bg-white p-5 shadow-sm dark:border-stone-800 dark:bg-zinc-900">
+                <div className="rounded-[2rem] border border-stone-200/90 bg-white p-5 shadow-sm dark:border-stone-800 dark:bg-zinc-900">
                   <div className="divide-y divide-stone-100 dark:divide-stone-800">
                     {cartItems.map((item) => {
                       const effPrice = item.product.discountPrice ?? item.product.price;
@@ -266,15 +266,15 @@ export default function CartPage() {
                             <div className="space-y-1">
                               <Link
                                 href={`/products/${item.product.productId}`}
-                                className="font-semibold text-stone-900 hover:underline line-clamp-1 dark:text-stone-50"
+                                className="font-semibold text-stone-900 hover:text-emerald-700 transition-colors line-clamp-1 dark:text-stone-50 dark:hover:text-emerald-400"
                               >
                                 {item.product.name}
                               </Link>
-                              <p className="text-xs text-stone-500">
+                              <p className="text-xs text-stone-500 dark:text-stone-400">
                                 {item.product.brand || "SheoMart"} • ₹{effPrice} each
                               </p>
                               {!item.isAvailable && (
-                                <span className="inline-block rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                                <span className="inline-block rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">
                                   {item.availabilityMessage || "Currently unavailable"}
                                 </span>
                               )}
@@ -297,7 +297,7 @@ export default function CartPage() {
                                   handleQuantityChange(item.cartItemId, item.quantity - 1);
                                 }}
                                 disabled={updateCartItem.isPending}
-                                className="rounded-full p-1.5 text-stone-600 hover:bg-white dark:text-stone-300"
+                                className="rounded-full p-1.5 text-stone-600 hover:bg-stone-200/80 dark:text-stone-300 dark:hover:bg-stone-800 transition"
                               >
                                 <Minus className="h-3.5 w-3.5" />
                               </button>
@@ -313,7 +313,7 @@ export default function CartPage() {
                                   updateCartItem.isPending ||
                                   item.quantity >= (item.maxAvailableQuantity ?? 99)
                                 }
-                                className="rounded-full p-1.5 text-stone-600 hover:bg-white dark:text-stone-300"
+                                className="rounded-full p-1.5 text-stone-600 hover:bg-stone-200/80 dark:text-stone-300 dark:hover:bg-stone-800 transition"
                               >
                                 <Plus className="h-3.5 w-3.5" />
                               </button>
@@ -332,7 +332,7 @@ export default function CartPage() {
                                   handleMoveToWishlist(item.cartItemId, item.product.productId)
                                 }
                                 title="Move to Wishlist"
-                                className="rounded-full p-2 text-stone-400 hover:text-emerald-600"
+                                className="rounded-full p-2 text-stone-400 hover:text-emerald-600 transition"
                               >
                                 <Heart className="h-4 w-4" />
                               </button>
@@ -340,7 +340,7 @@ export default function CartPage() {
                                 type="button"
                                 onClick={() => handleRemoveItem(item.cartItemId)}
                                 title="Remove"
-                                className="rounded-full p-2 text-stone-400 hover:text-red-600"
+                                className="rounded-full p-2 text-stone-400 hover:text-red-600 transition"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </button>
@@ -362,8 +362,8 @@ export default function CartPage() {
               {/* Order Summary & Coupon Card */}
               <aside className="space-y-4">
                 {/* Apply Coupon Widget */}
-                <div className="rounded-[1.75rem] border border-stone-200 bg-white p-5 shadow-sm dark:border-stone-800 dark:bg-zinc-900">
-                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-600">
+                <div className="rounded-[1.75rem] border border-stone-200/90 bg-white p-5 shadow-sm dark:border-stone-800 dark:bg-zinc-900">
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
                     <Tag className="h-4 w-4" />
                     <span>Apply Coupon</span>
                   </div>
@@ -374,7 +374,7 @@ export default function CartPage() {
                         <p className="font-bold text-emerald-800 dark:text-emerald-200">
                           {appliedCoupon.code}
                         </p>
-                        <p className="text-[11px] text-emerald-600">
+                        <p className="text-[11px] text-emerald-600 dark:text-emerald-400">
                           Saved ₹{appliedCoupon.discount} on this order
                         </p>
                       </div>
@@ -395,20 +395,20 @@ export default function CartPage() {
                         placeholder="Enter coupon code"
                         className="flex-1 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs font-semibold uppercase text-stone-900 outline-none focus:border-emerald-500 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-50"
                       />
-                      <Button type="submit" size="sm" className="bg-emerald-600 text-white">
+                      <Button type="submit" size="sm" className="bg-emerald-600 text-white hover:bg-emerald-500">
                         Apply
                       </Button>
                     </form>
                   )}
 
                   {couponError && (
-                    <p className="mt-2 text-xs font-medium text-red-600">{couponError}</p>
+                    <p className="mt-2 text-xs font-medium text-red-600 dark:text-red-400">{couponError}</p>
                   )}
                 </div>
 
                 {/* Bill Breakdown */}
-                <div className="rounded-[1.75rem] border border-stone-200 bg-white p-5 shadow-sm dark:border-stone-800 dark:bg-zinc-900">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-stone-500">
+                <div className="rounded-[1.75rem] border border-stone-200/90 bg-white p-5 shadow-sm dark:border-stone-800 dark:bg-zinc-900">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
                     Bill Details
                   </h3>
 
@@ -421,14 +421,14 @@ export default function CartPage() {
                     </div>
 
                     {totals.estimatedSavings > 0 && (
-                      <div className="flex justify-between text-emerald-600 font-medium">
+                      <div className="flex justify-between text-emerald-600 font-medium dark:text-emerald-400">
                         <span>Product Savings</span>
                         <span>-₹{totals.estimatedSavings}</span>
                       </div>
                     )}
 
                     {appliedCoupon && (
-                      <div className="flex justify-between text-emerald-600 font-medium">
+                      <div className="flex justify-between text-emerald-600 font-medium dark:text-emerald-400">
                         <span>Coupon Savings ({appliedCoupon.code})</span>
                         <span>-₹{appliedCoupon.discount}</span>
                       </div>
@@ -438,7 +438,7 @@ export default function CartPage() {
                       <span>Delivery Fee</span>
                       <span>
                         {isFreeDelivery ? (
-                          <span className="font-bold text-emerald-600">FREE</span>
+                          <span className="font-bold text-emerald-600 dark:text-emerald-400">FREE</span>
                         ) : (
                           `₹${deliveryFee}`
                         )}
@@ -474,7 +474,7 @@ export default function CartPage() {
                     type="button"
                     onClick={() => router.push("/checkout")}
                     disabled={!canProceedToCheckout}
-                    className="mt-5 w-full rounded-full bg-emerald-600 py-6 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-700"
+                    className="mt-5 w-full rounded-full bg-emerald-600 py-6 text-sm font-bold text-white shadow-md shadow-emerald-600/20 hover:bg-emerald-500"
                   >
                     Proceed to Checkout
                     <ArrowRight className="ml-2 h-4 w-4" />

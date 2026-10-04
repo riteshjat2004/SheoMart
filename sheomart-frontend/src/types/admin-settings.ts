@@ -36,6 +36,7 @@ export interface MarketplaceSettings {
     themePrimary: string;
     themeSecondary: string;
     themeAccent: string;
+    defaultTheme?: "dark" | "light";
   };
   delivery: {
     deliveryCharge: number;

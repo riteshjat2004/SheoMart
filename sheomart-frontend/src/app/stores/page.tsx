@@ -74,7 +74,7 @@ export default function StoresPage() {
               type="button"
               variant="outline"
               onClick={() => setLocationModalOpen(true)}
-              className="rounded-full border-stone-300 dark:border-stone-700 h-11 px-4 text-xs font-medium shrink-0"
+              className="rounded-full border-stone-200 bg-white hover:bg-stone-100 dark:border-stone-700 dark:bg-zinc-900 dark:hover:bg-stone-800 h-11 px-4 text-xs font-medium shrink-0 shadow-xs"
               title="Change delivery PIN code"
             >
               <MapPin className="mr-2 h-3.5 w-3.5 text-emerald-500" />

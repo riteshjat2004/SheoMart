@@ -35,31 +35,31 @@ export function VerifiedCollections({ products }: { products: ProductItem[] }) {
           return (
             <article
               key={title}
-              className="group relative flex min-h-[180px] min-w-[250px] snap-start flex-col justify-between overflow-hidden rounded-3xl border border-emerald-300/40 bg-gradient-to-br from-emerald-950 via-teal-950 to-slate-950 p-5 shadow-sm transition-all duration-300 hover:border-emerald-400 hover:shadow-md"
+              className="group relative flex min-h-[180px] min-w-[250px] snap-start flex-col justify-between overflow-hidden rounded-3xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50/90 via-teal-50/50 to-white p-5 shadow-sm transition-all duration-300 hover:border-emerald-400 hover:shadow-md dark:border-emerald-300/40 dark:bg-gradient-to-br dark:from-emerald-950 dark:via-teal-950 dark:to-slate-950"
             >
               {image ? (
                 <img
                   src={image}
                   alt=""
-                  className="absolute inset-0 h-full w-full object-cover opacity-25 transition-transform duration-500 group-hover:scale-105"
+                  className="absolute inset-0 h-full w-full object-cover opacity-20 dark:opacity-25 transition-transform duration-500 group-hover:scale-105"
                 />
               ) : (
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.3),transparent_50%)]" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.15),transparent_50%)] dark:bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.3),transparent_50%)]" />
               )}
-              <div className="absolute inset-0 bg-slate-950/50" />
+              <div className="absolute inset-0 bg-white/40 dark:bg-slate-950/50" />
 
               <div className="relative flex items-center justify-between">
-                <PackageOpen className="h-6 w-6 text-emerald-300" />
-                <span className="rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[10px] font-bold text-emerald-200 border border-emerald-400/30">
+                <PackageOpen className="h-6 w-6 text-emerald-600 dark:text-emerald-300" />
+                <span className="rounded-full bg-emerald-100/90 text-emerald-800 border border-emerald-300/80 px-2.5 py-0.5 text-[10px] font-bold shadow-xs dark:bg-emerald-500/20 dark:text-emerald-200 dark:border-emerald-400/30">
                   {count}
                 </span>
               </div>
 
               <div className="relative mt-auto pt-4">
-                <h3 className="text-base font-bold text-white group-hover:text-emerald-200 transition-colors">
+                <h3 className="text-base font-bold text-stone-900 group-hover:text-emerald-700 dark:text-white dark:group-hover:text-emerald-200 transition-colors">
                   {title}
                 </h3>
-                <p className="mt-1 flex items-center text-xs font-medium text-emerald-100/80 group-hover:text-emerald-300 transition-colors">
+                <p className="mt-1 flex items-center text-xs font-semibold text-emerald-800 group-hover:text-emerald-950 dark:text-emerald-100/80 dark:group-hover:text-emerald-300 transition-colors">
                   Browse aisle <ArrowRight className="ml-1 h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
                 </p>
               </div>

@@ -25,13 +25,13 @@ export function RoyalGiftExperience() {
         {gifts.map(({ icon: Icon, label, desc }) => (
           <article
             key={label}
-            className={`group rounded-2xl border border-amber-400/30 p-5 text-center transition-all duration-300 ${royalTheme.panel} ${royalTheme.hover}`}
+            className={`group rounded-2xl border border-amber-300/80 p-5 text-center transition-all duration-300 dark:border-amber-400/30 ${royalTheme.panel} ${royalTheme.hover}`}
           >
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-400/40 bg-amber-500/10 text-amber-400 transition-colors group-hover:bg-amber-400 group-hover:text-stone-950">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-400/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 transition-colors group-hover:bg-amber-400 group-hover:text-stone-950">
               <Icon className="h-6 w-6" />
             </div>
-            <p className="mt-3.5 text-sm font-bold text-white group-hover:text-amber-200 transition-colors">{label}</p>
-            <p className="mt-1 text-xs text-stone-300">{desc}</p>
+            <p className="mt-3.5 text-sm font-bold text-stone-900 group-hover:text-amber-700 dark:text-white dark:group-hover:text-amber-200 transition-colors">{label}</p>
+            <p className="mt-1 text-xs text-stone-600 dark:text-stone-300">{desc}</p>
           </article>
         ))}
       </div>

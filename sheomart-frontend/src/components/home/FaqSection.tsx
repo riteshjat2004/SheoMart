@@ -52,14 +52,14 @@ export function FaqSection() {
   return (
     <section className="space-y-6">
       <div className="text-center max-w-2xl mx-auto space-y-2">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-950/40 px-3.5 py-1 text-xs font-semibold uppercase tracking-wider text-emerald-300">
-          <HelpCircle className="h-3.5 w-3.5" />
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-50 px-3.5 py-1 text-xs font-semibold uppercase tracking-wider text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-950/40 dark:text-emerald-300">
+          <HelpCircle className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
           Got Questions?
         </span>
-        <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
+        <h2 className="text-2xl sm:text-3xl font-extrabold text-stone-900 dark:text-white">
           Frequently asked questions
         </h2>
-        <p className="text-sm text-stone-400">
+        <p className="text-sm text-stone-600 dark:text-stone-400">
           Everything you need to know about shopping with SheoMart in Sheopur.
         </p>
       </div>
@@ -72,8 +72,8 @@ export function FaqSection() {
               key={faq.question}
               className={`rounded-2xl border transition-all duration-200 overflow-hidden ${
                 isOpen
-                  ? "border-emerald-500/50 bg-stone-900/90 shadow-md"
-                  : "border-stone-800 bg-stone-900/50 hover:border-stone-700 hover:bg-stone-900/70"
+                  ? "border-emerald-500/40 bg-white shadow-sm dark:border-emerald-500/50 dark:bg-stone-900/90 dark:shadow-md"
+                  : "border-stone-200/90 bg-white/70 hover:border-emerald-200 hover:bg-white dark:border-stone-800 dark:bg-stone-900/50 dark:hover:border-stone-700 dark:hover:bg-stone-900/70"
               }`}
             >
               <button
@@ -83,22 +83,22 @@ export function FaqSection() {
                 aria-expanded={isOpen}
               >
                 <div className="flex items-center gap-3">
-                  <span className="rounded-lg bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-400">
+                  <span className="rounded-lg bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
                     {faq.category}
                   </span>
-                  <span className="text-sm sm:text-base font-semibold text-white">
+                  <span className="text-sm sm:text-base font-semibold text-stone-900 dark:text-white">
                     {faq.question}
                   </span>
                 </div>
                 <ChevronDown
-                  className={`h-4 w-4 text-emerald-400 shrink-0 transition-transform duration-200 ${
+                  className={`h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0 transition-transform duration-200 ${
                     isOpen ? "rotate-180" : ""
                   }`}
                 />
               </button>
 
               {isOpen && (
-                <div className="px-5 pb-5 pt-1 text-xs sm:text-sm leading-relaxed text-stone-300 border-t border-stone-800/60">
+                <div className="px-5 pb-5 pt-1 text-xs sm:text-sm leading-relaxed text-stone-600 border-t border-stone-100 dark:text-stone-300 dark:border-stone-800/60">
                   {faq.answer}
                 </div>
               )}

@@ -18,6 +18,8 @@ import {
   ChevronDown,
   Sparkles,
   ExternalLink,
+  Palette,
+  Home,
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { useAppStore } from "@/store/app-store";
@@ -194,6 +196,14 @@ export function AdminProfileDropdown() {
               <span>My Profile</span>
             </Link>
             <Link
+              href="/admin/settings?tab=appearance"
+              onClick={() => setIsOpen(false)}
+              className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-xs font-medium text-stone-700 transition hover:bg-stone-100 hover:text-stone-900 dark:text-stone-300 dark:hover:bg-stone-800/80 dark:hover:text-stone-50"
+            >
+              <Palette className="h-4 w-4 text-amber-500 dark:text-amber-400" />
+              <span>Appearance & Theme</span>
+            </Link>
+            <Link
               href="/admin/security"
               onClick={() => setIsOpen(false)}
               className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-xs font-medium text-stone-700 transition hover:bg-stone-100 hover:text-stone-900 dark:text-stone-300 dark:hover:bg-stone-800/80 dark:hover:text-stone-50"
@@ -218,6 +228,17 @@ export function AdminProfileDropdown() {
             <p className="px-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500">
               Platform
             </p>
+            <Link
+              href="/"
+              onClick={() => setIsOpen(false)}
+              className="flex items-center justify-between rounded-xl px-2.5 py-2 text-xs font-medium text-stone-700 transition hover:bg-stone-100 hover:text-stone-900 dark:text-stone-300 dark:hover:bg-stone-800/80 dark:hover:text-stone-50"
+            >
+              <div className="flex items-center gap-2.5">
+                <Home className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                <span className="font-semibold text-stone-900 dark:text-stone-100">Visit Home Page</span>
+              </div>
+              <ExternalLink className="h-3.5 w-3.5 text-stone-400" />
+            </Link>
             <Link
               href="/admin/settings"
               onClick={() => setIsOpen(false)}

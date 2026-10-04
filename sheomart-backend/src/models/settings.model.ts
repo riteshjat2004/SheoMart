@@ -31,6 +31,7 @@ export interface IMarketplaceSettings extends Document {
     themePrimary: string;
     themeSecondary: string;
     themeAccent: string;
+    defaultTheme: "dark" | "light";
   };
   delivery: {
     deliveryCharge: number;
@@ -156,6 +157,7 @@ const settingsSchema = new Schema<IMarketplaceSettings>(
       themePrimary: { type: String, default: "#059669" },
       themeSecondary: { type: String, default: "#10b981" },
       themeAccent: { type: String, default: "#d97706" },
+      defaultTheme: { type: String, enum: ["dark", "light"], default: "dark" },
     },
     delivery: {
       deliveryCharge: { type: Number, default: 40 },

@@ -234,10 +234,10 @@ export default function ExplorePage() {
       <Section className="space-y-6 py-6 sm:py-8 lg:py-10">
         <Container className="space-y-6">
           {/* Header & Search */}
-          <div className="rounded-[2rem] border border-stone-200 bg-white/90 p-6 shadow-sm backdrop-blur dark:border-stone-800 dark:bg-stone-900/90">
+          <div className="rounded-[2rem] border border-stone-200/90 bg-white/95 p-6 shadow-sm backdrop-blur dark:border-stone-800 dark:bg-stone-900/90">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-600">
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-600 dark:text-emerald-400">
                   Explore Grocery Marketplace
                 </p>
                 <h1 className="mt-1 text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl dark:text-stone-50">
@@ -262,7 +262,7 @@ export default function ExplorePage() {
                   className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
                     activeTab === "products"
                       ? "bg-emerald-600 text-white shadow-sm"
-                      : "bg-stone-100 text-stone-600 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-300"
+                      : "bg-stone-100 text-stone-600 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
                   }`}
                 >
                   Products ({filteredProducts.length})
@@ -273,7 +273,7 @@ export default function ExplorePage() {
                   className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
                     activeTab === "categories"
                       ? "bg-emerald-600 text-white shadow-sm"
-                      : "bg-stone-100 text-stone-600 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-300"
+                      : "bg-stone-100 text-stone-600 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
                   }`}
                 >
                   Categories ({filteredCategories.length})
@@ -284,7 +284,7 @@ export default function ExplorePage() {
                   className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
                     activeTab === "stores"
                       ? "bg-emerald-600 text-white shadow-sm"
-                      : "bg-stone-100 text-stone-600 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-300"
+                      : "bg-stone-100 text-stone-600 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
                   }`}
                 >
                   Stores ({filteredStores.length})
@@ -296,7 +296,7 @@ export default function ExplorePage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setLocationModalOpen(true)}
-                className="rounded-full border-stone-300 dark:border-stone-700 h-8 px-3 text-xs font-medium"
+                className="rounded-full border-stone-200 bg-white hover:bg-stone-100 dark:border-stone-700 dark:bg-stone-900 dark:hover:bg-stone-800 h-8 px-3 text-xs font-medium"
                 title="Change delivery PIN code"
               >
                 <MapPin className="mr-1.5 h-3.5 w-3.5 text-emerald-500" />
@@ -307,9 +307,9 @@ export default function ExplorePage() {
 
           {/* Tab 1: Products */}
           {activeTab === "products" && (
-            <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-              {/* Filter Sidebar */}
-              <aside className="space-y-5 rounded-[1.75rem] border border-stone-200 bg-white p-5 shadow-sm dark:border-stone-800 dark:bg-zinc-900">
+            <div className="grid items-start gap-6 lg:grid-cols-[280px_1fr]">
+              {/* Filter Sidebar - Sticky on desktop */}
+              <aside className="space-y-5 rounded-[1.75rem] border border-stone-200 bg-white p-5 shadow-sm dark:border-stone-800 dark:bg-zinc-900 lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
                 <div className="flex items-center justify-between border-b border-stone-100 pb-3 dark:border-stone-800">
                   <div className="flex items-center gap-2">
                     <SlidersHorizontal className="h-4 w-4 text-emerald-600" />
@@ -494,7 +494,7 @@ export default function ExplorePage() {
                     {[1, 2, 3, 4, 5, 6].map((i) => (
                       <div
                         key={i}
-                        className="h-80 animate-pulse rounded-2xl bg-stone-100 dark:bg-stone-800"
+                        className="h-80 animate-pulse rounded-2xl bg-stone-200/70 dark:bg-stone-800"
                       />
                     ))}
                   </div>
@@ -536,7 +536,7 @@ export default function ExplorePage() {
               {categoriesQuery.isLoading ? (
                 <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
                   {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="h-40 animate-pulse rounded-2xl bg-stone-100" />
+                    <div key={i} className="h-40 animate-pulse rounded-2xl bg-stone-200/70 dark:bg-stone-800" />
                   ))}
                 </div>
               ) : filteredCategories.length ? (
@@ -560,7 +560,7 @@ export default function ExplorePage() {
               {storesQuery.isLoading ? (
                 <div className="grid gap-4 md:grid-cols-3">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-52 animate-pulse rounded-2xl bg-stone-100" />
+                    <div key={i} className="h-52 animate-pulse rounded-2xl bg-stone-200/70 dark:bg-stone-800" />
                   ))}
                 </div>
               ) : filteredStores.length ? (

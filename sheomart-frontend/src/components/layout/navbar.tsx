@@ -29,22 +29,33 @@ export function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-stone-200/70 bg-white/80 backdrop-blur-xl dark:border-stone-800 dark:bg-stone-950/80">
-      <Container className="flex items-center justify-between py-4">
+    <header className="sticky top-0 z-50 border-b border-stone-200/70 bg-white/85 backdrop-blur-xl dark:border-stone-800/80 dark:bg-stone-950/85 transition-colors">
+      <Container className="flex items-center justify-between py-3.5">
         <div className="flex items-center gap-3">
-          <Link href="/" className="flex h-10 items-center gap-3">
-            <Image src="/logo/sheomartheaderlogo.png" alt="SheoMart - Fresh essentials, beautifully delivered" width={216} height={72} className="-my-1 h-12 w-auto object-contain" priority />
+          <Link href="/" className="flex items-center gap-2.5 group transition">
+            <Image
+              src="/logo/appicon.png"
+              alt="SheoMart"
+              width={40}
+              height={40}
+              className="h-9 w-9 sm:h-10 sm:w-10 rounded-full object-contain shadow-2xs transition-transform group-hover:scale-105"
+              priority
+              unoptimized
+            />
+            <span className="text-xl font-black tracking-tight text-stone-900 dark:text-white">
+              Sheo<span className="text-emerald-600 dark:text-emerald-400">Mart</span>
+            </span>
           </Link>
 
           {/* Delivery Location / PIN Selector */}
           <button
             type="button"
             onClick={() => setIsLocationModalOpen(true)}
-            className="flex items-center gap-1.5 rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs text-stone-700 hover:border-emerald-500 hover:bg-emerald-50/50 hover:text-emerald-800 transition dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300 dark:hover:border-emerald-600 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-300"
-            title="Choose delivery location"
+            className="flex items-center gap-1.5 rounded-full border border-stone-200/90 bg-stone-100/70 px-3 py-1.5 text-xs text-stone-700 hover:border-emerald-500 hover:bg-emerald-50/60 hover:text-emerald-800 transition shadow-2xs dark:border-stone-800 dark:bg-stone-900/80 dark:text-stone-300 dark:hover:border-emerald-600 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-300"
+            title="Choose delivery location or PIN code"
           >
             <MapPin className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-            <span className="max-w-[120px] truncate font-semibold sm:max-w-[180px]">
+            <span className="max-w-[130px] truncate font-semibold sm:max-w-[190px]">
               {locationLabel}
             </span>
             <ChevronDown className="h-3 w-3 text-stone-400 shrink-0" />
@@ -58,7 +69,7 @@ export function Navbar() {
           <NavbarSearch key={pathname} className="hidden w-[260px] lg:block" />
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <Button variant="ghost" size="icon" aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"} className="md:hidden" onClick={() => setIsMobileMenuOpen((open) => !open)}>
             {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
@@ -103,7 +114,11 @@ export function Navbar() {
           )}
         </div>
       </Container>
-      {isMobileMenuOpen ? <div className="border-t border-stone-200/70 px-4 py-3 md:hidden dark:border-stone-800"><NavbarSearch key={pathname} /></div> : null}
+      {isMobileMenuOpen ? (
+        <div className="border-t border-stone-200/70 px-4 py-3 md:hidden dark:border-stone-800 space-y-3">
+          <NavbarSearch key={pathname} />
+        </div>
+      ) : null}
       <LocationPickerModal isOpen={isLocationModalOpen} onClose={() => setIsLocationModalOpen(false)} />
     </header>
   );

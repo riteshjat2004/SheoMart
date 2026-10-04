@@ -10,7 +10,10 @@ export interface PublicMaintenanceInfo {
 
 export interface PublicSettings {
   general?: Record<string, unknown>;
-  branding?: Record<string, unknown>;
+  branding?: {
+    defaultTheme?: "dark" | "light";
+    [key: string]: unknown;
+  };
   delivery?: Record<string, unknown>;
   payments?: Record<string, unknown>;
   announcement?: Record<string, unknown>;

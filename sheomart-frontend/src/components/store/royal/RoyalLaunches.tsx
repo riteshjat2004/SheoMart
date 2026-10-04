@@ -48,16 +48,16 @@ export function RoyalLaunches({ products }: { products: ProductItem[] }) {
               Next Flagship Drop
             </span>
 
-            <h2 id="royal-launch-heading" className="mt-3 text-2xl font-extrabold text-white sm:text-3xl">
+            <h2 id="royal-launch-heading" className="mt-3 text-2xl font-extrabold text-stone-900 dark:text-white sm:text-3xl">
               {product.name}
             </h2>
 
-            <p className="mt-2 text-sm leading-6 text-stone-300">
+            <p className="mt-2 text-sm leading-6 text-stone-600 dark:text-stone-300">
               Hand-curated for peak season release. Only a limited number of units are reserved for SheoMart Royal patrons.
             </p>
 
             <div className="mt-6 flex flex-wrap items-center gap-3">
-              <span className="rounded-full border border-amber-400/30 bg-stone-900/90 px-3.5 py-2 text-xs font-semibold text-amber-200">
+              <span className="rounded-full border border-amber-300 bg-amber-50 px-3.5 py-2 text-xs font-semibold text-amber-900 dark:border-amber-400/30 dark:bg-stone-900/90 dark:text-amber-200">
                 Dropping This Friday
               </span>
 
@@ -67,8 +67,8 @@ export function RoyalLaunches({ products }: { products: ProductItem[] }) {
                 onClick={() => setWishlisted(!wishlisted)}
                 className={`flex h-11 w-11 items-center justify-center rounded-full border transition-all ${
                   wishlisted
-                    ? "border-red-400 bg-red-950/60 text-red-400"
-                    : "border-amber-400/40 bg-stone-900 text-stone-300 hover:border-amber-400 hover:text-amber-300"
+                    ? "border-red-400 bg-red-100 text-red-600 dark:bg-red-950/60 dark:text-red-400"
+                    : "border-amber-300 bg-white text-stone-600 hover:border-amber-400 hover:text-amber-700 dark:border-amber-400/40 dark:bg-stone-900 dark:text-stone-300 dark:hover:border-amber-400 dark:hover:text-amber-300"
                 }`}
               >
                 <Heart className={`h-4 w-4 ${wishlisted ? "fill-current" : ""}`} />

@@ -73,33 +73,33 @@ export function RoyalCouponWallet() {
           return (
             <article
               key={coupon.code}
-              className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-dashed border-amber-400/40 bg-gradient-to-br from-stone-950 via-zinc-950 to-stone-900 p-5 shadow-[0_8px_30px_-15px_rgba(212,175,55,0.25)] transition-all duration-300 hover:border-amber-400/80 hover:shadow-[0_14px_40px_-15px_rgba(212,175,55,0.4)]"
+              className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-dashed border-amber-300/90 bg-gradient-to-br from-[#FFFDF7] via-[#FFFBF0] to-[#FFF8E7] p-5 shadow-[0_8px_30px_-15px_rgba(217,119,6,0.15)] transition-all duration-300 hover:border-amber-400 hover:shadow-[0_14px_40px_-15px_rgba(217,119,6,0.25)] dark:border-amber-400/40 dark:bg-gradient-to-br dark:from-stone-950 dark:via-zinc-950 dark:to-stone-900 dark:shadow-[0_8px_30px_-15px_rgba(212,175,55,0.25)] dark:hover:border-amber-400/80 dark:hover:shadow-[0_14px_40px_-15px_rgba(212,175,55,0.4)]"
             >
               {/* Radial glow */}
               <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-amber-400/10 blur-xl group-hover:bg-amber-400/20 transition-all" />
 
               <div>
                 <div className="flex items-center justify-between">
-                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-100/90 px-2 py-0.5 text-[10px] font-bold text-amber-900 shadow-xs dark:border-amber-400/30 dark:bg-amber-500/10 dark:text-amber-300">
                     <Sparkles className="h-2.5 w-2.5" />
                     Royal Benefit
                   </span>
-                  <TicketPercent className="h-4 w-4 text-amber-400/70" />
+                  <TicketPercent className="h-4 w-4 text-amber-600 dark:text-amber-400/70" />
                 </div>
 
                 <div className="mt-4">
-                  <p className="text-2xl font-extrabold tracking-tight text-white group-hover:text-amber-300 transition-colors">
+                  <p className="text-2xl font-extrabold tracking-tight text-stone-900 dark:text-white group-hover:text-amber-700 dark:group-hover:text-amber-300 transition-colors">
                     {coupon.discount}
                   </p>
-                  <p className="mt-1 text-xs text-stone-300 line-clamp-1">{coupon.description}</p>
+                  <p className="mt-1 text-xs text-stone-600 dark:text-stone-300 line-clamp-1">{coupon.description}</p>
                 </div>
               </div>
 
-              <div className="mt-5 pt-3 border-t border-amber-400/15">
-                <p className="text-[11px] text-stone-400">{coupon.eligibility}</p>
+              <div className="mt-5 pt-3 border-t border-amber-200/80 dark:border-amber-400/15">
+                <p className="text-[11px] font-medium text-stone-500 dark:text-stone-400">{coupon.eligibility}</p>
 
                 <div className="mt-3 flex items-center justify-between gap-2">
-                  <div className="rounded-lg border border-amber-400/30 bg-black/60 px-2.5 py-1 font-mono text-xs font-bold tracking-wider text-amber-200">
+                  <div className="rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 font-mono text-xs font-bold tracking-wider text-amber-950 dark:border-amber-400/30 dark:bg-black/60 dark:text-amber-200">
                     {coupon.code}
                   </div>
 
@@ -108,8 +108,8 @@ export function RoyalCouponWallet() {
                     onClick={() => handleCopy(coupon.code)}
                     className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-all duration-200 ${
                       isCopied
-                        ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20"
-                        : "bg-amber-400/20 text-amber-300 hover:bg-amber-400 hover:text-stone-950"
+                        ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20"
+                        : "bg-amber-100 text-amber-900 hover:bg-amber-500 hover:text-white dark:bg-amber-400/20 dark:text-amber-300 dark:hover:bg-amber-400 dark:hover:text-stone-950"
                     }`}
                   >
                     {isCopied ? (

@@ -1,13 +1,13 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { fetchHeroCarousel, fetchTrendingProducts, type HeroShowcaseItem } from "@/services/home";
+import { fetchHeroCarousel, fetchTrendingProducts, type HeroShowcaseItem, type HomeLocationParams } from "@/services/home";
 import type { ProductItem } from "@/types/marketplace";
 
-export function useHeroCarousel() {
+export function useHeroCarousel(params?: HomeLocationParams) {
   return useQuery<HeroShowcaseItem[], Error>({
-    queryKey: ["hero-carousel"],
-    queryFn: fetchHeroCarousel,
+    queryKey: ["hero-carousel", params?.pincode ?? null, params?.city ?? null],
+    queryFn: () => fetchHeroCarousel(params),
     staleTime: 0,
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
@@ -17,10 +17,10 @@ export function useHeroCarousel() {
 
 export const useHeroShowcase = useHeroCarousel;
 
-export function useTrendingProducts() {
+export function useTrendingProducts(params?: HomeLocationParams) {
   return useQuery<ProductItem[], Error>({
-    queryKey: ["trending-products"],
-    queryFn: fetchTrendingProducts,
+    queryKey: ["trending-products", params?.pincode ?? null, params?.city ?? null],
+    queryFn: () => fetchTrendingProducts(params),
     staleTime: 1000 * 60 * 5,
     retry: 1,
   });

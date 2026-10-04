@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuthStore } from "@/store/auth-store";
 
 export interface SellerNotification {
   id: string;
@@ -75,14 +76,48 @@ const DEFAULT_SELLER_NOTIFICATIONS: SellerNotification[] = [
 ];
 
 export function SellerNotificationCenter() {
-  const [notifications, setNotifications] = useState<SellerNotification[]>(DEFAULT_SELLER_NOTIFICATIONS);
+  const user = useAuthStore((state) => state.user);
+  const storageKey = `sheomart_seller_read_notifications_${user?.userId || "seller"}`;
+  const [readIds, setReadIds] = useState<Set<string>>(new Set());
+
+  const [notifications, setNotifications] = useState<SellerNotification[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("sheomart_seller_notifications");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {}
+    }
+    return DEFAULT_SELLER_NOTIFICATIONS;
+  });
+
   const [isOpen, setIsOpen] = useState(false);
   const [filterTab, setFilterTab] = useState<"all" | "unread">("all");
   const panelRef = useRef<HTMLDivElement>(null);
 
+  // Load readIds from localStorage
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setReadIds(new Set(parsed));
+          return;
+        }
+      }
+      setReadIds(new Set());
+    } catch {
+      setReadIds(new Set());
+    }
+  }, [storageKey]);
+
   const unreadCount = useMemo(
-    () => notifications.filter((n) => !n.read).length,
-    [notifications]
+    () => notifications.filter((n) => !n.read && !readIds.has(n.id)).length,
+    [notifications, readIds]
   );
 
   useEffect(() => {
@@ -98,23 +133,63 @@ export function SellerNotificationCenter() {
   }, [isOpen]);
 
   const markAsRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
+    setReadIds((prev) => {
+      const next = new Set([...prev, id]);
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(Array.from(next)));
+        } catch {}
+      }
+      return next;
+    });
+
+    setNotifications((prev) => {
+      const next = prev.map((n) => (n.id === id ? { ...n, read: true } : n));
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("sheomart_seller_notifications", JSON.stringify(next));
+        } catch {}
+      }
+      return next;
+    });
   };
 
   const markAllRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    setReadIds((prev) => {
+      const allIds = notifications.map((n) => n.id);
+      const next = new Set([...prev, ...allIds]);
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(Array.from(next)));
+        } catch {}
+      }
+      return next;
+    });
+
+    setNotifications((prev) => {
+      const next = prev.map((n) => ({ ...n, read: true }));
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("sheomart_seller_notifications", JSON.stringify(next));
+        } catch {}
+      }
+      return next;
+    });
   };
 
   const clearAll = () => {
     setNotifications([]);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.removeItem("sheomart_seller_notifications");
+      } catch {}
+    }
   };
 
   const filtered = useMemo(() => {
-    if (filterTab === "unread") return notifications.filter((n) => !n.read);
+    if (filterTab === "unread") return notifications.filter((n) => !n.read && !readIds.has(n.id));
     return notifications;
-  }, [notifications, filterTab]);
+  }, [notifications, readIds, filterTab]);
 
   const grouped = useMemo(() => {
     const todayStart = new Date();
@@ -160,48 +235,55 @@ export function SellerNotificationCenter() {
     }
   };
 
-  const renderItem = (n: SellerNotification) => (
-    <div
-      key={n.id}
-      onClick={() => markAsRead(n.id)}
-      className={`group relative flex items-start gap-3 p-3 transition rounded-xl ${
-        n.read
-          ? "bg-transparent hover:bg-stone-100/70 dark:hover:bg-stone-800/50"
-          : "bg-emerald-50/50 hover:bg-emerald-50 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/30"
-      }`}
-    >
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-stone-100 dark:bg-stone-800 mt-0.5">
-        {getIcon(n.type)}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-2">
-          <p className={`text-xs font-semibold truncate ${n.read ? "text-stone-800 dark:text-stone-200" : "text-stone-900 dark:text-stone-50 font-bold"}`}>
-            {n.title}
+  const renderItem = (n: SellerNotification) => {
+    const isRead = n.read || readIds.has(n.id);
+    return (
+      <div
+        key={n.id}
+        onClick={() => markAsRead(n.id)}
+        className={`group relative flex items-start gap-3 p-3 transition rounded-xl cursor-pointer ${
+          isRead
+            ? "bg-transparent hover:bg-stone-100/70 dark:hover:bg-stone-800/50"
+            : "bg-emerald-50/50 hover:bg-emerald-50 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/30"
+        }`}
+      >
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-stone-100 dark:bg-stone-800 mt-0.5">
+          {getIcon(n.type)}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <p className={`text-xs truncate ${isRead ? "text-stone-800 dark:text-stone-200 font-medium" : "text-stone-900 dark:text-stone-50 font-bold"}`}>
+              {n.title}
+            </p>
+            {!isRead && (
+              <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
+            )}
+          </div>
+          <p className="mt-0.5 text-[11px] leading-relaxed text-stone-500 dark:text-stone-400">
+            {n.message}
           </p>
-          {!n.read && (
-            <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
-          )}
-        </div>
-        <p className="mt-0.5 text-[11px] leading-relaxed text-stone-500 dark:text-stone-400">
-          {n.message}
-        </p>
-        <div className="mt-1.5 flex items-center justify-between">
-          <span className="text-[10px] text-stone-400">
-            {new Date(n.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-          </span>
-          {n.link && (
-            <Link
-              href={n.link}
-              onClick={() => setIsOpen(false)}
-              className="text-[10px] font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 hover:underline"
-            >
-              View details →
-            </Link>
-          )}
+          <div className="mt-1.5 flex items-center justify-between">
+            <span className="text-[10px] text-stone-400">
+              {new Date(n.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            </span>
+            {n.link && (
+              <Link
+                href={n.link}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  markAsRead(n.id);
+                  setIsOpen(false);
+                }}
+                className="text-[10px] font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 hover:underline"
+              >
+                View details →
+              </Link>
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="relative" ref={panelRef}>
@@ -234,15 +316,16 @@ export function SellerNotificationCenter() {
               </div>
               <p className="text-[11px] text-stone-400">Store operations & order alerts</p>
             </div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2">
               {unreadCount > 0 && (
                 <button
                   type="button"
                   onClick={markAllRead}
-                  className="rounded-lg p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-700 dark:hover:bg-stone-800 transition"
-                  title="Mark all as read"
+                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-950/40 transition"
+                  title="Mark all notifications as read"
                 >
-                  <CheckCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                  <CheckCheck className="h-3.5 w-3.5" />
+                  <span>Mark all read</span>
                 </button>
               )}
               <button

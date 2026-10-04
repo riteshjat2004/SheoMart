@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { MapPin, X, Check, Plus, ArrowRight, Home as HomeIcon, Briefcase, Navigation } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -27,8 +28,33 @@ export function LocationPickerModal({ isOpen, open, onClose }: LocationPickerMod
 
   const [inputPincode, setInputPincode] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
-  if (!showModal) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Lock body scroll when modal is active
+  useEffect(() => {
+    if (!showModal) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [showModal]);
+
+  // Handle ESC key press
+  useEffect(() => {
+    if (!showModal) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showModal, onClose]);
+
+  if (!showModal || !mounted) return null;
 
   const handleApplyPincode = (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,9 +81,9 @@ export function LocationPickerModal({ isOpen, open, onClose }: LocationPickerMod
     return <HomeIcon className="h-4 w-4 text-emerald-600" />;
   };
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/60 p-4 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-stone-950/70 p-4 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto"
       role="dialog"
       aria-modal="true"
       aria-labelledby="location-picker-title"
@@ -65,7 +91,7 @@ export function LocationPickerModal({ isOpen, open, onClose }: LocationPickerMod
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-stone-200 bg-white p-6 shadow-2xl dark:border-stone-800 dark:bg-stone-900">
+      <div className="relative my-auto w-full max-w-md overflow-hidden rounded-3xl border border-stone-200 bg-white p-6 shadow-2xl dark:border-stone-800 dark:bg-stone-900">
         <button
           type="button"
           onClick={onClose}
@@ -205,6 +231,7 @@ export function LocationPickerModal({ isOpen, open, onClose }: LocationPickerMod
           </div>
         ) : null}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

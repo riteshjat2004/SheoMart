@@ -15,6 +15,7 @@ import {
   Store,
   BadgeCheck,
   Crown,
+  Home,
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { useProfile } from "@/hooks/useProfile";
@@ -53,6 +54,7 @@ export function SellerProfileDropdown() {
   }, [isOpen]);
 
   const menuItems = [
+    { label: "Visit Home Page", href: "/", icon: Home },
     { label: "Account Profile", href: "/profile", icon: User },
     { label: "Store Settings", href: "/store/settings", icon: Settings },
     { label: "Billing & POS", href: "/store/billing", icon: Receipt },

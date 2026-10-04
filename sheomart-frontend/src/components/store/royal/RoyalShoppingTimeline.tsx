@@ -30,7 +30,7 @@ export function RoyalShoppingTimeline() {
         {steps.map(({ icon: Icon, step, label, desc }, index) => (
           <div key={label} className="relative flex flex-col items-center text-center">
             {/* Step Avatar */}
-            <div className="relative z-10 flex h-12 w-12 items-center justify-center rounded-full border-2 border-amber-400/80 bg-stone-950 text-amber-300 shadow-[0_0_16px_rgba(212,175,55,0.3)]">
+            <div className="relative z-10 flex h-12 w-12 items-center justify-center rounded-full border-2 border-amber-400 bg-amber-50 text-amber-900 shadow-sm dark:border-amber-400/80 dark:bg-stone-950 dark:text-amber-300 dark:shadow-[0_0_16px_rgba(212,175,55,0.3)]">
               <Icon className="h-5 w-5" />
             </div>
 
@@ -42,9 +42,9 @@ export function RoyalShoppingTimeline() {
               />
             ) : null}
 
-            <span className="mt-3 text-[10px] font-mono font-bold text-amber-400/80">STEP {step}</span>
-            <p className="mt-0.5 text-xs font-bold text-white">{label}</p>
-            <p className="mt-1 text-[11px] text-stone-400">{desc}</p>
+            <span className="mt-3 text-[10px] font-mono font-bold text-amber-700 dark:text-amber-400/80">STEP {step}</span>
+            <p className="mt-0.5 text-xs font-bold text-stone-900 dark:text-white">{label}</p>
+            <p className="mt-1 text-[11px] text-stone-500 dark:text-stone-400">{desc}</p>
           </div>
         ))}
       </div>

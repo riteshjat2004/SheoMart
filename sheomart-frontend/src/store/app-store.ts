@@ -76,6 +76,7 @@ interface AppState {
   addNotification: (notif: Omit<DashboardNotification, "id" | "timestamp" | "read">) => void;
 
   hydrateSidebar: () => void;
+  hydrateNotifications: () => void;
 
   // Dense table mode
   denseMode: boolean;
@@ -93,6 +94,19 @@ export const useAppStore = create<AppState>((set) => ({
       if (saved !== null) {
         set({ isSidebarCollapsed: saved === "true" });
       }
+    }
+  },
+  hydrateNotifications: () => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("sheomart_admin_notifications");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            set({ notifications: parsed });
+          }
+        }
+      } catch {}
     }
   },
   setSidebarCollapsed: (collapsed) => {
@@ -115,22 +129,40 @@ export const useAppStore = create<AppState>((set) => ({
 
   notifications: DEFAULT_NOTIFICATIONS,
   markNotificationRead: (id) =>
-    set((state) => ({
-      notifications: state.notifications.map((n) =>
+    set((state) => {
+      const updated = state.notifications.map((n) =>
         n.id === id ? { ...n, read: true } : n
-      ),
-    })),
+      );
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("sheomart_admin_notifications", JSON.stringify(updated));
+        } catch {}
+      }
+      return { notifications: updated };
+    }),
   markAllNotificationsRead: () =>
-    set((state) => ({
-      notifications: state.notifications.map((n) => ({ ...n, read: true })),
-    })),
+    set((state) => {
+      const updated = state.notifications.map((n) => ({ ...n, read: true }));
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("sheomart_admin_notifications", JSON.stringify(updated));
+        } catch {}
+      }
+      return { notifications: updated };
+    }),
   removeNotification: (id) =>
-    set((state) => ({
-      notifications: state.notifications.filter((n) => n.id !== id),
-    })),
+    set((state) => {
+      const updated = state.notifications.filter((n) => n.id !== id);
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("sheomart_admin_notifications", JSON.stringify(updated));
+        } catch {}
+      }
+      return { notifications: updated };
+    }),
   addNotification: (notif) =>
-    set((state) => ({
-      notifications: [
+    set((state) => {
+      const updated = [
         {
           ...notif,
           id: `notif-${Date.now()}`,
@@ -138,8 +170,14 @@ export const useAppStore = create<AppState>((set) => ({
           read: false,
         },
         ...state.notifications,
-      ],
-    })),
+      ];
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("sheomart_admin_notifications", JSON.stringify(updated));
+        } catch {}
+      }
+      return { notifications: updated };
+    }),
 
   denseMode: false,
   toggleDenseMode: () => set((state) => ({ denseMode: !state.denseMode })),

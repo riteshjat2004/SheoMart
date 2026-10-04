@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppStore, type DashboardNotification } from "@/store/app-store";
+import { useAuthStore } from "@/store/auth-store";
 
 export function NotificationCenter() {
   const {
@@ -28,16 +29,67 @@ export function NotificationCenter() {
     markNotificationRead,
     markAllNotificationsRead,
     removeNotification,
+    hydrateNotifications,
   } = useAppStore();
+
+  const user = useAuthStore((state) => state.user);
+  const storageKey = `sheomart_admin_read_notifications_${user?.userId || "admin"}`;
+  const [readIds, setReadIds] = useState<Set<string>>(new Set());
 
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"all" | "unread" | "marketplace" | "system">("all");
   const panelRef = useRef<HTMLDivElement>(null);
 
+  // Hydrate admin notifications and readIds from localStorage
+  useEffect(() => {
+    hydrateNotifications();
+    if (typeof window === "undefined") return;
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setReadIds(new Set(parsed));
+          return;
+        }
+      }
+      setReadIds(new Set());
+    } catch {
+      setReadIds(new Set());
+    }
+  }, [storageKey, hydrateNotifications]);
+
   const unreadCount = useMemo(
-    () => notifications.filter((n) => !n.read).length,
-    [notifications]
+    () => notifications.filter((n) => !n.read && !readIds.has(n.id)).length,
+    [notifications, readIds]
   );
+
+  const handleMarkRead = (id: string) => {
+    markNotificationRead(id);
+    setReadIds((prev) => {
+      const next = new Set([...prev, id]);
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(Array.from(next)));
+        } catch {}
+      }
+      return next;
+    });
+  };
+
+  const handleMarkAllRead = () => {
+    markAllNotificationsRead();
+    setReadIds((prev) => {
+      const allIds = notifications.map((n) => n.id);
+      const next = new Set([...prev, ...allIds]);
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(Array.from(next)));
+        } catch {}
+      }
+      return next;
+    });
+  };
 
   // Close when clicking outside
   useEffect(() => {
@@ -55,12 +107,13 @@ export function NotificationCenter() {
 
   const filteredNotifications = useMemo(() => {
     return notifications.filter((n) => {
-      if (activeTab === "unread") return !n.read;
+      const isRead = n.read || readIds.has(n.id);
+      if (activeTab === "unread") return !isRead;
       if (activeTab === "marketplace") return n.type === "marketplace" || n.type === "inventory";
       if (activeTab === "system") return n.type === "system" || n.type === "security";
       return true;
     });
-  }, [notifications, activeTab]);
+  }, [notifications, readIds, activeTab]);
 
   // Group notifications into Today, Yesterday, Earlier
   const groupedNotifications = useMemo(() => {
@@ -114,78 +167,81 @@ export function NotificationCenter() {
     return `${diffDays}d ago`;
   };
 
-  const renderNotificationItem = (notif: DashboardNotification) => (
-    <div
-      key={notif.id}
-      className={`group relative flex items-start gap-3 p-2 rounded-lg transition ${
-        notif.read
-          ? "hover:bg-stone-50/70 dark:hover:bg-stone-800/40"
-          : "bg-emerald-50/30 hover:bg-emerald-50/60 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/30"
-      }`}
-    >
-      {/* Icon */}
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-stone-100 dark:bg-stone-800 mt-0.5">
-        {getNotificationIcon(notif.type)}
-      </div>
-
-      {/* Body */}
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-1">
-          <p
-            className={`text-[11px] font-bold truncate ${
-              notif.read
-                ? "text-stone-700 dark:text-stone-300"
-                : "text-stone-900 dark:text-stone-100"
-            }`}
-          >
-            {notif.title}
-          </p>
-          <span className="text-[10px] text-stone-400 shrink-0">
-            {formatTimeAgo(notif.timestamp)}
-          </span>
+  const renderNotificationItem = (notif: DashboardNotification) => {
+    const isRead = notif.read || readIds.has(notif.id);
+    return (
+      <div
+        key={notif.id}
+        className={`group relative flex items-start gap-3 p-2 rounded-lg transition ${
+          isRead
+            ? "hover:bg-stone-50/70 dark:hover:bg-stone-800/40"
+            : "bg-emerald-50/30 hover:bg-emerald-50/60 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/30"
+        }`}
+      >
+        {/* Icon */}
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-stone-100 dark:bg-stone-800 mt-0.5">
+          {getNotificationIcon(notif.type)}
         </div>
 
-        <p className="text-[11px] text-stone-500 mt-0.5 leading-snug line-clamp-2">
-          {notif.message}
-        </p>
-
-        <div className="mt-2 flex items-center gap-2">
-          {notif.actionUrl && (
-            <Link
-              href={notif.actionUrl}
-              onClick={() => {
-                markNotificationRead(notif.id);
-                setIsOpen(false);
-              }}
-              className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+        {/* Body */}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-1">
+            <p
+              className={`text-[11px] font-bold truncate ${
+                isRead
+                  ? "text-stone-700 dark:text-stone-300"
+                  : "text-stone-900 dark:text-stone-100"
+              }`}
             >
-              <span>Review</span>
-              <ExternalLink className="h-3 w-3" />
-            </Link>
-          )}
+              {notif.title}
+            </p>
+            <span className="text-[10px] text-stone-400 shrink-0">
+              {formatTimeAgo(notif.timestamp)}
+            </span>
+          </div>
 
-          {!notif.read && (
+          <p className="text-[11px] text-stone-500 mt-0.5 leading-snug line-clamp-2">
+            {notif.message}
+          </p>
+
+          <div className="mt-2 flex items-center gap-2">
+            {notif.actionUrl && (
+              <Link
+                href={notif.actionUrl}
+                onClick={() => {
+                  handleMarkRead(notif.id);
+                  setIsOpen(false);
+                }}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+              >
+                <span>Review</span>
+                <ExternalLink className="h-3 w-3" />
+              </Link>
+            )}
+
+            {!isRead && (
+              <button
+                type="button"
+                onClick={() => handleMarkRead(notif.id)}
+                className="text-[10px] text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"
+              >
+                Mark read
+              </button>
+            )}
+
             <button
               type="button"
-              onClick={() => markNotificationRead(notif.id)}
-              className="text-[10px] text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"
+              onClick={() => removeNotification(notif.id)}
+              className="ml-auto opacity-0 group-hover:opacity-100 text-stone-400 hover:text-rose-500 transition p-0.5"
+              title="Dismiss"
             >
-              Mark read
+              <Trash2 className="h-3 w-3" />
             </button>
-          )}
-
-          <button
-            type="button"
-            onClick={() => removeNotification(notif.id)}
-            className="ml-auto opacity-0 group-hover:opacity-100 text-stone-400 hover:text-rose-500 transition p-0.5"
-            title="Dismiss"
-          >
-            <Trash2 className="h-3 w-3" />
-          </button>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="relative" ref={panelRef}>
@@ -226,7 +282,7 @@ export function NotificationCenter() {
             {unreadCount > 0 && (
               <button
                 type="button"
-                onClick={markAllNotificationsRead}
+                onClick={handleMarkAllRead}
                 className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
               >
                 <CheckCheck className="h-3 w-3" />

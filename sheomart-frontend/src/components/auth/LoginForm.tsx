@@ -48,7 +48,14 @@ export function LoginForm() {
     onSuccess: (session) => {
       setSession(session);
       setServerMessage("Welcome back! Your session is ready.");
-      router.push(redirectTo);
+      const userRole = session.user?.role;
+      if (userRole === "store_owner" && redirectTo === "/") {
+        router.push("/store");
+      } else if (userRole === "platform_admin" && redirectTo === "/") {
+        router.push("/admin");
+      } else {
+        router.push(redirectTo);
+      }
     },
     onError: (error: unknown) => {
       applyServerErrors(setError, error, "identifier");

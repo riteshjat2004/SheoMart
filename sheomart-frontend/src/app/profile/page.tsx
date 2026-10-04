@@ -25,6 +25,7 @@ import { EditProfileDialog } from "@/components/profile/EditProfileDialog";
 import { ProfileSkeleton } from "@/components/profile/ProfileSkeleton";
 import { CustomerInsightsView } from "@/components/profile/CustomerInsightsView";
 import { MyReviewsTab } from "@/components/profile/MyReviewsTab";
+import { ThemeSelectionCard } from "@/components/common/ThemeSelectionCard";
 import { fetchMyStore } from "@/services/store";
 import type { ProfileUpdatePayload, SellerApplicationStatus } from "@/types/profile";
 
@@ -182,6 +183,7 @@ export default function CustomerProfilePage() {
             <ProfileCard title="Quick actions" description="Jump into common customer flows.">
               <QuickActionsCard />
             </ProfileCard>
+            <ThemeSelectionCard />
           </div>
         </div>
       )}

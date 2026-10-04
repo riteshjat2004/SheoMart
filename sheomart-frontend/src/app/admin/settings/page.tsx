@@ -48,6 +48,9 @@ import {
   Wrench,
   X,
   XCircle,
+  Sun,
+  Moon,
+  Check,
 } from "lucide-react";
 import { Breadcrumb } from "@/components/dashboard/layout/Breadcrumb";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
@@ -60,6 +63,8 @@ import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/common/error-state";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { MaintenanceScreen } from "@/components/maintenance/MaintenanceScreen";
+import { ThemeSelectionCard } from "@/components/common/ThemeSelectionCard";
+import { useTheme, setPlatformDefaultTheme } from "@/hooks/use-theme";
 import {
   useAdminSettings,
   useUpdateAdminSettings,
@@ -85,6 +90,7 @@ import type {
 
 type SettingsTab =
   | "general"
+  | "appearance"
   | "branding"
   | "delivery"
   | "payments"
@@ -117,6 +123,30 @@ export default function AdminSettingsPage() {
   const { user } = useAuthStore();
   const { data: profile } = useProfile();
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get("tab") as SettingsTab | null;
+      const validTabs: SettingsTab[] = [
+        "general",
+        "appearance",
+        "branding",
+        "delivery",
+        "payments",
+        "notifications",
+        "security",
+        "maintenance",
+        "audit",
+        "backup",
+        "about",
+      ];
+      if (tabParam && validTabs.includes(tabParam)) {
+        setActiveTab(tabParam);
+      }
+    }
+  }, []);
+
   const settingsQuery = useAdminSettings();
   const updateSettingsMutation = useUpdateAdminSettings();
   const systemHealthQuery = useSystemHealth();
@@ -215,9 +245,15 @@ export default function AdminSettingsPage() {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [passwordFeedback, setPasswordFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
+  const { theme, setTheme } = useTheme();
+
   useEffect(() => {
     if (settingsQuery.data && !draft) {
-      setDraft(JSON.parse(JSON.stringify(settingsQuery.data)));
+      const cloned = JSON.parse(JSON.stringify(settingsQuery.data));
+      if (cloned.branding && !cloned.branding.defaultTheme) {
+        cloned.branding.defaultTheme = "dark";
+      }
+      setDraft(cloned);
     }
   }, [settingsQuery.data, draft]);
 
@@ -231,6 +267,9 @@ export default function AdminSettingsPage() {
         ? sectionUpdates ?? { [sectionKey]: draft[sectionKey] }
         : draft;
       await updateSettingsMutation.mutateAsync(payload);
+      if (draft.branding?.defaultTheme) {
+        setPlatformDefaultTheme(draft.branding.defaultTheme);
+      }
       setFeedback({
         type: "success",
         message: sectionKey === "maintenance"
@@ -386,7 +425,8 @@ export default function AdminSettingsPage() {
       <div className="flex flex-wrap items-center gap-1.5 border-b border-stone-200 pb-3 dark:border-stone-800">
         {[
           { id: "general", label: "General", icon: Sliders },
-          { id: "branding", label: "Branding", icon: Palette },
+          { id: "appearance", label: "Appearance & Theme", icon: Palette },
+          { id: "branding", label: "Brand Assets", icon: ImageIcon },
           { id: "delivery", label: "Delivery", icon: Truck },
           { id: "payments", label: "Payments & Tax", icon: CreditCard },
           { id: "notifications", label: "Notifications & Banner", icon: Bell },
@@ -472,6 +512,9 @@ export default function AdminSettingsPage() {
                   </span>
                 </div>
               </div>
+
+              {/* Theme & Display Mode Chooser */}
+              <ThemeSelectionCard />
 
               <DashboardCard
                 title="Marketplace Identity"
@@ -641,9 +684,243 @@ export default function AdminSettingsPage() {
             </div>
           )}
 
-          {/* TAB 2: BRANDING */}
+          {/* TAB: APPEARANCE & THEME */}
+          {activeTab === "appearance" && (
+            <div className="space-y-6">
+              {/* Marketplace-wide Default Theme (Admin Dynamic Setting) */}
+              <DashboardCard
+                title="Marketplace Default Theme"
+                description="Configure whether SheoMart defaults to Dark or Light theme for visitors, guests, and newly registered users."
+              >
+                <div className="space-y-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl bg-stone-50 p-4 border border-stone-200/80 dark:bg-stone-900/50 dark:border-stone-800">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 shrink-0">
+                        <Palette className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider">
+                          Active Global Default
+                        </p>
+                        <p className="text-sm font-bold text-stone-900 dark:text-white flex items-center gap-1.5 mt-0.5">
+                          {(draft.branding.defaultTheme || "dark") === "dark" ? (
+                            <>
+                              <Moon className="h-4 w-4 text-emerald-500" />
+                              <span>Dark Theme (Night Market)</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sun className="h-4 w-4 text-amber-500" />
+                              <span>Light Theme (Fresh Market)</span>
+                            </>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const target = draft.branding.defaultTheme || "dark";
+                          setTheme(target);
+                          setFeedback({
+                            type: "success",
+                            message: `Previewing ${target} theme in your current session.`,
+                          });
+                          setTimeout(() => setFeedback(null), 3000);
+                        }}
+                        className="text-xs"
+                      >
+                        Preview In My View
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={async () => {
+                          await handleSave("branding", {
+                            branding: draft.branding,
+                          });
+                          setFeedback({
+                            type: "success",
+                            message: `Platform default theme updated to ${(draft.branding.defaultTheme || "dark").toUpperCase()}!`,
+                          });
+                          setTimeout(() => setFeedback(null), 3500);
+                        }}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs gap-1.5 shadow-xs"
+                      >
+                        <Save className="h-3.5 w-3.5" />
+                        Save Default Theme
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    {/* Light Theme Card */}
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() =>
+                        setDraft({
+                          ...draft,
+                          branding: { ...draft.branding, defaultTheme: "light" },
+                        })
+                      }
+                      className={`relative flex flex-col items-start rounded-2xl border p-5 text-left transition-all duration-200 cursor-pointer ${
+                        (draft.branding.defaultTheme || "dark") === "light"
+                          ? "border-emerald-600 bg-emerald-50/40 ring-2 ring-emerald-500/20 shadow-xs"
+                          : "border-stone-200 bg-stone-50/40 hover:border-stone-300 hover:bg-stone-100/50 dark:border-stone-800 dark:bg-stone-900/30 dark:hover:border-stone-700"
+                      }`}
+                    >
+                      <div className="flex w-full items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-600 shadow-2xs">
+                            <Sun className="h-5 w-5" />
+                          </span>
+                          <div>
+                            <p className="text-sm font-bold text-stone-900 dark:text-white">
+                              Light Theme
+                            </p>
+                            <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                              Fresh Market
+                            </span>
+                          </div>
+                        </div>
+
+                        {(draft.branding.defaultTheme || "dark") === "light" ? (
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white shadow-2xs">
+                            <Check className="h-3 w-3 stroke-[3]" />
+                          </span>
+                        ) : (
+                          <span className="h-4 w-4 rounded-full border border-stone-300 dark:border-stone-700" />
+                        )}
+                      </div>
+
+                      <p className="mt-3 text-xs leading-relaxed text-stone-600 dark:text-stone-400">
+                        Airy alabaster background with vivid emerald typography and high daytime contrast. Best for natural daylight shopping.
+                      </p>
+
+                      <div className="mt-3.5 inline-flex items-center gap-1.5 rounded-lg bg-stone-100 px-2 py-0.5 text-[10px] font-semibold text-stone-600 dark:bg-stone-800 dark:text-stone-300">
+                        Visitor & Guest Default
+                      </div>
+                    </div>
+
+                    {/* Dark Theme Card */}
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() =>
+                        setDraft({
+                          ...draft,
+                          branding: { ...draft.branding, defaultTheme: "dark" },
+                        })
+                      }
+                      className={`relative flex flex-col items-start rounded-2xl border p-5 text-left transition-all duration-200 cursor-pointer ${
+                        (draft.branding.defaultTheme || "dark") === "dark"
+                          ? "border-emerald-500 bg-emerald-950/20 ring-2 ring-emerald-500/20 shadow-xs dark:bg-emerald-950/30"
+                          : "border-stone-200 bg-stone-50/40 hover:border-stone-300 hover:bg-stone-100/50 dark:border-stone-800 dark:bg-stone-900/30 dark:hover:border-stone-700"
+                      }`}
+                    >
+                      <div className="flex w-full items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-950 text-emerald-400 shadow-2xs">
+                            <Moon className="h-5 w-5" />
+                          </span>
+                          <div>
+                            <p className="text-sm font-bold text-stone-900 dark:text-white">
+                              Dark Theme
+                            </p>
+                            <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+                              Night Market
+                            </span>
+                          </div>
+                        </div>
+
+                        {(draft.branding.defaultTheme || "dark") === "dark" ? (
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white shadow-2xs">
+                            <Check className="h-3 w-3 stroke-[3]" />
+                          </span>
+                        ) : (
+                          <span className="h-4 w-4 rounded-full border border-stone-300 dark:border-stone-700" />
+                        )}
+                      </div>
+
+                      <p className="mt-3 text-xs leading-relaxed text-stone-600 dark:text-stone-400">
+                        Obsidian canvas with striking neon emerald accents and gentle evening contrast. Easy on the eyes for dusk & night browsing.
+                      </p>
+
+                      <div className="mt-3.5 inline-flex items-center gap-1.5 rounded-lg bg-stone-100 px-2 py-0.5 text-[10px] font-semibold text-stone-600 dark:bg-stone-800 dark:text-stone-300">
+                        Visitor & Guest Default
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </DashboardCard>
+
+              <ThemeSelectionCard />
+              {/* Theme Design Tokens */}
+              <DashboardCard
+                title="Design System Accents"
+                description="Governs primary, secondary, and badge colors adhering to SheoMart's emerald theme."
+              >
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="rounded-xl border border-stone-200 p-3.5 dark:border-stone-800">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold text-stone-900 dark:text-stone-100">Primary Accent</span>
+                      <span className="h-4 w-4 rounded-full bg-emerald-600" />
+                    </div>
+                    <input
+                      type="text"
+                      value={draft.branding.themePrimary}
+                      onChange={(e) =>
+                        setDraft({ ...draft, branding: { ...draft.branding, themePrimary: e.target.value } })
+                      }
+                      className="w-full rounded-md border border-stone-200 px-2.5 py-1 text-xs font-mono dark:border-stone-800 dark:bg-stone-900"
+                    />
+                    <p className="mt-1 text-[10px] text-stone-400">Buttons, active tabs, highlights (#059669)</p>
+                  </div>
+
+                  <div className="rounded-xl border border-stone-200 p-3.5 dark:border-stone-800">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold text-stone-900 dark:text-stone-100">Secondary Accent</span>
+                      <span className="h-4 w-4 rounded-full bg-emerald-500" />
+                    </div>
+                    <input
+                      type="text"
+                      value={draft.branding.themeSecondary}
+                      onChange={(e) =>
+                        setDraft({ ...draft, branding: { ...draft.branding, themeSecondary: e.target.value } })
+                      }
+                      className="w-full rounded-md border border-stone-200 px-2.5 py-1 text-xs font-mono dark:border-stone-800 dark:bg-stone-900"
+                    />
+                    <p className="mt-1 text-[10px] text-stone-400">Gradients, hover states (#10b981)</p>
+                  </div>
+
+                  <div className="rounded-xl border border-stone-200 p-3.5 dark:border-stone-800">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold text-stone-900 dark:text-stone-100">Royal / Badge Gold</span>
+                      <span className="h-4 w-4 rounded-full bg-amber-500" />
+                    </div>
+                    <input
+                      type="text"
+                      value={draft.branding.themeAccent}
+                      onChange={(e) =>
+                        setDraft({ ...draft, branding: { ...draft.branding, themeAccent: e.target.value } })
+                      }
+                      className="w-full rounded-md border border-stone-200 px-2.5 py-1 text-xs font-mono dark:border-stone-800 dark:bg-stone-900"
+                    />
+                    <p className="mt-1 text-[10px] text-stone-400">Ratings, Royal Store badges (#d97706)</p>
+                  </div>
+                </div>
+              </DashboardCard>
+            </div>
+          )}
+
+          {/* TAB 3: BRAND ASSETS */}
           {activeTab === "branding" && (
             <div className="space-y-6">
+              <ThemeSelectionCard />
               <DashboardCard
                 title="Marketplace Brand Assets"
                 description="Upload logos, favicons, and hero banners. Powered by Cloudinary storage."

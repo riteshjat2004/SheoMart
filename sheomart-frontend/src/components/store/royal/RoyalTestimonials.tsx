@@ -32,8 +32,8 @@ export function RoyalTestimonials() {
             Trusted by Discerning Buyers
           </h2>
         </div>
-        <div className="flex items-center gap-1 text-xs text-amber-300 font-semibold hidden sm:flex">
-          <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+        <div className="flex items-center gap-1 text-xs text-amber-800 dark:text-amber-300 font-semibold hidden sm:flex">
+          <Star className="h-4 w-4 fill-amber-500 text-amber-500 dark:fill-amber-400 dark:text-amber-400" />
           <span>4.9 / 5.0 Average Rating</span>
         </div>
       </div>
@@ -42,26 +42,26 @@ export function RoyalTestimonials() {
         {testimonials.map(({ name, title, quote }) => (
           <article
             key={name}
-            className={`min-w-[290px] max-w-[340px] flex-1 rounded-3xl border border-amber-400/35 p-6 shadow-md shadow-black/40 transition-all duration-300 ${royalTheme.panel} ${royalTheme.hover}`}
+            className={`min-w-[290px] max-w-[340px] flex-1 rounded-3xl border border-amber-300/80 p-6 shadow-md shadow-amber-500/10 dark:border-amber-400/35 dark:shadow-black/40 transition-all duration-300 ${royalTheme.panel} ${royalTheme.hover}`}
           >
             <div className="flex items-center justify-between">
               <div className="flex gap-1" aria-label="5 out of 5 stars">
                 {Array.from({ length: 5 }, (_, index) => (
-                  <Star key={index} className="h-4 w-4 fill-amber-400 text-amber-400" />
+                  <Star key={index} className="h-4 w-4 fill-amber-500 text-amber-500 dark:fill-amber-400 dark:text-amber-400" />
                 ))}
               </div>
-              <Quote className="h-5 w-5 text-amber-400/40" />
+              <Quote className="h-5 w-5 text-amber-500/30 dark:text-amber-400/40" />
             </div>
 
-            <p className="mt-4 text-sm leading-6 text-stone-200 italic">“{quote}”</p>
+            <p className="mt-4 text-sm leading-6 text-stone-700 dark:text-stone-200 italic">“{quote}”</p>
 
-            <div className="mt-6 flex items-center gap-3 border-t border-amber-400/15 pt-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-amber-400/60 bg-stone-900 font-bold text-amber-300">
+            <div className="mt-6 flex items-center gap-3 border-t border-amber-200/80 dark:border-amber-400/15 pt-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-amber-300 bg-amber-100 font-bold text-amber-900 shadow-xs dark:border-amber-400/60 dark:bg-stone-900 dark:text-amber-300">
                 {name.charAt(0)}
               </div>
               <div>
-                <p className="text-sm font-bold text-white">{name}</p>
-                <p className="text-[11px] text-amber-300/80">{title}</p>
+                <p className="text-sm font-bold text-stone-900 dark:text-white">{name}</p>
+                <p className="text-[11px] text-amber-800/80 dark:text-amber-300/80">{title}</p>
               </div>
             </div>
           </article>

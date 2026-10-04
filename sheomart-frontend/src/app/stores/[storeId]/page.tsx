@@ -524,34 +524,34 @@ export default function StoreDetailPage() {
               <div
                 className={`rounded-[2rem] p-6 shadow-sm ${
                   storeVariant === "royal"
-                    ? "border border-amber-400/40 bg-gradient-to-b from-stone-950 via-zinc-950 to-stone-900 text-stone-100 shadow-[0_16px_50px_-25px_rgba(212,175,55,0.25)]"
+                    ? "border border-amber-300/80 bg-gradient-to-b from-[#FFFDF7] via-[#FFFBF0] to-[#FFF8E7] text-stone-900 shadow-[0_16px_50px_-25px_rgba(217,119,6,0.15)] dark:border-amber-400/40 dark:bg-gradient-to-b dark:from-stone-950 dark:via-zinc-950 dark:to-stone-900 dark:text-stone-100 dark:shadow-[0_16px_50px_-25px_rgba(212,175,55,0.25)]"
                     : "border border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900"
                 }`}
               >
                 <div className="flex flex-col gap-4 pb-4">
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <p className={`text-sm font-semibold uppercase tracking-[0.28em] ${storeVariant === "royal" ? "text-amber-400" : "text-emerald-600"}`}>
+                      <p className={`text-sm font-semibold uppercase tracking-[0.28em] ${storeVariant === "royal" ? "text-amber-800 dark:text-amber-400" : "text-emerald-600"}`}>
                         {storeVariant === "royal" ? "Royal Collection" : "Products"}
                       </p>
-                      <h2 className={`mt-2 text-xl font-semibold ${storeVariant === "royal" ? "text-white" : "text-stone-900 dark:text-stone-50"}`}>
+                      <h2 className={`mt-2 text-xl font-semibold ${storeVariant === "royal" ? "text-stone-950 dark:text-white" : "text-stone-900 dark:text-stone-50"}`}>
                         {storeVariant === "royal" ? "Curated Flagship Selections" : "Available from this store"}
                       </h2>
                     </div>
-                    <p className={`text-sm ${storeVariant === "royal" ? "text-amber-200/70" : "text-stone-500 dark:text-stone-400"}`}>
+                    <p className={`text-sm ${storeVariant === "royal" ? "text-amber-900/70 dark:text-amber-200/70" : "text-stone-500 dark:text-stone-400"}`}>
                       {filteredProducts.length} items
                     </p>
                   </div>
 
-                  <div className={`sticky top-0 z-10 -mx-2 rounded-2xl border px-2 py-3 backdrop-blur-sm ${storeVariant === "royal" ? "border-amber-400/30 bg-black/85" : "border-stone-200 bg-white/90 dark:border-stone-800 dark:bg-stone-900/90"}`}>
+                  <div className={`sticky top-0 z-10 -mx-2 rounded-2xl border px-2 py-3 backdrop-blur-sm ${storeVariant === "royal" ? "border-amber-300/70 bg-white/90 dark:border-amber-400/30 dark:bg-black/85" : "border-stone-200 bg-white/90 dark:border-stone-800 dark:bg-stone-900/90"}`}>
                     <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
                       <div className="flex min-w-0 flex-1 items-center gap-3 overflow-x-auto">
                         <div className={`flex min-w-[160px] items-center gap-2 rounded-full border px-3 py-2 text-sm ${
                           storeVariant === "royal"
-                            ? "border-amber-400/30 bg-stone-950 text-amber-200"
+                            ? "border-amber-300/80 bg-amber-50/70 text-amber-950 dark:border-amber-400/30 dark:bg-stone-950 dark:text-amber-200"
                             : "border-stone-200 bg-stone-50 text-stone-600 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-200"
                         }`}>
-                          <SortAsc className={`h-4 w-4 ${storeVariant === "royal" ? "text-amber-400" : "text-emerald-600"}`} />
+                          <SortAsc className={`h-4 w-4 ${storeVariant === "royal" ? "text-amber-700 dark:text-amber-400" : "text-emerald-600"}`} />
                           <span className="whitespace-nowrap">Showing {displayedProducts.length} of {baseProductCount} products</span>
                         </div>
 
@@ -571,7 +571,7 @@ export default function StoreDetailPage() {
                                 }}
                                 className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
                                   storeVariant === "royal"
-                                    ? "border-amber-400/40 bg-amber-500/15 text-amber-300 hover:bg-amber-500/25"
+                                    ? "border-amber-300 bg-amber-100/70 text-amber-900 hover:bg-amber-200/70 dark:border-amber-400/40 dark:bg-amber-500/15 dark:text-amber-300 dark:hover:bg-amber-500/25"
                                     : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300"
                                 }`}
                               >
@@ -603,7 +603,7 @@ export default function StoreDetailPage() {
                           onChange={(event) => setSortMode(event.target.value as SortMode)}
                           className={`h-11 min-w-[170px] rounded-full border px-3 text-sm outline-none transition ${
                             storeVariant === "royal"
-                              ? "border-amber-400/40 bg-stone-950 text-amber-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
+                              ? "border-amber-300 bg-white text-stone-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-400/20 dark:border-amber-400/40 dark:bg-stone-950 dark:text-amber-200 dark:focus:border-amber-400"
                               : "border-stone-200 bg-stone-50 text-stone-700 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-200 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/20"
                           }`}
                         >
@@ -618,7 +618,7 @@ export default function StoreDetailPage() {
                     </div>
                   </div>
 
-                  <div className={`sticky top-0 z-10 -mx-2 rounded-2xl border px-2 py-3 backdrop-blur-sm ${storeVariant === "royal" ? "border-amber-400/30 bg-black/85" : "border-stone-200 bg-white/90 dark:border-stone-800 dark:bg-stone-900/90"}`}>
+                  <div className={`sticky top-0 z-10 -mx-2 rounded-2xl border px-2 py-3 backdrop-blur-sm ${storeVariant === "royal" ? "border-amber-300/70 bg-white/90 dark:border-amber-400/30 dark:bg-black/85" : "border-stone-200 bg-white/90 dark:border-stone-800 dark:bg-stone-900/90"}`}>
                     <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
                       <label className="relative block w-full xl:max-w-md">
                         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
@@ -628,7 +628,7 @@ export default function StoreDetailPage() {
                           placeholder="Search products in this store"
                           className={`h-11 w-full rounded-full border pl-10 pr-4 text-sm outline-none transition ${
                             storeVariant === "royal"
-                              ? "border-amber-400/30 bg-stone-950 text-stone-100 placeholder-stone-500 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
+                              ? "border-amber-300 bg-white text-stone-900 placeholder-stone-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-400/20 dark:border-amber-400/30 dark:bg-stone-950 dark:text-stone-100 dark:placeholder-stone-500 dark:focus:border-amber-400"
                               : "border-stone-200 bg-stone-50 text-stone-700 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-200 dark:focus:border-emerald-500 dark:focus:ring-emerald-500/20"
                           }`}
                         />
@@ -645,10 +645,10 @@ export default function StoreDetailPage() {
                           className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                             !activeCategory
                               ? storeVariant === "royal"
-                                ? "bg-gradient-to-r from-amber-400 to-yellow-500 font-bold text-stone-950 shadow-md shadow-amber-500/20"
+                                ? "bg-amber-500 font-bold text-white shadow-md shadow-amber-500/20 dark:bg-gradient-to-r dark:from-amber-400 dark:to-yellow-500 dark:text-stone-950"
                                 : "bg-emerald-500 text-white"
                               : storeVariant === "royal"
-                              ? "border border-amber-400/30 bg-stone-900/80 text-stone-300 hover:border-amber-400/60 hover:text-white"
+                              ? "border border-amber-300 bg-amber-50/80 text-amber-900 hover:border-amber-400 hover:bg-amber-100/80 dark:border-amber-400/30 dark:bg-stone-900/80 dark:text-stone-300 dark:hover:border-amber-400/60 dark:hover:text-white"
                               : "border border-stone-200 bg-stone-50 text-stone-600 hover:bg-stone-100 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-300"
                           }`}
                         >
@@ -672,10 +672,10 @@ export default function StoreDetailPage() {
                               className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                                 isSelected
                                   ? storeVariant === "royal"
-                                    ? "bg-gradient-to-r from-amber-400 to-yellow-500 font-bold text-stone-950 shadow-md shadow-amber-500/20"
+                                    ? "bg-amber-500 font-bold text-white shadow-md shadow-amber-500/20 dark:bg-gradient-to-r dark:from-amber-400 dark:to-yellow-500 dark:text-stone-950"
                                     : "bg-emerald-500 text-white"
                                   : storeVariant === "royal"
-                                  ? "border border-amber-400/30 bg-stone-900/80 text-stone-300 hover:border-amber-400/60 hover:text-white"
+                                  ? "border border-amber-300 bg-amber-50/80 text-amber-900 hover:border-amber-400 hover:bg-amber-100/80 dark:border-amber-400/30 dark:bg-stone-900/80 dark:text-stone-300 dark:hover:border-amber-400/60 dark:hover:text-white"
                                   : "border border-stone-200 bg-stone-50 text-stone-600 hover:bg-stone-100 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-300"
                               }`}
                             >
@@ -762,7 +762,7 @@ export default function StoreDetailPage() {
                           style={{ animationDelay: `${Math.min(index * 70, 350)}ms` }}
                           className={`scroll-mt-32 animate-[store-fade-in_500ms_ease-out_both] rounded-2xl p-4 transition-all ${
                             storeVariant === "royal"
-                              ? "border border-amber-400/30 bg-black/60 text-stone-100"
+                              ? "border border-amber-300/70 bg-white/80 text-stone-900 dark:border-amber-400/30 dark:bg-black/60 dark:text-stone-100"
                               : "border border-stone-200 bg-stone-50/60 dark:border-stone-800 dark:bg-stone-950/50"
                           } ${
                             isHighlighted
@@ -774,15 +774,15 @@ export default function StoreDetailPage() {
                         >
                           <div className="flex items-center justify-between gap-4">
                             <div className="flex items-center gap-3">
-                              <h3 className={`text-lg font-semibold ${storeVariant === "royal" ? "text-white" : "text-stone-900 dark:text-stone-50"}`}>{group.name}</h3>
-                              <span className={`text-sm ${storeVariant === "royal" ? "text-amber-200/70" : "text-stone-500 dark:text-stone-400"}`}>{group.products.length} products</span>
+                              <h3 className={`text-lg font-semibold ${storeVariant === "royal" ? "text-stone-900 dark:text-white" : "text-stone-900 dark:text-stone-50"}`}>{group.name}</h3>
+                              <span className={`text-sm ${storeVariant === "royal" ? "text-amber-900/80 dark:text-amber-200/70" : "text-stone-500 dark:text-stone-400"}`}>{group.products.length} products</span>
                             </div>
                             <button
                               type="button"
                               onClick={() => focusCategory(sectionId)}
                               className={`text-sm font-medium transition ${
                                 storeVariant === "royal"
-                                  ? "text-amber-400 hover:text-amber-300"
+                                  ? "text-amber-700 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300"
                                   : "text-emerald-600 transition hover:text-emerald-500"
                               }`}
                             >
