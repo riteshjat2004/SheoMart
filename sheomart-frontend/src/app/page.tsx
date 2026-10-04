@@ -29,7 +29,8 @@ import { StoreSkeleton } from "@/components/marketplace/skeletons/StoreSkeleton"
 import { useCategories } from "@/hooks/use-categories";
 import { useTrendingProducts } from "@/hooks/use-home";
 import { useStores } from "@/hooks/use-stores";
-import { useAddresses } from "@/hooks/use-addresses";
+import { useCustomerLocation } from "@/hooks/use-customer-location";
+import { LocationPickerModal } from "@/components/layout/LocationPickerModal";
 import { useAuthStore } from "@/store/auth-store";
 import { useCoupons, useOffers } from "@/hooks/use-promotions";
 import { ArrowRight, ShoppingCart, Sparkles, Store, Compass } from "lucide-react";
@@ -37,14 +38,13 @@ import { ArrowRight, ShoppingCart, Sparkles, Store, Compass } from "lucide-react
 export default function Home() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
+  const [locationModalOpen, setLocationModalOpen] = useState(false);
 
   const categoriesQuery = useCategories();
   const productsQuery = useTrendingProducts();
-  const isCustomer = useAuthStore((state) => state.user?.role === "customer");
   const isPlatformAdmin = useAuthStore((state) => state.user?.role === "platform_admin");
-  const addressesQuery = useAddresses(isCustomer);
-  const defaultAddress = addressesQuery.data?.find((address) => address.isDefault) ?? addressesQuery.data?.[0];
-  const storesQuery = useStores(isCustomer && defaultAddress ? { pincode: defaultAddress.pincode } : undefined);
+  const { activePincode, locationLabel } = useCustomerLocation();
+  const storesQuery = useStores(activePincode ? { pincode: activePincode } : undefined);
   const offersQuery = useOffers();
   const couponsQuery = useCoupons();
 
@@ -192,9 +192,9 @@ export default function Home() {
           <section className="space-y-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <SectionHeading
-                eyebrow="Neighborhood Kiranas"
-                title="Trusted local stores near you"
-                description="Verified sellers ready to pack your order fresh and deliver locally."
+                eyebrow={activePincode ? `Delivering to ${activePincode}` : "Neighborhood Kiranas"}
+                title={activePincode ? `Stores delivering to ${locationLabel}` : "Trusted local stores near you"}
+                description={activePincode ? `Verified sellers available to fulfill orders in PIN ${activePincode}.` : "Verified sellers ready to pack your order fresh and deliver locally."}
               />
               <Button asChild variant="outline" className="rounded-xl border-stone-800 text-stone-300 hover:bg-stone-800">
                 <Link href="/stores">
@@ -221,10 +221,16 @@ export default function Home() {
               </div>
             ) : (
               <div className="space-y-4">
-                <EmptyState title="No nearby stores found in your sector." description="Try exploring all approved stores to find another seller in Sheopur." />
-                <div className="flex justify-center">
-                  <Button asChild variant="outline">
-                    <Link href="/explore">Explore all stores</Link>
+                <EmptyState
+                  title={activePincode ? `No stores found delivering to PIN ${activePincode}.` : "No nearby stores found in your sector."}
+                  description={activePincode ? "Try changing your PIN code or address to browse stores delivering to other areas." : "Try selecting your delivery location to view available stores."}
+                />
+                <div className="flex justify-center gap-3">
+                  <Button variant="default" onClick={() => setLocationModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-500 text-white">
+                    Change Delivery PIN
+                  </Button>
+                  <Button asChild variant="outline" className="border-stone-700 text-stone-300 hover:bg-stone-800">
+                    <Link href="/stores">Browse all stores</Link>
                   </Button>
                 </div>
               </div>
@@ -268,6 +274,8 @@ export default function Home() {
           </Button>
         </div>
       </div>
+
+      <LocationPickerModal open={locationModalOpen} onClose={() => setLocationModalOpen(false)} />
     </PageWrapper>
   );
 }

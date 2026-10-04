@@ -59,6 +59,7 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/common/error-state";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
+import { MaintenanceScreen } from "@/components/maintenance/MaintenanceScreen";
 import {
   useAdminSettings,
   useUpdateAdminSettings,
@@ -130,6 +131,69 @@ export default function AdminSettingsPage() {
   const [draft, setDraft] = useState<MarketplaceSettings | null>(null);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [uploadingField, setUploadingField] = useState<string | null>(null);
+  const [pendingMaintenanceAction, setPendingMaintenanceAction] = useState<"enable" | "disable" | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+
+  const MAINTENANCE_TEMPLATES = [
+    {
+      label: "Routine Maintenance",
+      title: "We'll be back shortly",
+      description: "We are currently performing scheduled platform upgrades and performance tuning to serve you better. Store browsing and checkout will resume in a few moments.",
+    },
+    {
+      label: "Catalog & Pricing Sync",
+      title: "Storefront Under Maintenance",
+      description: "We are syncing store inventories and updating product pricing across our partner network. Thank you for your patience.",
+    },
+    {
+      label: "Platform Upgrade",
+      title: "Upgrading SheoMart",
+      description: "Exciting new features and speed enhancements are currently rolling out. Checkout and shopping will resume shortly.",
+    },
+    {
+      label: "Emergency Repairs",
+      title: "Temporary System Downtime",
+      description: "Our engineering team is actively resolving a technical issue. We apologize for any inconvenience and will be back online soon.",
+    },
+  ];
+
+  const applyTimePresetMinutes = (minutesAhead: number) => {
+    const target = new Date(Date.now() + minutesAhead * 60 * 1000);
+    const timeStr = target.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true });
+    const isToday = target.toDateString() === new Date().toDateString();
+    const dateStr = isToday ? "Today" : target.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+    const formatted = `${dateStr} at ${timeStr} (IST)`;
+    if (draft) {
+      setDraft({
+        ...draft,
+        maintenance: {
+          ...draft.maintenance,
+          estimatedReturnTime: formatted,
+        },
+      });
+    }
+  };
+
+  const applyTimePresetHour = (targetHour24: number, nextDay = false) => {
+    const target = new Date();
+    if (nextDay) {
+      target.setDate(target.getDate() + 1);
+    }
+    target.setHours(targetHour24, 0, 0, 0);
+    const timeStr = target.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", hour12: true });
+    const isToday = target.toDateString() === new Date().toDateString();
+    const dateStr = isToday ? "Today" : target.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+    const formatted = `${dateStr} at ${timeStr} (IST)`;
+    if (draft) {
+      setDraft({
+        ...draft,
+        maintenance: {
+          ...draft.maintenance,
+          estimatedReturnTime: formatted,
+        },
+      });
+    }
+  };
 
   // Audit Log State
   const [auditFilters, setAuditFilters] = useState<AuditLogFilters>({
@@ -157,15 +221,45 @@ export default function AdminSettingsPage() {
     }
   }, [settingsQuery.data, draft]);
 
-  const handleSave = async (sectionKey?: keyof MarketplaceSettings) => {
-    if (!draft) return;
+  const handleSave = async (
+    sectionKey?: keyof MarketplaceSettings,
+    sectionUpdates?: Partial<MarketplaceSettings>
+  ): Promise<boolean> => {
+    if (!draft) return false;
     try {
-      const payload = sectionKey ? { [sectionKey]: draft[sectionKey] } : draft;
+      const payload = sectionKey
+        ? sectionUpdates ?? { [sectionKey]: draft[sectionKey] }
+        : draft;
       await updateSettingsMutation.mutateAsync(payload);
-      setFeedback({ type: "success", message: "Settings saved successfully." });
+      setFeedback({
+        type: "success",
+        message: sectionKey === "maintenance"
+          ? "Maintenance settings saved."
+          : "Settings saved successfully.",
+      });
       setTimeout(() => setFeedback(null), 4000);
-    } catch (err: any) {
-      setFeedback({ type: "error", message: err.message || "Failed to save settings." });
+      return true;
+    } catch (err: unknown) {
+      setFeedback({
+        type: "error",
+        message: err instanceof Error ? err.message : "Failed to save settings.",
+      });
+      return false;
+    }
+  };
+
+  const confirmMaintenanceAction = async () => {
+    if (!draft || !pendingMaintenanceAction) return;
+
+    const maintenance = {
+      ...draft.maintenance,
+      enabled: pendingMaintenanceAction === "enable",
+    };
+    const saved = await handleSave("maintenance", { maintenance });
+
+    if (saved) {
+      setDraft((current) => current ? { ...current, maintenance } : current);
+      setPendingMaintenanceAction(null);
     }
   };
 
@@ -514,22 +608,10 @@ export default function AdminSettingsPage() {
               </DashboardCard>
 
               <DashboardCard
-                title="Order Amount Limits & Boundaries"
-                description="Rules regulating allowed cart checkouts."
+                title="Order limits"
+                description="Set the maximum order value. Customers can place orders of any amount."
               >
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <label className="space-y-1 text-xs font-medium">
-                    <span>Minimum Order Value (₹)</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={draft.general.minOrderAmount}
-                      onChange={(e) =>
-                        setDraft({ ...draft, general: { ...draft.general, minOrderAmount: Number(e.target.value) } })
-                      }
-                      className="min-h-10 w-full rounded-lg border border-stone-200 bg-white px-3 text-xs outline-none focus:border-emerald-500 dark:border-stone-800 dark:bg-stone-900"
-                    />
-                  </label>
+                <div className="grid gap-4 sm:grid-cols-2">
                   <label className="space-y-1 text-xs font-medium">
                     <span>Maximum Order Value (₹)</span>
                     <input
@@ -1510,49 +1592,119 @@ export default function AdminSettingsPage() {
           {activeTab === "maintenance" && (
             <div className="space-y-6">
               <DashboardCard
-                title="Platform Maintenance Control"
-                description="When enabled, public storefront and checkout APIs are blocked with HTTP 503. Administrators retain full access."
+                title="Marketplace Maintenance Mode"
+                description="Temporarily pause storefront shopping during upgrades, inventory syncs, or infrastructure maintenance while retaining full admin access."
               >
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-xl border border-amber-200 bg-amber-50/50 p-4 dark:border-amber-900/50 dark:bg-amber-950/30">
-                  <div className="space-y-1">
+                {/* Status Toggle Banner */}
+                <div className={`flex flex-col gap-4 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between ${
+                  draft.maintenance.enabled
+                    ? "border-rose-200 bg-rose-50/70 dark:border-rose-900/50 dark:bg-rose-950/30"
+                    : "border-emerald-200 bg-emerald-50/70 dark:border-emerald-900/50 dark:bg-emerald-950/30"
+                }`}>
+                  <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
-                      <Wrench className="h-5 w-5 text-amber-600" />
-                      <span className="font-bold text-sm text-amber-900 dark:text-amber-200">
-                        {draft.maintenance.enabled ? "Maintenance Mode is ACTIVE" : "Maintenance Mode is Disabled"}
+                      <Wrench className={`h-5 w-5 ${draft.maintenance.enabled ? "text-rose-600" : "text-emerald-600"}`} />
+                      <span className={`font-bold text-sm ${
+                        draft.maintenance.enabled
+                          ? "text-rose-900 dark:text-rose-200"
+                          : "text-emerald-900 dark:text-emerald-200"
+                      }`}>
+                        {draft.maintenance.enabled ? "Maintenance Mode is ACTIVE" : "Storefront is OPEN & Active"}
                       </span>
+                      {draft.maintenance.enabled ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-rose-200/80 px-2 py-0.5 text-[10px] font-bold text-rose-800 dark:bg-rose-900/60 dark:text-rose-300">
+                          <span className="h-1.5 w-1.5 rounded-full bg-rose-600 animate-ping" />
+                          Traffic Paused
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-200/80 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
+                          Accepting Orders
+                        </span>
+                      )}
                     </div>
-                    <p className="text-xs text-amber-800/80 dark:text-amber-300/80">
+                    <p className={`max-w-2xl text-xs ${
+                      draft.maintenance.enabled
+                        ? "text-rose-800/80 dark:text-rose-300/80"
+                        : "text-emerald-800/80 dark:text-emerald-300/80"
+                    }`}>
                       {draft.maintenance.enabled
-                        ? "Storefront consumers see the maintenance notice below."
-                        : "Marketplace is publicly operational."}
+                        ? "Customers and guests are seeing your customized maintenance notice. Platform administrators retain full dashboard access with an admin top banner."
+                        : "Customers can browse products, manage their cart, and place orders smoothly."}
                     </p>
                   </div>
 
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      const newEnabled = !draft.maintenance.enabled;
-                      setDraft({
-                        ...draft,
-                        maintenance: { ...draft.maintenance, enabled: newEnabled },
-                      });
-                      handleSave("maintenance");
-                    }}
-                    className={`text-xs text-white ${
-                      draft.maintenance.enabled
-                        ? "bg-rose-600 hover:bg-rose-700"
-                        : "bg-amber-600 hover:bg-amber-700"
-                    }`}
-                  >
-                    {draft.maintenance.enabled ? "Disable Maintenance Mode" : "Activate Maintenance Mode"}
-                  </Button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowPreviewModal(true)}
+                      className="gap-1.5 text-xs border-stone-300 dark:border-stone-700"
+                    >
+                      <Eye className="h-3.5 w-3.5 text-stone-600 dark:text-stone-400" />
+                      Preview
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={updateSettingsMutation.isPending}
+                      onClick={() => setPendingMaintenanceAction(
+                        draft.maintenance.enabled ? "disable" : "enable"
+                      )}
+                      className={`text-xs text-white ${
+                        draft.maintenance.enabled
+                          ? "bg-emerald-600 hover:bg-emerald-700"
+                          : "bg-rose-600 hover:bg-rose-700"
+                      }`}
+                    >
+                      {draft.maintenance.enabled ? "Turn off maintenance" : "Turn on maintenance"}
+                    </Button>
+                  </div>
                 </div>
 
+                {/* Quick Message Templates */}
+                <div className="mt-5 rounded-xl border border-stone-200/80 bg-stone-50/50 p-3.5 dark:border-stone-800 dark:bg-stone-900/30">
+                  <div className="flex items-center justify-between mb-2.5">
+                    <span className="text-xs font-semibold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
+                      <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                      Quick Notice Presets
+                    </span>
+                    <span className="text-[11px] text-stone-400">Click a template to load headline & message</span>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                    {MAINTENANCE_TEMPLATES.map((tmpl) => (
+                      <button
+                        key={tmpl.label}
+                        type="button"
+                        onClick={() => {
+                          setDraft({
+                            ...draft,
+                            maintenance: {
+                              ...draft.maintenance,
+                              title: tmpl.title,
+                              description: tmpl.description,
+                            },
+                          });
+                        }}
+                        className="text-left rounded-lg border border-stone-200 bg-white p-2.5 hover:border-emerald-500 hover:shadow-xs transition dark:border-stone-800 dark:bg-stone-900"
+                      >
+                        <span className="font-semibold text-xs text-stone-800 dark:text-stone-200 block truncate">
+                          {tmpl.label}
+                        </span>
+                        <span className="text-[10px] text-stone-500 line-clamp-2 mt-0.5">
+                          {tmpl.description}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Form Inputs */}
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   <label className="space-y-1 text-xs font-medium">
-                    <span>Maintenance Screen Title</span>
+                    <span>Notice Headline</span>
                     <input
                       type="text"
+                      placeholder="e.g. We'll be back shortly"
                       value={draft.maintenance.title}
                       onChange={(e) =>
                         setDraft({
@@ -1564,11 +1716,23 @@ export default function AdminSettingsPage() {
                     />
                   </label>
 
-                  <label className="space-y-1 text-xs font-medium">
-                    <span>Estimated Return Time (Optional)</span>
+                  <div className="space-y-1 text-xs font-medium">
+                    <div className="flex items-center justify-between">
+                      <span>Expected Return Time <span className="font-normal text-stone-400">(optional)</span></span>
+                      {draft.maintenance.estimatedReturnTime && (
+                        <button
+                          type="button"
+                          onClick={() => setDraft({ ...draft, maintenance: { ...draft.maintenance, estimatedReturnTime: null } })}
+                          className="text-[10px] font-semibold text-rose-500 hover:underline"
+                        >
+                          Clear time
+                        </button>
+                      )}
+                    </div>
                     <input
                       type="text"
-                      placeholder="e.g. Today at 6:00 PM IST"
+                      aria-describedby="maintenance-return-help"
+                      placeholder="e.g., Today at 6:00 PM (IST)"
                       value={draft.maintenance.estimatedReturnTime || ""}
                       onChange={(e) =>
                         setDraft({
@@ -1578,12 +1742,61 @@ export default function AdminSettingsPage() {
                       }
                       className="min-h-10 w-full rounded-lg border border-stone-200 bg-white px-3 text-xs outline-none focus:border-emerald-500 dark:border-stone-800 dark:bg-stone-900"
                     />
-                  </label>
+                    {/* Time Presets Pill Bar */}
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      <span className="text-[10px] text-stone-400 flex items-center gap-0.5">
+                        <Clock className="h-3 w-3" /> Quick set:
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => applyTimePresetMinutes(30)}
+                        className="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-stone-700 hover:bg-emerald-100 hover:text-emerald-800 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-emerald-950/60"
+                      >
+                        +30m
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyTimePresetMinutes(60)}
+                        className="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-stone-700 hover:bg-emerald-100 hover:text-emerald-800 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-emerald-950/60"
+                      >
+                        +1h
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyTimePresetMinutes(120)}
+                        className="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-stone-700 hover:bg-emerald-100 hover:text-emerald-800 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-emerald-950/60"
+                      >
+                        +2h
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyTimePresetMinutes(240)}
+                        className="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-stone-700 hover:bg-emerald-100 hover:text-emerald-800 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-emerald-950/60"
+                      >
+                        +4h
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyTimePresetHour(22)}
+                        className="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-stone-700 hover:bg-emerald-100 hover:text-emerald-800 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-emerald-950/60"
+                      >
+                        Tonight (10 PM)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => applyTimePresetHour(9, true)}
+                        className="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-stone-700 hover:bg-emerald-100 hover:text-emerald-800 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-emerald-950/60"
+                      >
+                        Tomorrow (9 AM)
+                      </button>
+                    </div>
+                  </div>
 
                   <label className="space-y-1 text-xs font-medium sm:col-span-2">
-                    <span>Notice Description</span>
+                    <span>Message for Customers</span>
                     <textarea
                       rows={3}
+                      placeholder="We're making a few improvements. Please check back shortly."
                       value={draft.maintenance.description}
                       onChange={(e) =>
                         setDraft({
@@ -1596,24 +1809,61 @@ export default function AdminSettingsPage() {
                   </label>
                 </div>
 
-                {/* Customer View Preview */}
+                <div className="mt-4 flex items-center justify-between border-t border-stone-100 pt-4 dark:border-stone-800">
+                  <div className="text-xs text-stone-500">
+                    Changes to notice texts take effect immediately upon saving.
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowPreviewModal(true)}
+                      className="gap-1.5 text-xs"
+                    >
+                      <Eye className="h-3.5 w-3.5 text-stone-600 dark:text-stone-400" />
+                      Test Customer View
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={updateSettingsMutation.isPending}
+                      onClick={() => handleSave("maintenance")}
+                      className="gap-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                    >
+                      <Save className="h-4 w-4" />
+                      {updateSettingsMutation.isPending ? "Saving..." : "Save Notice Details"}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Customer View Inline Preview */}
                 <div className="mt-6 border-t border-stone-100 pt-5 dark:border-stone-800">
-                  <span className="text-[11px] font-bold text-stone-400 uppercase tracking-wider block mb-3">
-                    Customer Screen Preview
-                  </span>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[11px] font-bold text-stone-400 uppercase tracking-wider block">
+                      Customer-Facing Simulation Card
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setShowPreviewModal(true)}
+                      className="text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 gap-1 h-7"
+                    >
+                      <span>Open Full-Screen Simulation</span>
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                   <div className="mx-auto max-w-lg rounded-2xl border border-stone-200 bg-white p-8 text-center shadow-lg dark:border-stone-800 dark:bg-stone-950">
                     <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 text-amber-600 dark:bg-amber-950/80">
                       <Wrench className="h-7 w-7" />
                     </div>
                     <h3 className="mt-4 text-base font-bold text-stone-900 dark:text-stone-100">
-                      {draft.maintenance.title || "Under Scheduled Maintenance"}
+                      {draft.maintenance.title || "We'll be back soon"}
                     </h3>
                     <p className="mt-2 text-xs text-stone-500 leading-relaxed">
-                      {draft.maintenance.description || "We are undergoing platform upgrades."}
+                      {draft.maintenance.description || "We're making a few improvements. Please check back shortly."}
                     </p>
                     {draft.maintenance.estimatedReturnTime && (
                       <p className="mt-3 text-xs font-semibold text-emerald-600">
-                        Estimated Return: {draft.maintenance.estimatedReturnTime}
+                        Expected back: {draft.maintenance.estimatedReturnTime}
                       </p>
                     )}
                   </div>
@@ -1968,6 +2218,54 @@ export default function AdminSettingsPage() {
             </div>
           )}
         </>
+      )}
+      <ConfirmDialog
+        open={Boolean(pendingMaintenanceAction)}
+        title={pendingMaintenanceAction === "enable" ? "Turn on marketplace maintenance mode?" : "Turn off maintenance mode?"}
+        description={pendingMaintenanceAction === "enable"
+          ? `Storefront browsing and customer checkout will be temporarily paused. Customers will see your notice ("${draft?.maintenance.title || "We'll be back soon"}"). Platform admins will continue to have full access.`
+          : "Storefront will immediately reopen for browsing, cart updates, and customer checkout."}
+        onClose={() => setPendingMaintenanceAction(null)}
+        onConfirm={() => void confirmMaintenanceAction()}
+        confirmLabel={pendingMaintenanceAction === "enable" ? "Turn on maintenance" : "Turn off maintenance"}
+        confirmVariant={pendingMaintenanceAction === "enable" ? "destructive" : "default"}
+        isConfirming={updateSettingsMutation.isPending}
+      />
+
+      {/* Full-Screen Customer Experience Simulation Modal */}
+      {showPreviewModal && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-stone-900/90 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="flex items-center justify-between border-b border-stone-800 bg-stone-950 px-6 py-3 text-white">
+            <div className="flex items-center gap-3">
+              <span className="flex h-2.5 w-2.5 rounded-full bg-amber-400 animate-pulse" />
+              <span className="text-xs font-semibold uppercase tracking-wider text-amber-300">
+                Interactive Customer Experience Preview
+              </span>
+              <span className="hidden text-xs text-stone-400 md:inline">
+                (This is the exact view guests & customers see while maintenance mode is active)
+              </span>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowPreviewModal(false)}
+              className="gap-1.5 text-xs text-white border-stone-700 bg-stone-800 hover:bg-stone-700 hover:text-white"
+            >
+              <X className="h-4 w-4" />
+              Close Preview
+            </Button>
+          </div>
+          <div className="flex-1 overflow-y-auto bg-stone-50 dark:bg-stone-950">
+            <MaintenanceScreen
+              maintenanceInfo={{
+                enabled: true,
+                title: draft?.maintenance.title,
+                description: draft?.maintenance.description,
+                estimatedReturnTime: draft?.maintenance.estimatedReturnTime,
+              }}
+            />
+          </div>
+        </div>
       )}
     </DashboardContent>
   );

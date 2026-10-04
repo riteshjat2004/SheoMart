@@ -14,7 +14,6 @@ import {
   Truck,
   Sparkles,
   ShoppingBag,
-  AlertCircle,
   Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,7 +27,6 @@ import { useCart, useClearCart, useRemoveCartItem, useUpdateCartItem } from "@/h
 import { useAddWishlistItem } from "@/hooks/use-wishlist";
 import { useCoupons } from "@/hooks/use-promotions";
 
-const MIN_ORDER_VALUE = 99;
 const FREE_DELIVERY_THRESHOLD = 299;
 const STANDARD_DELIVERY_FEE = 29;
 const PLATFORM_FEE = 5;
@@ -79,9 +77,8 @@ export default function CartPage() {
   const grandTotal = Math.max(0, rawSubtotal - couponDiscount + deliveryFee + PLATFORM_FEE + gstAmount);
   const totalSavings = totals.estimatedSavings + couponDiscount + (isFreeDelivery ? STANDARD_DELIVERY_FEE : 0);
 
-  const isBelowMinOrder = rawSubtotal > 0 && rawSubtotal < MIN_ORDER_VALUE;
   const canProceedToCheckout =
-    cartItems.length > 0 && !totals.hasUnavailableItems && !isBelowMinOrder;
+    cartItems.length > 0 && !totals.hasUnavailableItems;
 
   const handleApplyCoupon = (e: React.FormEvent) => {
     e.preventDefault();
@@ -471,17 +468,6 @@ export default function CartPage() {
                       </div>
                     )}
                   </div>
-
-                  {/* Minimum order error warning */}
-                  {isBelowMinOrder && (
-                    <div className="mt-4 flex items-start gap-2 rounded-xl bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                      <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" />
-                      <span>
-                        Minimum order amount is ₹{MIN_ORDER_VALUE}. Add ₹
-                        {MIN_ORDER_VALUE - rawSubtotal} more to checkout.
-                      </span>
-                    </div>
-                  )}
 
                   {/* Checkout CTA */}
                   <Button

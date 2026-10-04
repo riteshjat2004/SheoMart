@@ -63,6 +63,15 @@ api.interceptors.response.use(
       }
     }
 
+    if (status === 503 && typeof window !== "undefined") {
+      const maintenancePayload = error.response?.data?.maintenance;
+      window.dispatchEvent(
+        new CustomEvent("sheomart:maintenance", {
+          detail: maintenancePayload || { enabled: true },
+        })
+      );
+    }
+
     if (status) {
       const message = error.response?.data?.message || error.response?.data?.error || `Request failed with status ${status}`;
       const normalizedError = new Error(message) as Error & { status?: number; details?: unknown };

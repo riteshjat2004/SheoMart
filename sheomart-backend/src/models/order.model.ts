@@ -78,6 +78,7 @@ export interface IOrder extends Document {
   deliveryWindowEnd?: string;
   freeDeliveryApplied: boolean;
   paymentMethod: string;
+  paymentReceivedMethod?: string;
   paymentRequiredBeforeConfirmation: boolean;
   paymentStatus: string;
   amountPaid?: number;
@@ -257,6 +258,10 @@ const orderSchema = new Schema<IOrder>(
     paymentMethod: {
       type: String,
       required: true,
+    },
+    paymentReceivedMethod: {
+      type: String,
+      default: null,
     },
     paymentRequiredBeforeConfirmation: {
       type: Boolean,

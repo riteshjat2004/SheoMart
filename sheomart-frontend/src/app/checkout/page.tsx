@@ -148,7 +148,11 @@ export default function CheckoutPage() {
     const a = Math.sin(latitudeDelta / 2) ** 2 + Math.cos(toRadians(store.latitude)) * Math.cos(toRadians(selectedAddress.latitude)) * Math.sin(longitudeDelta / 2) ** 2;
     return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   })() : null;
-  const deliveryUnavailable = deliveryMethod === "delivery" && addressDistance !== null && (store?.deliveryRadiusKm ?? 0) > 0 && addressDistance > (store?.deliveryRadiusKm ?? 0);
+  const pincodeMismatch = deliveryMethod === "delivery" && Boolean(
+    selectedAddress?.pincode && store?.pincode && selectedAddress.pincode.trim().toLowerCase() !== store.pincode.trim().toLowerCase()
+  );
+  const radiusExceeded = deliveryMethod === "delivery" && addressDistance !== null && (store?.deliveryRadiusKm ?? 0) > 0 && addressDistance > (store?.deliveryRadiusKm ?? 0);
+  const deliveryUnavailable = pincodeMismatch || radiusExceeded;
   const deliveryFee = deliveryMethod === "delivery" && !(freeDeliveryAbove > 0 && totals.subtotal >= freeDeliveryAbove) ? configuredDeliveryFee : 0;
   const platformConfig = platformFeeQuery.data;
   const platformFee = platformConfig?.enabled && totals.subtotal >= (platformConfig.minimumOrderAmount ?? 0)

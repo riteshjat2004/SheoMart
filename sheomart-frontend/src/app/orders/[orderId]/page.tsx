@@ -17,6 +17,7 @@ import {
   Package,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { Container } from "@/components/layout/container";
 import { PageWrapper } from "@/components/layout/page-wrapper";
 import { Section } from "@/components/layout/section";
@@ -60,7 +61,8 @@ export default function OrderDetailsPage() {
   const cancelOrderMutation = useCancelCustomerOrder();
   const addCartItem = useAddCartItem();
 
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
 
   const order = ordersQuery.data?.find((item) => item.orderId === orderId) as LiveOrder | undefined;
 
@@ -70,18 +72,25 @@ export default function OrderDetailsPage() {
 
   const handleCancelOrder = () => {
     if (!order?.orderId) return;
-    const confirmed = window.confirm("Are you sure you want to cancel this order?");
-    if (!confirmed) return;
+    setShowCancelConfirmation(true);
+  };
 
+  const confirmCancelOrder = () => {
+    if (!order?.orderId) return;
     setFeedback(null);
     cancelOrderMutation.mutate(
       { orderId: order.orderId, reason: "Cancelled by customer before acceptance" },
       {
         onSuccess: () => {
-          setFeedback("Order cancelled successfully.");
+          setFeedback({ type: "success", message: "Order cancelled successfully." });
+          setShowCancelConfirmation(false);
         },
         onError: (err) => {
-          setFeedback(err instanceof Error ? err.message : "Failed to cancel order.");
+          setFeedback({
+            type: "error",
+            message: err instanceof Error ? err.message : "Failed to cancel order.",
+          });
+          setShowCancelConfirmation(false);
         },
       }
     );
@@ -109,7 +118,7 @@ export default function OrderDetailsPage() {
     if (addedCount > 0) {
       router.push("/cart");
     } else {
-      setFeedback("Unable to reorder items at this moment.");
+      setFeedback({ type: "error", message: "Unable to reorder items at this moment." });
     }
   };
 
@@ -204,8 +213,12 @@ export default function OrderDetailsPage() {
           </div>
 
           {feedback && (
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-semibold text-emerald-800 dark:border-emerald-950 dark:bg-emerald-950/40 dark:text-emerald-300">
-              {feedback}
+            <div className={`rounded-xl border p-3 text-xs font-semibold ${
+              feedback.type === "success"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-950 dark:bg-emerald-950/40 dark:text-emerald-300"
+                : "border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-950 dark:bg-rose-950/40 dark:text-rose-300"
+            }`}>
+              {feedback.message}
             </div>
           )}
 
@@ -359,6 +372,18 @@ export default function OrderDetailsPage() {
           </section>
         </Container>
       </Section>
+      <ConfirmDialog
+        open={showCancelConfirmation}
+        title="Cancel this order?"
+        description="You can only cancel before the store starts preparing your order. If you continue, this order will be cancelled."
+        icon={<XCircle className="h-5 w-5" />}
+        confirmLabel="Yes, cancel order"
+        confirmingLabel="Cancelling..."
+        confirmVariant="destructive"
+        isConfirming={cancelOrderMutation.isPending}
+        onClose={() => setShowCancelConfirmation(false)}
+        onConfirm={confirmCancelOrder}
+      />
     </PageWrapper>
   );
 }

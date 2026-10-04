@@ -5,28 +5,34 @@ import { MapPin, Star, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useProducts } from "@/hooks/use-products";
 import { useStores } from "@/hooks/use-stores";
-import { useAddresses } from "@/hooks/use-addresses";
+import { useCustomerLocation } from "@/hooks/use-customer-location";
 import type { ProductItem, StoreItem } from "@/types/marketplace";
 
 export function ProductStoreSelector({ product, onClose }: { product: ProductItem; onClose: () => void }) {
   const router = useRouter();
   const productsQuery = useProducts();
-  const storesQuery = useStores();
-  const addressesQuery = useAddresses();
-  const address = addressesQuery.data?.find((item) => item.isDefault) ?? addressesQuery.data?.[0];
+  const { activePincode } = useCustomerLocation();
+  const storesQuery = useStores(activePincode ? { pincode: activePincode } : undefined);
+
   const stores = useMemo(() => {
     const candidates = (productsQuery.data ?? []).filter((item) => item.productId && item.storeId && item.name.toLowerCase() === product.name.toLowerCase() && item.categoryId === product.categoryId);
     const storesById = new Map((storesQuery.data ?? []).map((store) => [store.storeId, store]));
-    return candidates.map((candidate) => ({ product: candidate, store: storesById.get(candidate.storeId ?? "") })).filter((item): item is { product: ProductItem; store: StoreItem } => Boolean(item.store && item.store.status === "approved")).sort((first, second) => {
-      const rating = (second.store.rating ?? 0) - (first.store.rating ?? 0);
-      if (rating) return rating;
-      const pin = Number(second.store.pincode === address?.pincode) - Number(first.store.pincode === address?.pincode);
-      if (pin) return pin;
-      const city = Number(second.store.city?.toLowerCase() === address?.city?.toLowerCase()) - Number(first.store.city?.toLowerCase() === address?.city?.toLowerCase());
-      if (city) return city;
-      return (first.product.discountPrice ?? first.product.price) - (second.product.discountPrice ?? second.product.price);
-    }).slice(0, 6);
-  }, [address, product.categoryId, product.name, productsQuery.data, storesQuery.data]);
+    return candidates
+      .map((candidate) => ({ product: candidate, store: storesById.get(candidate.storeId ?? "") }))
+      .filter((item): item is { product: ProductItem; store: StoreItem } => {
+        if (!item.store || item.store.status !== "approved") return false;
+        if (activePincode && item.store.pincode && item.store.pincode.trim().toLowerCase() !== activePincode.trim().toLowerCase()) {
+          return false;
+        }
+        return true;
+      })
+      .sort((first, second) => {
+        const rating = (second.store.rating ?? 0) - (first.store.rating ?? 0);
+        if (rating) return rating;
+        return (first.product.discountPrice ?? first.product.price) - (second.product.discountPrice ?? second.product.price);
+      })
+      .slice(0, 6);
+  }, [activePincode, product.categoryId, product.name, productsQuery.data, storesQuery.data]);
 
   return <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="available-nearby-title" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl dark:bg-zinc-900 sm:rounded-3xl">

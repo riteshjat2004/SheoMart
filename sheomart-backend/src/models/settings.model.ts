@@ -233,10 +233,10 @@ const settingsSchema = new Schema<IMarketplaceSettings>(
     },
     maintenance: {
       enabled: { type: Boolean, default: false },
-      title: { type: String, default: "Under Scheduled Maintenance" },
+      title: { type: String, default: "We'll be back soon" },
       description: {
         type: String,
-        default: "SheoMart is currently undergoing scheduled platform upgrades. We will be back shortly.",
+        default: "We're making a few improvements to SheoMart. Please check back shortly.",
       },
       estimatedReturnTime: { type: String, default: null },
     },

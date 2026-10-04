@@ -16,6 +16,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HeroCarousel } from "@/components/home/HeroCarousel";
+import { useCustomerLocation } from "@/hooks/use-customer-location";
+import { LocationPickerModal } from "@/components/layout/LocationPickerModal";
+import { ChevronDown } from "lucide-react";
 
 interface HeroSectionProps {
   initialSearch?: string;
@@ -24,17 +27,19 @@ interface HeroSectionProps {
 
 export function HeroSection({ initialSearch = "", onSearch }: HeroSectionProps) {
   const router = useRouter();
-  const [greeting, setGreeting] = useState("Hello, Sheopur!");
+  const { locationLabel, activePincode } = useCustomerLocation();
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [greeting, setGreeting] = useState("Welcome to SheoMart!");
   const [searchVal, setSearchVal] = useState(initialSearch);
 
   useEffect(() => {
     const hour = new Date().getHours();
     if (hour >= 5 && hour < 12) {
-      setGreeting("Good morning, Sheopur! ☀️");
+      setGreeting("Good morning! ☀️");
     } else if (hour >= 12 && hour < 17) {
-      setGreeting("Good afternoon, Sheopur! 🌤️");
+      setGreeting("Good afternoon! 🌤️");
     } else {
-      setGreeting("Good evening, Sheopur! 🌙");
+      setGreeting("Good evening! 🌙");
     }
   }, []);
 
@@ -84,13 +89,19 @@ export function HeroSection({ initialSearch = "", onSearch }: HeroSectionProps) 
               {greeting}
             </span>
 
-            <div className="inline-flex items-center gap-2 rounded-full border border-stone-800 bg-stone-900/80 px-3.5 py-1.5 text-xs text-stone-300">
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              className="inline-flex items-center gap-2 rounded-full border border-stone-800 bg-stone-900/80 px-3.5 py-1.5 text-xs text-stone-300 hover:border-emerald-500/50 hover:bg-stone-800/90 transition"
+              title="Click to change delivery location or PIN code"
+            >
               <MapPin className="h-3.5 w-3.5 text-emerald-400" />
-              <span>Delivering to <strong>Sheopur City</strong></span>
+              <span>Delivering to <strong className="text-white">{locationLabel}</strong></span>
+              <ChevronDown className="h-3 w-3 text-stone-400" />
               <span className="flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 font-medium text-emerald-300 text-[11px]">
                 <Clock className="h-3 w-3" /> 15–30 Mins
               </span>
-            </div>
+            </button>
           </div>
 
           {/* Main Headline */}
@@ -102,7 +113,7 @@ export function HeroSection({ initialSearch = "", onSearch }: HeroSectionProps) 
               </span>.
             </h1>
             <p className="max-w-xl text-base text-stone-300 sm:text-lg leading-relaxed">
-              Skip the market rush. Get handpicked vegetables, dairy, pantry staples, and household favorites delivered with care across Sheopur district.
+              Skip the market rush. Get handpicked vegetables, dairy, pantry staples, and household favorites delivered with care directly to your neighborhood.
             </p>
           </div>
 
@@ -185,7 +196,7 @@ export function HeroSection({ initialSearch = "", onSearch }: HeroSectionProps) 
             </div>
             <div>
               <p className="text-xs font-bold text-white">15–30 Mins Delivery</p>
-              <p className="text-[11px] text-stone-400">Across all Sheopur wards</p>
+              <p className="text-[11px] text-stone-400">Direct from local sellers</p>
             </div>
           </div>
 
@@ -201,6 +212,8 @@ export function HeroSection({ initialSearch = "", onSearch }: HeroSectionProps) 
           </div>
         </div>
       </div>
+
+      <LocationPickerModal open={pickerOpen} onClose={() => setPickerOpen(false)} />
     </section>
   );
 }

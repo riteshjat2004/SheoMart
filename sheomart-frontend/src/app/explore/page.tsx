@@ -30,6 +30,9 @@ import { EmptyState } from "@/components/common/empty-state";
 import { useCategories } from "@/hooks/use-categories";
 import { useProducts } from "@/hooks/use-products";
 import { useStores } from "@/hooks/use-stores";
+import { useCustomerLocation } from "@/hooks/use-customer-location";
+import { LocationPickerModal } from "@/components/layout/LocationPickerModal";
+import { MapPin } from "lucide-react";
 import type { ProductItem } from "@/types/marketplace";
 
 const fuzzyMatch = (text: string, query: string) =>
@@ -57,10 +60,12 @@ export default function ExplorePage() {
   const [priceRange, setPriceRange] = useState<"all" | "under_100" | "100_500" | "above_500">("all");
   const [minDiscount, setMinDiscount] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<"products" | "categories" | "stores">("products");
+  const [locationModalOpen, setLocationModalOpen] = useState(false);
 
+  const { activePincode, locationLabel } = useCustomerLocation();
   const categoriesQuery = useCategories();
   const productsQuery = useProducts();
-  const storesQuery = useStores();
+  const storesQuery = useStores(activePincode ? { pincode: activePincode } : undefined);
 
   const categories = Array.isArray(categoriesQuery.data) ? categoriesQuery.data : [];
   const products = Array.isArray(productsQuery.data) ? productsQuery.data : [];
@@ -147,6 +152,12 @@ export default function ExplorePage() {
       result = result.filter((p) => (p.discountPrice ?? p.price) > 500);
     }
 
+    // Restrict products to stores delivering to this PIN code
+    if (activePincode && storesQuery.isSuccess) {
+      const allowedStoreIds = new Set(stores.map((s) => s.storeId).filter(Boolean));
+      result = result.filter((p) => p.storeId && allowedStoreIds.has(p.storeId));
+    }
+
     // Minimum Discount
     if (minDiscount > 0) {
       result = result.filter((p) => {
@@ -195,6 +206,9 @@ export default function ExplorePage() {
     priceRange,
     minDiscount,
     sortBy,
+    activePincode,
+    stores,
+    storesQuery.isSuccess,
   ]);
 
   const resetAllFilters = () => {
@@ -239,41 +253,55 @@ export default function ExplorePage() {
               </div>
             </div>
 
-            {/* Quick tabs */}
-            <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-stone-100 pt-4 dark:border-stone-800">
-              <button
+            {/* Quick tabs & Location */}
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-stone-100 pt-4 dark:border-stone-800">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("products")}
+                  className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
+                    activeTab === "products"
+                      ? "bg-emerald-600 text-white shadow-sm"
+                      : "bg-stone-100 text-stone-600 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-300"
+                  }`}
+                >
+                  Products ({filteredProducts.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("categories")}
+                  className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
+                    activeTab === "categories"
+                      ? "bg-emerald-600 text-white shadow-sm"
+                      : "bg-stone-100 text-stone-600 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-300"
+                  }`}
+                >
+                  Categories ({filteredCategories.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("stores")}
+                  className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
+                    activeTab === "stores"
+                      ? "bg-emerald-600 text-white shadow-sm"
+                      : "bg-stone-100 text-stone-600 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-300"
+                  }`}
+                >
+                  Stores ({filteredStores.length})
+                </button>
+              </div>
+
+              <Button
                 type="button"
-                onClick={() => setActiveTab("products")}
-                className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
-                  activeTab === "products"
-                    ? "bg-emerald-600 text-white shadow-sm"
-                    : "bg-stone-100 text-stone-600 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-300"
-                }`}
+                variant="outline"
+                size="sm"
+                onClick={() => setLocationModalOpen(true)}
+                className="rounded-full border-stone-300 dark:border-stone-700 h-8 px-3 text-xs font-medium"
+                title="Change delivery PIN code"
               >
-                Products ({filteredProducts.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("categories")}
-                className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
-                  activeTab === "categories"
-                    ? "bg-emerald-600 text-white shadow-sm"
-                    : "bg-stone-100 text-stone-600 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-300"
-                }`}
-              >
-                Categories ({filteredCategories.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("stores")}
-                className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
-                  activeTab === "stores"
-                    ? "bg-emerald-600 text-white shadow-sm"
-                    : "bg-stone-100 text-stone-600 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-300"
-                }`}
-              >
-                Stores ({filteredStores.length})
-              </button>
+                <MapPin className="mr-1.5 h-3.5 w-3.5 text-emerald-500" />
+                <span>Location: <strong className="text-emerald-600 dark:text-emerald-400">{locationLabel}</strong></span>
+              </Button>
             </div>
           </div>
 
@@ -551,6 +579,8 @@ export default function ExplorePage() {
           )}
         </Container>
       </Section>
+
+      <LocationPickerModal open={locationModalOpen} onClose={() => setLocationModalOpen(false)} />
     </PageWrapper>
   );
 }

@@ -12,19 +12,18 @@ import { ErrorState } from "@/components/common/error-state";
 import { EmptyState } from "@/components/common/empty-state";
 import { StoreSkeleton } from "@/components/marketplace/skeletons/StoreSkeleton";
 import { useStores } from "@/hooks/use-stores";
-import { useAddresses } from "@/hooks/use-addresses";
-import { useAuthStore } from "@/store/auth-store";
-import { ArrowLeft, ArrowRight, Search } from "lucide-react";
+import { useCustomerLocation } from "@/hooks/use-customer-location";
+import { LocationPickerModal } from "@/components/layout/LocationPickerModal";
+import { ArrowLeft, ArrowRight, MapPin, Search } from "lucide-react";
 
 const STORES_PER_PAGE = 12;
 
 export default function StoresPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const isCustomer = useAuthStore((state) => state.user?.role === "customer");
-  const addressesQuery = useAddresses(isCustomer);
-  const defaultAddress = addressesQuery.data?.find((address) => address.isDefault) ?? addressesQuery.data?.[0];
-  const storesQuery = useStores(isCustomer && defaultAddress ? { pincode: defaultAddress.pincode } : undefined);
+  const [locationModalOpen, setLocationModalOpen] = useState(false);
+  const { activePincode, locationLabel } = useCustomerLocation();
+  const storesQuery = useStores(activePincode ? { pincode: activePincode } : undefined);
   const stores = Array.isArray(storesQuery.data) ? storesQuery.data : [];
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const filteredStores = stores.filter((store) => {
@@ -57,17 +56,30 @@ export default function StoresPage() {
             </Button>
           </div>
 
-          <div className="relative max-w-xl">
-            <label htmlFor="store-search" className="sr-only">Search stores</label>
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
-            <input
-              id="store-search"
-              type="search"
-              value={searchQuery}
-              onChange={(event) => handleSearchChange(event.target.value)}
-              placeholder="Search by store name or locality"
-              className="w-full rounded-full border border-stone-200 bg-white px-11 py-3 text-sm text-stone-700 outline-none transition focus:border-emerald-500 dark:border-stone-700 dark:bg-zinc-900 dark:text-stone-200"
-            />
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative max-w-xl flex-1">
+              <label htmlFor="store-search" className="sr-only">Search stores</label>
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+              <input
+                id="store-search"
+                type="search"
+                value={searchQuery}
+                onChange={(event) => handleSearchChange(event.target.value)}
+                placeholder="Search by store name or locality"
+                className="w-full rounded-full border border-stone-200 bg-white px-11 py-3 text-sm text-stone-700 outline-none transition focus:border-emerald-500 dark:border-stone-700 dark:bg-zinc-900 dark:text-stone-200"
+              />
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setLocationModalOpen(true)}
+              className="rounded-full border-stone-300 dark:border-stone-700 h-11 px-4 text-xs font-medium shrink-0"
+              title="Change delivery PIN code"
+            >
+              <MapPin className="mr-2 h-3.5 w-3.5 text-emerald-500" />
+              <span>Delivering to: <strong className="text-emerald-600 dark:text-emerald-400">{locationLabel}</strong></span>
+            </Button>
           </div>
 
           {storesQuery.isLoading ? (
@@ -99,10 +111,22 @@ export default function StoresPage() {
               </div>
             </>
           ) : (
-            <EmptyState title="No stores match your search." description="Try another store name or locality." />
+            <div className="space-y-4">
+              <EmptyState
+                title={activePincode ? `No stores found delivering to PIN ${activePincode}` : "No stores match your search."}
+                description={activePincode ? "Try searching for a different keyword or change your PIN code." : "Try another store name or locality."}
+              />
+              <div className="flex justify-center gap-3">
+                <Button variant="default" onClick={() => setLocationModalOpen(true)} className="bg-emerald-600 hover:bg-emerald-500 text-white">
+                  Change Delivery PIN
+                </Button>
+              </div>
+            </div>
           )}
         </Container>
       </Section>
+
+      <LocationPickerModal open={locationModalOpen} onClose={() => setLocationModalOpen(false)} />
     </PageWrapper>
   );
 }

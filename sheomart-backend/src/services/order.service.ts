@@ -4,7 +4,7 @@ import { Address } from "../models/address.model";
 import { CartItem } from "../models/cart.model";
 import { Inventory } from "../models/inventory.model";
 import { InventoryLedger } from "../models/inventoryLedger.model";
-import { Order, ORDER_STATUS, PAYMENT_STATUS } from "../models/order.model";
+import { Order, ORDER_STATUS, PAYMENT_STATUS, type IOrder } from "../models/order.model";
 import { Product } from "../models/product.model";
 import { Store } from "../models/store.model";
 import { StoreCustomer } from "../models/storeCustomer.model";
@@ -333,6 +333,11 @@ export class OrderService {
     if (!plusCustomer?.isPlusCustomer && data.paymentMethod !== "ONLINE") throw new AppError("Online payment is required for non-Plus customers", 403);
     if (data.paymentMethod === "PAY_AT_PICKUP" && fulfillmentType !== "pickup") throw new AppError("Pay During Pickup requires pickup fulfillment", 400);
     if (data.paymentMethod === "PAY_AT_DELIVERY" && fulfillmentType !== "delivery") throw new AppError("Pay During Delivery requires delivery fulfillment", 400);
+    if (fulfillmentType === "delivery" && address && store.pincode && address.pincode) {
+      if (store.pincode.trim().toLowerCase() !== address.pincode.trim().toLowerCase()) {
+        throw new AppError(`Delivery is not available to PIN code ${address.pincode}. This store only delivers to PIN code ${store.pincode}.`, 400);
+      }
+    }
     const distance = fulfillmentType === "delivery" && address ? distanceInKm(store, address) : null;
     if (distance !== null && store.deliveryRadiusKm > 0 && distance > store.deliveryRadiusKm) throw new AppError("Delivery unavailable for this address", 400);
     const selectedSlot = fulfillmentType === "delivery" ? (store.deliverySlots ?? []).find((slot) => (slot.slotId === data.deliverySlotId || slot.id === data.deliverySlotId) && (slot.isActive || slot.active)) : undefined;
@@ -399,7 +404,9 @@ export class OrderService {
     }
 
     const isCompletedStatus =
-      order.status === ORDER_STATUS.DELIVERED || order.pickupStatus === "PICKED_UP";
+      order.status === ORDER_STATUS.DELIVERED ||
+      order.pickupStatus === "PICKED_UP" ||
+      order.pickupStatus === "DELIVERED";
     const isPendingPayment =
       order.paymentStatus === PAYMENT_STATUS.PENDING ||
       order.paymentStatus === PAYMENT_STATUS.UNPAID;
@@ -426,6 +433,7 @@ export class OrderService {
 
     order.paymentStatus = PAYMENT_STATUS.PAID;
     order.paymentMethod = paymentMethod;
+    order.paymentReceivedMethod = paymentMethod;
     order.amountPaid = order.grandTotal;
     order.remainingAmount = 0;
     order.paidAt = new Date();
@@ -512,7 +520,7 @@ export class OrderService {
           throw new AppError("Order status changed; please retry", 409);
         }
 
-        if (nextStatus === "PICKED_UP") {
+        if (nextStatus === "PICKED_UP" || nextStatus === "DELIVERED") {
           await this.upsertStoreCustomer(updatedOrder, session);
         }
       });
@@ -524,27 +532,56 @@ export class OrderService {
   }
 
   static async cancelCustomerOrder(userId: string, orderId: string, reason?: string) {
-    const order = await Order.findOne({ orderId, userId });
-    if (!order) {
-      throw new AppError("Order not found", 404);
-    }
+    const session = await mongoose.startSession();
 
-    const currentStatus = order.pickupStatus || order.status;
-    if (currentStatus !== "ORDER_PLACED" && currentStatus !== "CONFIRMED") {
-      throw new AppError("Orders can only be cancelled before they are accepted by the store", 400);
-    }
+    try {
+      let cancelledOrder: IOrder | null = null;
 
-    const now = new Date();
-    order.pickupStatus = "CANCELLED";
-    order.status = ORDER_STATUS.CANCELLED;
-    order.statusUpdatedAt = now;
-    order.cancelledAt = now;
-    if (reason) {
-      order.orderNotes = reason;
+      await session.withTransaction(async () => {
+        const order = await Order.findOne({ orderId, userId }).session(session);
+        if (!order) {
+          throw new AppError("Order not found", 404);
+        }
+
+        const currentStatus = order.pickupStatus || order.status;
+        const cancellableStatuses = ["ORDER_PLACED", "CONFIRMED"];
+        if (!cancellableStatuses.includes(currentStatus)) {
+          throw new AppError("Orders can only be cancelled before they are accepted by the store", 400);
+        }
+
+        const now = new Date();
+        const statusFilter = order.pickupStatus
+          ? { pickupStatus: currentStatus }
+          : { pickupStatus: { $in: [null, ""] }, status: currentStatus };
+        cancelledOrder = await Order.findOneAndUpdate(
+          { orderId, userId, ...statusFilter },
+          {
+            $set: {
+              pickupStatus: "CANCELLED",
+              status: ORDER_STATUS.CANCELLED,
+              statusUpdatedAt: now,
+              cancelledAt: now,
+              ...(reason ? { orderNotes: reason } : {}),
+            },
+          },
+          { new: true, runValidators: false, session }
+        );
+
+        if (!cancelledOrder) {
+          throw new AppError("Order status changed; please refresh and try again", 409);
+        }
+
+        await this.restoreOrderInventory(cancelledOrder, userId, session);
+      });
+
+      if (!cancelledOrder) {
+        throw new AppError("Order cancellation could not be completed", 500);
+      }
+
+      return cancelledOrder;
+    } finally {
+      await session.endSession();
     }
-    await order.save();
-    await this.restoreOrderInventory(order, userId);
-    return order;
   }
 
   private static async upsertStoreCustomer(
@@ -621,6 +658,11 @@ export class OrderService {
     const paymentRequiredBeforeConfirmation = data.paymentMethod === "ONLINE";
     const nextPaymentStatus = paymentRequiredBeforeConfirmation ? PAYMENT_STATUS.PENDING : PAYMENT_STATUS.UNPAID;
     const nextOrderStatus = paymentRequiredBeforeConfirmation ? ORDER_STATUS.PENDING_PAYMENT : ORDER_STATUS.CONFIRMED;
+    if (fulfillmentType === "delivery" && address && store.pincode && address.pincode) {
+      if (store.pincode.trim().toLowerCase() !== address.pincode.trim().toLowerCase()) {
+        throw new AppError(`Delivery is not available to PIN code ${address.pincode}. This store only delivers to PIN code ${store.pincode}.`, 400);
+      }
+    }
     const distance = fulfillmentType === "delivery" && address ? distanceInKm(store, address) : null;
     if (distance !== null && store.deliveryRadiusKm > 0 && distance > store.deliveryRadiusKm) {
       throw new AppError("Delivery unavailable for this address", 400);

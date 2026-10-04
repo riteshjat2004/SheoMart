@@ -12,6 +12,7 @@ export interface ConfirmDialogProps {
   onClose?: () => void;
   onConfirm?: () => void;
   confirmLabel?: string;
+  confirmingLabel?: string;
   confirmVariant?: "default" | "destructive" | "secondary" | "outline";
   isConfirming?: boolean;
   cancelLabel?: string;
@@ -26,6 +27,7 @@ export function ConfirmDialog({
   onClose,
   onConfirm,
   confirmLabel = "Confirm",
+  confirmingLabel = "Saving...",
   confirmVariant = "default",
   isConfirming = false,
   cancelLabel = "Cancel",
@@ -109,7 +111,7 @@ export function ConfirmDialog({
               {isConfirming ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
+                  {confirmingLabel}
                 </>
               ) : (
                 confirmLabel

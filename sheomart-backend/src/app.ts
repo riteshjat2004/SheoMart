@@ -120,6 +120,10 @@ app.get("/", (_req, res) => {
   res.json(new ApiResponse(true, "Welcome to SheoMart API 🚀"));
 });
 
+app.get("/health", (_req, res) => {
+  res.json(new ApiResponse(true, "Healthy"));
+});
+
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/stores", storeRoutes);
 app.use("/api/v1/categories", categoryRoutes);

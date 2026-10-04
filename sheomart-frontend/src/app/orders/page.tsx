@@ -19,6 +19,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { Container } from "@/components/layout/container";
 import { PageWrapper } from "@/components/layout/page-wrapper";
@@ -76,7 +77,8 @@ export default function OrdersPage() {
 
   const [activeTab, setActiveTab] = useState<"all" | "active" | "completed" | "cancelled">("all");
   const [search, setSearch] = useState("");
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [pendingCancelOrderId, setPendingCancelOrderId] = useState<string | null>(null);
 
   const orders = (Array.isArray(ordersQuery.data) ? ordersQuery.data : []) as LiveOrder[];
 
@@ -105,18 +107,25 @@ export default function OrdersPage() {
 
   const handleCancelOrder = (orderId?: string) => {
     if (!orderId) return;
-    const confirmed = window.confirm("Are you sure you want to cancel this order?");
-    if (!confirmed) return;
+    setPendingCancelOrderId(orderId);
+  };
 
+  const confirmCancelOrder = () => {
+    if (!pendingCancelOrderId) return;
     setFeedback(null);
     cancelOrderMutation.mutate(
-      { orderId, reason: "Cancelled by customer before acceptance" },
+      { orderId: pendingCancelOrderId, reason: "Cancelled by customer before acceptance" },
       {
         onSuccess: () => {
-          setFeedback("Order cancelled successfully.");
+          setFeedback({ type: "success", message: "Order cancelled successfully." });
+          setPendingCancelOrderId(null);
         },
         onError: (err) => {
-          setFeedback(err instanceof Error ? err.message : "Failed to cancel order.");
+          setFeedback({
+            type: "error",
+            message: err instanceof Error ? err.message : "Failed to cancel order.",
+          });
+          setPendingCancelOrderId(null);
         },
       }
     );
@@ -142,10 +151,13 @@ export default function OrdersPage() {
     }
 
     if (addedCount > 0) {
-      setFeedback(`Reordered ${addedCount} item(s)! View in your cart.`);
+      setFeedback({ type: "success", message: `Reordered ${addedCount} item(s)! View in your cart.` });
       router.push("/cart");
     } else {
-      setFeedback("Unable to reorder items. Products may be currently unavailable.");
+      setFeedback({
+        type: "error",
+        message: "Unable to reorder items. Products may be currently unavailable.",
+      });
     }
   };
 
@@ -185,8 +197,12 @@ export default function OrdersPage() {
           </div>
 
           {feedback && (
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-semibold text-emerald-800 dark:border-emerald-950 dark:bg-emerald-950/40 dark:text-emerald-300">
-              {feedback}
+            <div className={`rounded-xl border p-3 text-xs font-semibold ${
+              feedback.type === "success"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-950 dark:bg-emerald-950/40 dark:text-emerald-300"
+                : "border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-950 dark:bg-rose-950/40 dark:text-rose-300"
+            }`}>
+              {feedback.message}
             </div>
           )}
 
@@ -243,7 +259,7 @@ export default function OrdersPage() {
           ) : filteredOrders.length ? (
             <div className="space-y-4">
               {filteredOrders.map((order) => {
-                const rawStatus = order.pickupStatus || order.status || "ORDER_PLACED";
+                const rawStatus = (order.pickupStatus || order.status || "ORDER_PLACED").toUpperCase();
                 const statusLabel = getOrderStatusLabel(rawStatus);
                 const isCancellable = rawStatus === "ORDER_PLACED" || rawStatus === "CONFIRMED";
                 const isDelivery =
@@ -406,6 +422,18 @@ export default function OrdersPage() {
           )}
         </Container>
       </Section>
+      <ConfirmDialog
+        open={Boolean(pendingCancelOrderId)}
+        title="Cancel this order?"
+        description="You can only cancel before the store starts preparing your order. If you continue, this order will be cancelled."
+        icon={<XCircle className="h-5 w-5" />}
+        confirmLabel="Yes, cancel order"
+        confirmingLabel="Cancelling..."
+        confirmVariant="destructive"
+        isConfirming={cancelOrderMutation.isPending}
+        onClose={() => setPendingCancelOrderId(null)}
+        onConfirm={confirmCancelOrder}
+      />
     </PageWrapper>
   );
 }

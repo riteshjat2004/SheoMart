@@ -27,6 +27,7 @@ export function useUpdateAdminSettings() {
       queryClient.setQueryData(["admin-settings"], updated);
       queryClient.invalidateQueries({ queryKey: ["admin-settings"] });
       queryClient.invalidateQueries({ queryKey: ["admin-audit-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["public-settings"] });
     },
   });
 }

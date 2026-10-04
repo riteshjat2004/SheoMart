@@ -203,19 +203,26 @@ export class StoreService {
   }
 
   static async getAllStores(location?: { pincode?: string; city?: string; state?: string }) {
-    const stores = await Store.find({
+    const pincode = location?.pincode?.trim();
+    const query: Record<string, unknown> = {
       status: { $in: [STORE_STATUS.APPROVED, STORE_STATUS.ACTIVE] },
       isActive: { $ne: false },
       isDeleted: { $ne: true },
-    })
+    };
+
+    if (pincode) {
+      query.pincode = { $regex: new RegExp(`^\\s*${pincode.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`, "i") };
+    }
+
+    const stores = await Store.find(query)
       .sort({ createdAt: -1 })
       .lean();
-    const pincode = location?.pincode?.trim().toLowerCase();
 
     const normalizedStores = stores.map((store) => StoreService.toFulfillmentResponse(store, true));
     if (!pincode) return normalizedStores;
 
-    return normalizedStores.filter((store) => typeof store.pincode === "string" && store.pincode.trim().toLowerCase() === pincode);
+    const normalizedPin = pincode.toLowerCase();
+    return normalizedStores.filter((store) => typeof store.pincode === "string" && store.pincode.trim().toLowerCase() === normalizedPin);
   }
 
   static async getAdminStores() {
