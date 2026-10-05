@@ -67,3 +67,20 @@ export function emitUserStopTyping(ticketId: string): void {
     socket.emit("stop_typing", { ticketId });
   }
 }
+
+export function joinStoreRoom(storeId: string): void {
+  const socket = getSupportSocket();
+  if (socket && storeId) {
+    socket.emit("join_store", storeId);
+  }
+}
+
+export function leaveStoreRoom(storeId: string): void {
+  const socket = getSupportSocket();
+  if (socket && storeId) {
+    socket.emit("leave_store", storeId);
+  }
+}
+
+export const getAppSocket = getSupportSocket;
+

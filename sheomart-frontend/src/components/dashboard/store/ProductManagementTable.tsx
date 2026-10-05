@@ -67,7 +67,7 @@ export function ProductManagementTable({
         { key: "actions", label: "Actions" },
       ]}
       rows={products}
-      renderRow={(product) => {
+      renderRow={(product, index) => {
         const mrp = product.price;
         const sellingPrice =
           product.discountPrice && product.discountPrice > 0
@@ -82,6 +82,8 @@ export function ProductManagementTable({
           : 0;
         const quantity = product.quantity ?? 0;
         const isMenuOpen = activeMenuId === product.productId;
+        // Open upwards for the bottom 2 rows so the dropdown is never clipped by table overflow boundaries
+        const isNearBottom = products.length > 2 ? index >= products.length - 2 : index > 0;
 
         return (
           <>
@@ -236,7 +238,7 @@ export function ProductManagementTable({
                 </Button>
 
                 {/* Dropdown Menu for More Options */}
-                <div className="relative">
+                <div className={`relative ${isMenuOpen ? "z-40" : ""}`}>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -251,10 +253,23 @@ export function ProductManagementTable({
                   </Button>
 
                   {isMenuOpen ? (
-                    <div
-                      ref={menuRef}
-                      className="absolute right-0 z-30 mt-1 w-44 rounded-2xl border border-stone-200 bg-white p-1.5 shadow-xl dark:border-stone-800 dark:bg-stone-900"
-                    >
+                    <>
+                      <button
+                        type="button"
+                        className="fixed inset-0 z-20 cursor-default"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveMenuId(null);
+                        }}
+                      />
+                      <div
+                        ref={menuRef}
+                        className={`absolute right-0 z-30 w-44 rounded-2xl border border-stone-200 bg-white p-1.5 shadow-xl dark:border-stone-800 dark:bg-stone-900 ${
+                          isNearBottom
+                            ? "bottom-full mb-1.5 origin-bottom-right"
+                            : "top-full mt-1.5 origin-top-right"
+                        }`}
+                      >
                       <button
                         type="button"
                         className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs font-medium text-stone-700 hover:bg-stone-100 dark:text-stone-200 dark:hover:bg-stone-800"
@@ -303,7 +318,8 @@ export function ProductManagementTable({
                         Delete Product
                       </button>
                     </div>
-                  ) : null}
+                  </>
+                ) : null}
                 </div>
               </div>
             </td>

@@ -42,6 +42,7 @@ import settingsRoutes from "./routes/settings.routes";
 import securityRoutes from "./routes/security.routes";
 import sellerCouponRoutes from "./routes/seller-coupon.routes";
 import supportRoutes from "./routes/support.routes";
+import notificationRoutes from "./routes/notification.routes";
 import { checkMaintenanceMode } from "./middleware/maintenance.middleware";
 
 const app = express();
@@ -147,6 +148,7 @@ app.use("/api/v1/platform-fee", platformFeeRoutes);
 app.use("/api/v1", sellerPasswordResetRoutes);
 app.use("/api/v1/admin", adminPasswordResetRoutes);
 app.use("/api/v1/support", supportRoutes);
+app.use("/api/v1/notifications", notificationRoutes);
 app.use("/api/home", homeRoutes);
 
 // Global Error Handler (Always Last)

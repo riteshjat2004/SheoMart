@@ -9,6 +9,7 @@ import { ORDER_STATUS, PAYMENT_STATUS } from "../models/order.model";
 import { Product } from "../models/product.model";
 import { CreateOrderInput } from "../validators/checkout.validator";
 import { OrderService } from "./order.service";
+import { NotificationService } from "./notification.service";
 
 export class PaymentService {
   /**
@@ -87,6 +88,8 @@ export class PaymentService {
 
     await order.save();
     await CartItem.deleteMany({ userId });
+
+    void NotificationService.sendStoreOrderNotification(order);
 
     return order;
   }

@@ -13,6 +13,7 @@ import { PromotionService } from "./promotion.service";
 import { CreateOrderInput } from "../validators/checkout.validator";
 import { PlatformFeeService } from "./platformFee.service";
 import { linkPendingPlusMember } from "./billing.service";
+import { NotificationService } from "./notification.service";
 
 const createInvoiceNumber = async (storeId: string, date: Date) => {
   const datePart = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}${String(date.getDate()).padStart(2, "0")}`;
@@ -925,6 +926,7 @@ export class OrderService {
       if (couponValidation) await PromotionService.recordCouponUsage(couponValidation.couponId, userId, existingDraft.orderId);
       if (!paymentRequiredBeforeConfirmation) {
         await this.deductOrderInventory(existingDraft, userId);
+        void NotificationService.sendStoreOrderNotification(existingDraft);
       }
       await CartItem.deleteMany({ userId });
 
@@ -977,6 +979,7 @@ export class OrderService {
     if (couponValidation) await PromotionService.recordCouponUsage(couponValidation.couponId, userId, order.orderId);
     if (!paymentRequiredBeforeConfirmation) {
       await this.deductOrderInventory(order, userId);
+      void NotificationService.sendStoreOrderNotification(order);
     }
     await CartItem.deleteMany({ userId });
 

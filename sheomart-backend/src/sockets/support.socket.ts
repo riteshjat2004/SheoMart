@@ -78,6 +78,21 @@ export function initSocketServer(server: HttpServer): Server {
       }
     });
 
+    // Join store room for real-time order alerts
+    socket.on("join_store", (storeId: string) => {
+      if (storeId) {
+        socket.join(`store:${storeId}`);
+        logger.info(`Socket ${socket.id} subscribed to store:${storeId}`);
+      }
+    });
+
+    // Leave store room
+    socket.on("leave_store", (storeId: string) => {
+      if (storeId) {
+        socket.leave(`store:${storeId}`);
+      }
+    });
+
     // Typing indicators
     socket.on("typing", (data: { ticketId: string; userName?: string }) => {
       if (data?.ticketId) {
@@ -166,3 +181,16 @@ export function emitMessagesRead(ticketId: string, readByRole: "customer" | "adm
     readAt: new Date(),
   });
 }
+
+export function emitStoreNewOrder(
+  storeId: string,
+  orderData: Record<string, unknown>,
+  ownerId?: string
+): void {
+  if (!io) return;
+  io.to(`store:${storeId}`).emit("new_order", orderData);
+  if (ownerId) {
+    io.to(`user:${ownerId}`).emit("new_order", orderData);
+  }
+}
+

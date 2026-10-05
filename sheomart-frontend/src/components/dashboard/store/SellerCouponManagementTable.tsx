@@ -273,9 +273,10 @@ export function SellerCouponManagementTable({ onSummaryChange }: SellerCouponMan
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
-              {coupons.map((c) => {
+              {coupons.map((c, index) => {
                 const isChecked = selectedIds.includes(c.couponId);
                 const isMenuOpen = openDropdownId === c.couponId;
+                const isNearBottom = coupons.length > 2 ? index >= coupons.length - 2 : index > 0;
                 const isExpiringSoon =
                   c.status === "active" &&
                   new Date(c.endsAt).getTime() - Date.now() < 3 * 24 * 60 * 60 * 1000;
@@ -401,7 +402,9 @@ export function SellerCouponManagementTable({ onSummaryChange }: SellerCouponMan
                               className="fixed inset-0 z-20"
                               onClick={() => setOpenDropdownId(null)}
                             />
-                            <div className="absolute right-0 z-30 mt-1 w-44 rounded-xl border border-stone-200 bg-white py-1 shadow-xl dark:border-stone-800 dark:bg-stone-900">
+                            <div className={`absolute right-0 z-30 w-44 rounded-xl border border-stone-200 bg-white py-1 shadow-xl dark:border-stone-800 dark:bg-stone-900 ${
+                              isNearBottom ? "bottom-full mb-1 origin-bottom-right" : "mt-1 origin-top-right"
+                            }`}>
                               <button
                                 type="button"
                                 onClick={() => {

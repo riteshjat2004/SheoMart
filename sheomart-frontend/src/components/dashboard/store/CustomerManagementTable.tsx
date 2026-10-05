@@ -325,7 +325,7 @@ export function CustomerManagementTable({ onSummaryChange }: CustomerManagementT
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
-                {customers.map((c) => {
+                {customers.map((c, index) => {
                   const initials = c.name
                     ? c.name
                         .split(" ")
@@ -337,6 +337,7 @@ export function CustomerManagementTable({ onSummaryChange }: CustomerManagementT
 
                   const cleanPhone = (c.mobile || c.phone || "").replace(/\D/g, "");
                   const isMenuOpen = openDropdownId === c.customerId;
+                  const isNearBottom = customers.length > 2 ? index >= customers.length - 2 : index > 0;
 
                   return (
                     <tr
@@ -476,7 +477,9 @@ export function CustomerManagementTable({ onSummaryChange }: CustomerManagementT
                                 className="fixed inset-0 z-20"
                                 onClick={() => setOpenDropdownId(null)}
                               />
-                              <div className="absolute right-0 z-30 mt-1 w-48 rounded-xl border border-stone-200 bg-white py-1 shadow-xl dark:border-stone-800 dark:bg-stone-900">
+                              <div className={`absolute right-0 z-30 w-48 rounded-xl border border-stone-200 bg-white py-1 shadow-xl dark:border-stone-800 dark:bg-stone-900 ${
+                                isNearBottom ? "bottom-full mb-1 origin-bottom-right" : "mt-1 origin-top-right"
+                              }`}>
                                 <button
                                   type="button"
                                   onClick={() => {
