@@ -35,6 +35,9 @@ export const PAYMENT_STATUS = {
 export interface IOrderItem {
   orderItemId: string;
   productId: string;
+  variantId?: string;
+  variantLabel?: string;
+  unit?: string;
   name: string;
   sku: string;
   quantity: number;
@@ -132,6 +135,18 @@ const orderItemSchema = new Schema<IOrderItem>(
     productId: {
       type: String,
       required: true,
+    },
+    variantId: {
+      type: String,
+      default: "",
+    },
+    variantLabel: {
+      type: String,
+      default: "",
+    },
+    unit: {
+      type: String,
+      default: "",
     },
     name: {
       type: String,

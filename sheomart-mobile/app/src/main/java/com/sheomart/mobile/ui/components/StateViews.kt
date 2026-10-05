@@ -25,8 +25,8 @@ fun SectionErrorView(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Surface)
-            .border(1.dp, Border, RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
             .padding(16.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -37,19 +37,19 @@ fun SectionErrorView(
             Text(
                 text = message,
                 style = MaterialTheme.typography.bodyMedium,
-                color = SecondaryText
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
-                    .background(PrimaryGreen)
+                    .background(MaterialTheme.colorScheme.primary)
                     .clickable(onClick = onRetry)
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
                 Text(
                     text = "Retry",
                     style = MaterialTheme.typography.labelMedium,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onPrimary
                 )
             }
         }
@@ -66,8 +66,8 @@ fun SectionEmptyView(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Surface)
-            .border(1.dp, Border, RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
             .padding(20.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -78,13 +78,13 @@ fun SectionEmptyView(
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleSmall,
-                color = PrimaryText
+                color = MaterialTheme.colorScheme.onSurface
             )
             if (description != null) {
                 Text(
                     text = description,
                     style = MaterialTheme.typography.bodySmall,
-                    color = SecondaryText
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }

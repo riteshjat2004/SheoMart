@@ -1,4 +1,4 @@
-import type { CategoryItem, StoreItem } from "@/types/marketplace";
+import type { CategoryItem, StoreItem, ProductVariant, NutritionalInfo } from "@/types/marketplace";
 
 export type AdminProductInventoryStatus = "in_stock" | "low_stock" | "out_of_stock" | "discontinued" | "unavailable";
 
@@ -9,6 +9,16 @@ export interface AdminProduct {
   brand: string;
   price: number;
   discountPrice: number;
+  sellingType?: "PIECE" | "WEIGHT" | "VOLUME";
+  baseUnit?: string;
+  unitLabel?: string;
+  minQuantity?: number;
+  stepQuantity?: number;
+  allowCustomQuantity?: boolean;
+  stockTrackingMode?: "SEPARATE" | "SHARED";
+  hasNutritionalInfo?: boolean;
+  nutritionalInfo?: NutritionalInfo | null;
+  variants?: ProductVariant[];
   thumbnail: string;
   images?: string[];
   description?: string;

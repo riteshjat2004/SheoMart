@@ -48,18 +48,19 @@ fun CategoryProductsScreen(
                 title = {
                     Text(
                         text = "Category Products",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Text("←", fontSize = 20.sp, color = PrimaryGreen)
+                        Text("←", fontSize = 20.sp, color = MaterialTheme.colorScheme.primary)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         },
-        containerColor = Background
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Column(
             modifier = Modifier
@@ -70,7 +71,7 @@ fun CategoryProductsScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color.White)
+                    .background(MaterialTheme.colorScheme.surface)
                     .padding(horizontal = 16.dp, vertical = 10.dp)
                     .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -80,8 +81,8 @@ fun CategoryProductsScreen(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(20.dp))
-                            .background(if (isSelected) PrimaryGreen else Surface)
-                            .border(1.dp, if (isSelected) PrimaryGreen else Border, RoundedCornerShape(20.dp))
+                            .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
+                            .border(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp))
                             .clickable { viewModel.setSort(option) }
                             .padding(horizontal = 14.dp, vertical = 6.dp)
                     ) {
@@ -90,13 +91,13 @@ fun CategoryProductsScreen(
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                             ),
-                            color = if (isSelected) Color.White else PrimaryText
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
             }
 
-            Divider(color = Border, thickness = 0.5.dp)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
 
             Box(modifier = Modifier.fillMaxSize()) {
                 when (val res = productsState) {

@@ -54,7 +54,7 @@ fun BannerCard(
                     .shadow(4.dp, shape = RoundedCornerShape(22.dp), spotColor = Color(0x2216A34A))
                     .clip(RoundedCornerShape(22.dp))
                     .background(Color(0xFF132A13))
-                    .border(1.dp, Border, RoundedCornerShape(22.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(22.dp))
                     .clickable { onItemClick(item) }
             ) {
                 // Background image
@@ -147,7 +147,7 @@ fun BannerCard(
                         modifier = Modifier
                             .size(if (isSelected) 18.dp else 6.dp, 6.dp)
                             .clip(CircleShape)
-                            .background(if (isSelected) PrimaryGreen else Color(0xFFD1D5DB))
+                            .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)
                     )
                 }
             }

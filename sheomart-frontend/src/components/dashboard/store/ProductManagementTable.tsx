@@ -119,6 +119,13 @@ export function ProductManagementTable({
                       </>
                     ) : null}
                   </div>
+                  {product.variants && product.variants.length > 0 ? (
+                    <div className="mt-1 flex items-center gap-1.5">
+                      <span className="inline-flex items-center rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                        {product.variants.length} {product.variants.length === 1 ? "size" : "sizes"} ({product.variants.map((v) => v.label).join(", ")})
+                      </span>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </td>
@@ -136,6 +143,11 @@ export function ProductManagementTable({
               <div className="text-sm">
                 <span className="font-semibold text-stone-900 dark:text-stone-50">
                   ₹{sellingPrice.toLocaleString("en-IN")}
+                  {product.sellingType && product.sellingType !== "PIECE" && (product.unitLabel || product.baseUnit) ? (
+                    <span className="ml-1 text-xs font-normal text-stone-500 dark:text-stone-400">
+                      / {product.unitLabel || product.baseUnit}
+                    </span>
+                  ) : null}
                 </span>
                 {hasDiscount ? (
                   <div className="flex items-center gap-1.5 text-xs">

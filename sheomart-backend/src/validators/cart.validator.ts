@@ -4,6 +4,8 @@ export const addCartItemSchema = z.object({
   productId: z.string().trim().min(1, "Product ID is required"),
   storeId: z.string().trim().min(1).optional(),
   quantity: z.number().int().min(1, "Quantity must be at least 1").optional().default(1),
+  variantId: z.string().trim().optional(),
+  variantLabel: z.string().trim().optional(),
 }).strict();
 
 export type AddCartItemInput = z.infer<typeof addCartItemSchema>;

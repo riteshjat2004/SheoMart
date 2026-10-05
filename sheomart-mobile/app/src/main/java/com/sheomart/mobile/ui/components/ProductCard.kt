@@ -38,10 +38,10 @@ fun ProductCard(
     Box(
         modifier = modifier
             .width(180.dp)
-            .shadow(3.dp, shape = RoundedCornerShape(20.dp), spotColor = Color(0x14000000))
+            .shadow(2.dp, shape = RoundedCornerShape(20.dp), spotColor = Color(0x14000000))
             .clip(RoundedCornerShape(20.dp))
-            .background(Color.White)
-            .border(1.dp, Border, RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp))
             .clickable(onClick = onClick)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -50,7 +50,7 @@ fun ProductCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(130.dp)
-                    .background(Surface)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 AsyncImageLoader(
                     url = product.thumbnail,
@@ -89,7 +89,7 @@ fun ProductCard(
                         .padding(8.dp)
                         .size(32.dp)
                         .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.9f))
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
                         .clickable(onClick = onToggleWishlist),
                     contentAlignment = Alignment.Center
                 ) {
@@ -133,7 +133,7 @@ fun ProductCard(
                     Text(
                         text = product.brand ?: "SheoMart",
                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                        color = SecondaryText,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
@@ -151,7 +151,7 @@ fun ProductCard(
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold
                                 ),
-                                color = PrimaryText
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
                     }
@@ -166,7 +166,7 @@ fun ProductCard(
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 14.sp
                     ),
-                    color = PrimaryText,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     minLines = 2
@@ -178,7 +178,7 @@ fun ProductCard(
                 Text(
                     text = product.unit ?: "Standard pack",
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                    color = SecondaryText
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -196,7 +196,7 @@ fun ProductCard(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp
                             ),
-                            color = PrimaryText
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         if (product.discountPrice != null && product.price > product.discountPrice) {
                             Text(
@@ -205,7 +205,7 @@ fun ProductCard(
                                     fontSize = 11.sp,
                                     textDecoration = TextDecoration.LineThrough
                                 ),
-                                color = SecondaryText
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }

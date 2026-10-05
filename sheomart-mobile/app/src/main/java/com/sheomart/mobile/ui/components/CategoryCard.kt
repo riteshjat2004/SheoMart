@@ -41,8 +41,8 @@ fun CategoryCard(
                 .size(68.dp)
                 .shadow(2.dp, shape = RoundedCornerShape(20.dp), spotColor = Color(0x10000000))
                 .clip(RoundedCornerShape(20.dp))
-                .background(Color.White)
-                .border(1.dp, Border, RoundedCornerShape(20.dp)),
+                .background(MaterialTheme.colorScheme.surface)
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp)),
             contentAlignment = Alignment.Center
         ) {
             if (!category.image.isNullOrBlank()) {
@@ -57,7 +57,7 @@ fun CategoryCard(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Surface),
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -74,7 +74,7 @@ fun CategoryCard(
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium
             ),
-            color = PrimaryText,
+            color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis

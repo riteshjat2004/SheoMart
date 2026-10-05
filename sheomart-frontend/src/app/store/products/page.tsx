@@ -58,6 +58,7 @@ function toProductRequest(payload: ProductFormValues): FormData | Record<string,
     if (jsonPayload.quantity === undefined) {
       delete jsonPayload.quantity;
     }
+    jsonPayload.variants = payload.variants ?? [];
     return jsonPayload;
   }
 
@@ -74,6 +75,17 @@ function toProductRequest(payload: ProductFormValues): FormData | Record<string,
   formData.append("categoryId", payload.categoryId);
   formData.append("isPublished", String(payload.isPublished));
   formData.append("isActive", String(payload.isActive));
+  if (payload.isFeatured !== undefined) formData.append("isFeatured", String(payload.isFeatured));
+  if (payload.sellingType) formData.append("sellingType", payload.sellingType);
+  if (payload.baseUnit) formData.append("baseUnit", payload.baseUnit);
+  if (payload.unitLabel) formData.append("unitLabel", payload.unitLabel);
+  if (payload.minQuantity !== undefined) formData.append("minQuantity", String(payload.minQuantity));
+  if (payload.stepQuantity !== undefined) formData.append("stepQuantity", String(payload.stepQuantity));
+  if (payload.allowCustomQuantity !== undefined) formData.append("allowCustomQuantity", String(payload.allowCustomQuantity));
+  if (payload.stockTrackingMode) formData.append("stockTrackingMode", payload.stockTrackingMode);
+  if (payload.hasNutritionalInfo !== undefined) formData.append("hasNutritionalInfo", String(payload.hasNutritionalInfo));
+  if (payload.nutritionalInfo) formData.append("nutritionalInfo", JSON.stringify(payload.nutritionalInfo));
+  formData.append("variants", JSON.stringify(payload.variants ?? []));
   if (payload.imageUrl) formData.append("imageUrl", payload.imageUrl);
   if (payload.imageFile) formData.append("image", payload.imageFile);
   return formData;
@@ -668,10 +680,21 @@ export default function StoreProductsPage() {
               discountPrice: editingProduct.discountPrice ?? 0,
               quantity: editingProduct.quantity ?? 0,
               categoryId: editingProduct.categoryId ?? "",
+              sellingType: editingProduct.sellingType ?? "PIECE",
+              baseUnit: editingProduct.baseUnit ?? "piece",
+              unitLabel: editingProduct.unitLabel ?? "",
+              minQuantity: editingProduct.minQuantity ?? 1,
+              stepQuantity: editingProduct.stepQuantity ?? 1,
+              allowCustomQuantity: editingProduct.allowCustomQuantity ?? false,
+              stockTrackingMode: editingProduct.stockTrackingMode ?? "SEPARATE",
+              hasNutritionalInfo: editingProduct.hasNutritionalInfo ?? false,
+              nutritionalInfo: editingProduct.nutritionalInfo ?? null,
+              variants: editingProduct.variants ?? [],
               images: editingProduct.images ?? [],
               imageUrl: editingProduct.image?.url,
               isPublished: editingProduct.isPublished ?? false,
               isActive: editingProduct.isActive ?? true,
+              isFeatured: editingProduct.isFeatured ?? false,
             }}
             categories={categories}
             onSubmit={handleEdit}

@@ -55,17 +55,31 @@ export class CartService {
     };
   }
 
-  private static buildCartSummary(cartItems: Array<{ quantity: number; product: { price: number; discountPrice?: number } | null; isAvailable: boolean }>) {
+  private static buildCartSummary(
+    cartItems: Array<{
+      quantity: number;
+      unitPrice?: number;
+      unitDiscountPrice?: number;
+      product: { price: number; discountPrice?: number } | null;
+      isAvailable: boolean;
+    }>
+  ) {
     const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
     const subtotal = cartItems.reduce((sum, item) => {
-      const price = item.product?.discountPrice ?? item.product?.price ?? 0;
+      const price =
+        item.unitDiscountPrice ??
+        item.unitPrice ??
+        item.product?.discountPrice ??
+        item.product?.price ??
+        0;
       return sum + price * item.quantity;
     }, 0);
     const totalProducts = cartItems.length;
     const estimatedSavings = cartItems.reduce((sum, item) => {
-      const price = item.product?.price ?? 0;
-      const discountPrice = item.product?.discountPrice ?? price;
-      return sum + Math.max(0, price - discountPrice) * item.quantity;
+      const regPrice = item.unitPrice ?? item.product?.price ?? 0;
+      const salePrice =
+        item.unitDiscountPrice ?? item.product?.discountPrice ?? regPrice;
+      return sum + Math.max(0, regPrice - salePrice) * item.quantity;
     }, 0);
 
     return {
@@ -95,16 +109,33 @@ export class CartService {
           return null;
         }
 
+        let unitPrice = product.price;
+        let unitDiscountPrice = product.discountPrice ?? product.price;
+        let variantLabel = item.variantLabel || "";
+
+        if (item.variantId && product.variants?.length) {
+          const v = product.variants.find((v) => v.variantId === item.variantId);
+          if (v) {
+            unitPrice = v.price;
+            unitDiscountPrice = v.discountPrice ?? v.price;
+            variantLabel = v.label;
+          }
+        }
+
         return {
           cartItemId: item.cartItemId,
           quantity: item.quantity,
+          variantId: item.variantId || "",
+          variantLabel,
+          unitPrice,
+          unitDiscountPrice,
           product,
           isAvailable: availability.isAvailable,
           availabilityMessage: availability.availabilityMessage,
           maxAvailableQuantity: availability.maxAvailableQuantity,
         };
       })
-      .filter((item): item is { cartItemId: string; quantity: number; product: typeof products[number]; isAvailable: boolean; availabilityMessage: string; maxAvailableQuantity: number } => item !== null);
+      .filter((item): item is NonNullable<typeof item> => item !== null);
 
     return {
       cartItems: enrichedCartItems,
@@ -145,7 +176,20 @@ export class CartService {
       };
     }
 
-    const existingCartItem = await CartItem.findOne({ userId, productId: data.productId });
+    const variantId = data.variantId || "";
+    let variantLabel = data.variantLabel || "";
+    if (variantId && product.variants?.length) {
+      const foundVariant = product.variants.find((v) => v.variantId === variantId);
+      if (foundVariant) {
+        variantLabel = foundVariant.label;
+      }
+    }
+
+    const existingCartItem = await CartItem.findOne({
+      userId,
+      productId: data.productId,
+      variantId,
+    });
 
     if (existingCartItem) {
       const updatedQuantity = existingCartItem.quantity + quantity;
@@ -160,6 +204,9 @@ export class CartService {
       }
 
       existingCartItem.quantity = updatedQuantity;
+      if (variantLabel && !existingCartItem.variantLabel) {
+        existingCartItem.variantLabel = variantLabel;
+      }
       await existingCartItem.save();
       return {
         cartItem: existingCartItem,
@@ -171,6 +218,8 @@ export class CartService {
     const cartItem = await CartItem.create({
       userId,
       productId: data.productId,
+      variantId,
+      variantLabel,
       storeId: data.storeId ?? product.storeId,
       quantity,
     });

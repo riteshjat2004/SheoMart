@@ -1,3 +1,5 @@
+import type { ProductVariant } from "./marketplace";
+
 export interface InventoryItem {
   inventoryId?: string;
   productId?: string;
@@ -9,3 +11,14 @@ export interface InventoryItem {
   createdAt?: string;
   updatedAt?: string;
 }
+
+export interface UpdateInventoryPayload extends Partial<InventoryItem> {
+  note?: string;
+  variants?: ProductVariant[];
+  variantStocks?: {
+    variantId?: string;
+    label?: string;
+    stock: number;
+  }[];
+}
+

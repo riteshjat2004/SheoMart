@@ -2,6 +2,7 @@ package com.sheomart.mobile.ui.components
 
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
@@ -46,13 +47,19 @@ fun SheoTextField(
         visualTransformation = if (passwordMode) PasswordVisualTransformation() else VisualTransformation.None,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = imeAction),
         colors = TextFieldDefaults.colors(
-            focusedContainerColor = Surface,
-            unfocusedContainerColor = Surface,
-            focusedIndicatorColor = PrimaryGreen,
-            unfocusedIndicatorColor = Border,
-            cursorColor = PrimaryGreen,
-            focusedTextColor = PrimaryText,
-            unfocusedTextColor = PrimaryText,
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+            focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+            unfocusedIndicatorColor = MaterialTheme.colorScheme.outlineVariant,
+            cursorColor = MaterialTheme.colorScheme.primary,
+            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+            focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            focusedLeadingIconColor = MaterialTheme.colorScheme.primary,
+            unfocusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            focusedTrailingIconColor = MaterialTheme.colorScheme.primary,
+            unfocusedTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
         ),
     )
 }

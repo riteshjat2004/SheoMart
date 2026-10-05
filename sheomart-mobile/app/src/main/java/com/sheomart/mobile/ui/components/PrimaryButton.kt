@@ -32,12 +32,12 @@ fun PrimaryButton(
         enabled = enabled && !loading,
         shape = RoundedCornerShape(18.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = PrimaryGreen,
-            contentColor = Color.White,
-            disabledContainerColor = PrimaryGreen.copy(alpha = 0.55f),
-            disabledContentColor = Color.White,
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+            disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.55f),
+            disabledContentColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f),
         ),
-        elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp),
     ) {
         Box(contentAlignment = Alignment.Center) {
             if (loading) {

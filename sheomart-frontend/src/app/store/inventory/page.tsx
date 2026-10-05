@@ -31,8 +31,8 @@ import { fetchStoreProducts } from "@/services/product";
 import { fetchCategories } from "@/services/category";
 import { syncStoreInventory, updateInventory } from "@/services/inventory";
 import { useInvalidatePosCatalog } from "@/hooks/use-pos-catalog";
-import type { CategoryItem, ProductItem } from "@/types/marketplace";
-import type { InventoryItem } from "@/types/inventory";
+import type { CategoryItem, ProductItem, ProductVariant } from "@/types/marketplace";
+import type { InventoryItem, UpdateInventoryPayload } from "@/types/inventory";
 
 
 const PAGE_SIZE = 8;
@@ -208,7 +208,7 @@ export default function StoreInventoryPage() {
       payload,
     }: {
       productId: string;
-      payload: Partial<InventoryItem>;
+      payload: UpdateInventoryPayload;
     }) => updateInventory(productId, payload),
     onSuccess: async () => {
       await invalidateInventoryQueries();
@@ -222,20 +222,32 @@ export default function StoreInventoryPage() {
       }),
   });
 
-  const handleUpdate = (values: InventoryFormValues) => {
+  const handleUpdate = (values: InventoryFormValues, variants?: ProductVariant[]) => {
     if (!editingProduct?.productId) return;
     setFeedback(null);
     updateMutation.mutate({
       productId: editingProduct.productId,
-      payload: values,
+      payload: {
+        ...values,
+        variants,
+      },
     });
   };
 
-  const handleQuickAdjust = async (productId: string, newQuantity: number) => {
+  const handleQuickAdjust = async (
+    productId: string,
+    newQuantity: number,
+    note?: string,
+    variants?: ProductVariant[]
+  ) => {
     setFeedback(null);
     await updateMutation.mutateAsync({
       productId,
-      payload: { availableQuantity: newQuantity },
+      payload: {
+        availableQuantity: newQuantity,
+        note,
+        variants,
+      },
     });
   };
 
@@ -548,6 +560,7 @@ export default function StoreInventoryPage() {
       >
         {editingProduct?.productId ? (
           <InventoryForm
+            product={editingProduct}
             initialValues={{
               availableQuantity: inventoryMap[editingProduct.productId]?.availableQuantity ?? 0,
               reservedQuantity: inventoryMap[editingProduct.productId]?.reservedQuantity ?? 0,

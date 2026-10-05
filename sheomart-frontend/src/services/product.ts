@@ -83,4 +83,28 @@ export async function duplicateStoreProduct(productId: string) {
   return response.data.data?.product;
 }
 
+export interface CloneProductsToStorePayload {
+  targetStoreId: string;
+  productIds: string[];
+  defaultStock?: number;
+  isPublished?: boolean;
+}
+
+export interface CloneProductsToStoreResult {
+  clonedCount: number;
+  clonedProducts: ProductItem[];
+}
+
+export async function cloneProductsToStore(payload: CloneProductsToStorePayload): Promise<CloneProductsToStoreResult> {
+  const response = await api.post<ApiResponse<CloneProductsToStoreResult>>(
+    "/api/v1/products/admin/clone-to-store",
+    payload
+  );
+  if (!response.data.data) {
+    throw new Error(response.data.message || "Failed to clone products to store");
+  }
+  return response.data.data;
+}
+
+
 

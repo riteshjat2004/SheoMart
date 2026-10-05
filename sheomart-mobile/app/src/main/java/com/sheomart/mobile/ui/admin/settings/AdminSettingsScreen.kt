@@ -52,7 +52,7 @@ fun AdminSettingsScreen(
                 onBack = onBack
             )
         },
-        containerColor = Background,
+        containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         Column(
@@ -72,8 +72,8 @@ fun AdminSettingsScreen(
                     .padding(horizontal = 20.dp)
                     .shadow(2.dp, shape = RoundedCornerShape(20.dp), spotColor = Color(0x14000000))
                     .clip(RoundedCornerShape(20.dp))
-                    .background(Color.White)
-                    .border(1.dp, Border, RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colorScheme.surface)
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp))
                     .padding(18.dp)
             ) {
                 var name by remember(user?.name) { mutableStateOf(user?.name ?: "") }
@@ -89,7 +89,7 @@ fun AdminSettingsScreen(
                             modifier = Modifier
                                 .size(48.dp)
                                 .clip(CircleShape)
-                                .background(PrimaryGreen),
+                                .background(MaterialTheme.colorScheme.primary),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
@@ -98,8 +98,8 @@ fun AdminSettingsScreen(
                             )
                         }
                         Column {
-                            Text(text = "Administrator Profile", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
-                            Text(text = user?.email ?: "", style = MaterialTheme.typography.bodySmall, color = SecondaryText)
+                            Text(text = "Administrator Profile", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface))
+                            Text(text = user?.email ?: "", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
 
@@ -128,7 +128,7 @@ fun AdminSettingsScreen(
                     Button(
                         onClick = { viewModel.updateProfile(name.trim(), mobile.trim(), null) },
                         enabled = !uiState.isSavingProfile,
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.align(Alignment.End)
                     ) {
@@ -148,8 +148,8 @@ fun AdminSettingsScreen(
                     .padding(horizontal = 20.dp)
                     .shadow(2.dp, shape = RoundedCornerShape(20.dp), spotColor = Color(0x14000000))
                     .clip(RoundedCornerShape(20.dp))
-                    .background(Color.White)
-                    .border(1.dp, Border, RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colorScheme.surface)
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp))
                     .padding(18.dp)
             ) {
                 var currentPass by remember { mutableStateOf("") }
@@ -158,8 +158,8 @@ fun AdminSettingsScreen(
                 var passError by remember { mutableStateOf<String?>(null) }
 
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(text = "🔑 Change Password", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
-                    Text(text = "Must be at least 8 characters with numbers & symbols", style = MaterialTheme.typography.bodySmall, color = SecondaryText)
+                    Text(text = "🔑 Change Password", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface))
+                    Text(text = "Must be at least 8 characters with numbers & symbols", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                     Spacer(modifier = Modifier.height(12.dp))
 
@@ -214,7 +214,7 @@ fun AdminSettingsScreen(
                             confirmPass = ""
                         },
                         enabled = !uiState.isChangingPassword,
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.align(Alignment.End)
                     ) {
@@ -241,13 +241,13 @@ fun AdminSettingsScreen(
                         .padding(horizontal = 20.dp)
                         .shadow(2.dp, shape = RoundedCornerShape(20.dp), spotColor = Color(0x14000000))
                         .clip(RoundedCornerShape(20.dp))
-                        .background(Color.White)
-                        .border(1.dp, Border, RoundedCornerShape(20.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp))
                         .padding(18.dp)
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(text = "💳 Platform Fee Configuration", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
-                        Text(text = "Fee applied to customer checkouts across Sheopur", style = MaterialTheme.typography.bodySmall, color = SecondaryText)
+                        Text(text = "💳 Platform Fee Configuration", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface))
+                        Text(text = "Fee applied to customer checkouts across Sheopur", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                         Spacer(modifier = Modifier.height(14.dp))
 
@@ -275,17 +275,17 @@ fun AdminSettingsScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(Surface)
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
                                 .clickable { enabled = !enabled }
                                 .padding(horizontal = 12.dp, vertical = 8.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Enable Platform Fee", style = MaterialTheme.typography.bodyMedium)
+                            Text("Enable Platform Fee", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
                             Switch(
                                 checked = enabled,
                                 onCheckedChange = { enabled = it },
-                                colors = SwitchDefaults.colors(checkedThumbColor = PrimaryGreen)
+                                colors = SwitchDefaults.colors(checkedThumbColor = MaterialTheme.colorScheme.primary)
                             )
                         }
 
@@ -305,7 +305,7 @@ fun AdminSettingsScreen(
                                 )
                             },
                             enabled = !uiState.isSavingFee,
-                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                             shape = RoundedCornerShape(10.dp),
                             modifier = Modifier.align(Alignment.End)
                         ) {
@@ -329,7 +329,7 @@ fun AdminSettingsScreen(
                 Text(
                     text = "SheoMart Administrator Workspace · Version 1.0.0",
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                    color = SecondaryText
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Spacer(modifier = Modifier.height(14.dp))

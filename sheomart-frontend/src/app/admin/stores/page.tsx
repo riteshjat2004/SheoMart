@@ -32,10 +32,12 @@ import { Breadcrumb } from "@/components/dashboard/layout/Breadcrumb";
 import { DashboardContent } from "@/components/dashboard/layout/DashboardContent";
 import { PageHeader } from "@/components/dashboard/layout/PageHeader";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
+import { useRouter } from "next/navigation";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
 import { ToastNotification, type ToastMessage } from "@/components/dashboard/ToastNotification";
 import { StoreDetailsModal } from "@/components/dashboard/admin/StoreDetailsModal";
+import { AdminStoreCatalogModal } from "@/components/dashboard/admin/AdminStoreCatalogModal";
 import { Button } from "@/components/ui/button";
 import {
   fetchAdminStores,
@@ -44,6 +46,7 @@ import {
   deleteStore,
   bulkUpdateStoreStatus,
 } from "@/services/store";
+import { cloneProductsToStore } from "@/services/product";
 import type { StoreBadge, StoreItem } from "@/types/marketplace";
 
 const statusFilterOptions = [
@@ -100,11 +103,14 @@ export default function AdminStoresPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  const router = useRouter();
+
   // Selection State
   const [selectedStoreIds, setSelectedStoreIds] = useState<Set<string>>(new Set());
 
   // Modal & Dialog State
   const [inspectingStore, setInspectingStore] = useState<StoreItem | null>(null);
+  const [catalogTargetStore, setCatalogTargetStore] = useState<StoreItem | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingActionState | null>(null);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
@@ -334,11 +340,35 @@ export default function AdminStoresPage() {
     },
   });
 
+  // Assign Catalog Products Mutation
+  const cloneProductsMutation = useMutation({
+    mutationFn: cloneProductsToStore,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["stores", "admin"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      const storeName = catalogTargetStore?.storeName || catalogTargetStore?.name || "the store";
+      setToast({
+        type: "success",
+        message: `Successfully assigned ${data.clonedCount} products to ${storeName}. Stock and pricing can now be managed by the store.`,
+      });
+      setCatalogTargetStore(null);
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : "Failed to assign products to store.";
+      setToast({
+        type: "error",
+        message: msg,
+      });
+    },
+  });
+
   const isMutating =
     statusMutation.isPending ||
     badgeMutation.isPending ||
     deleteMutation.isPending ||
-    bulkMutation.isPending;
+    bulkMutation.isPending ||
+    cloneProductsMutation.isPending;
 
   // Selection Helpers
   const isAllPageSelected =
@@ -1013,6 +1043,16 @@ export default function AdminStoresPage() {
                             <Eye className="h-4 w-4" />
                           </Button>
 
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => setCatalogTargetStore(store)}
+                            title="Stock products from SheoMart Catalog"
+                            className="h-8 w-8 text-stone-500 hover:text-emerald-600"
+                          >
+                            <Sparkles className="h-4 w-4" />
+                          </Button>
+
                           <div className="relative">
                             <Button
                               size="icon"
@@ -1039,6 +1079,18 @@ export default function AdminStoresPage() {
                                 >
                                   <Eye className="h-3.5 w-3.5 text-stone-400" />
                                   View Details
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setCatalogTargetStore(store);
+                                    setOpenDropdownId(null);
+                                  }}
+                                  className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+                                >
+                                  <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
+                                  Stock from Catalog
                                 </button>
 
                                 {/* Approve */}
@@ -1290,7 +1342,28 @@ export default function AdminStoresPage() {
         onActivate={(store) => requestStatusAction(store, "active")}
         onDeactivate={(store) => requestStatusAction(store, "inactive")}
         onUpdateBadge={(store, badge) => requestBadgeAction(store, badge)}
+        onAssignProducts={(store) => {
+          setInspectingStore(null);
+          setCatalogTargetStore(store);
+        }}
         isActionLoading={isMutating}
+      />
+
+      {/* Admin Store Catalog Modal (Master Catalog Product Assignment) */}
+      <AdminStoreCatalogModal
+        store={catalogTargetStore}
+        open={Boolean(catalogTargetStore)}
+        onClose={() => setCatalogTargetStore(null)}
+        isCloning={cloneProductsMutation.isPending}
+        onClone={async (payload) => {
+          await cloneProductsMutation.mutateAsync(payload);
+        }}
+        onCloneSuccess={(_count) => {
+          // Toast handled by mutation onSuccess
+        }}
+        onCreateCustomProduct={(store) => {
+          router.push(`/admin/products?storeId=${store.storeId ?? store._id}&action=new`);
+        }}
       />
     </DashboardContent>
   );

@@ -1,7 +1,8 @@
+import { v4 as uuidv4 } from "uuid";
 import { AppError } from "../errors/AppError";
 import { Category } from "../models/category.model";
 import { Inventory } from "../models/inventory.model";
-import { Product } from "../models/product.model";
+import { Product, IProductVariant, INutritionalInfo } from "../models/product.model";
 import { Store } from "../models/store.model";
 import { STORE_STATUS } from "../constants/store";
 import {
@@ -12,6 +13,7 @@ import {
   UpdateThumbnailInput,
   AdminProductListQuery,
   BulkProductActionInput,
+  CloneProductsToStoreInput,
 } from "../validators/product.validator";
 import { InventoryService } from "./inventory.service";
 import { CLOUDINARY_FOLDERS } from "../constants/cloudinary";
@@ -30,6 +32,16 @@ export interface AdminProductListItem {
   brand: string;
   price: number;
   discountPrice: number;
+  sellingType?: "PIECE" | "WEIGHT" | "VOLUME";
+  baseUnit?: string;
+  unitLabel?: string;
+  minQuantity?: number;
+  stepQuantity?: number;
+  allowCustomQuantity?: boolean;
+  stockTrackingMode?: "SEPARATE" | "SHARED";
+  hasNutritionalInfo?: boolean;
+  nutritionalInfo?: INutritionalInfo | null;
+  variants?: IProductVariant[];
   thumbnail: string;
   images?: string[];
   description?: string;
@@ -59,6 +71,16 @@ function mapAdminProduct(product: AdminProductListItem): AdminProductListItem {
     brand: product.brand,
     price: product.price,
     discountPrice: product.discountPrice,
+    sellingType: product.sellingType,
+    baseUnit: product.baseUnit,
+    unitLabel: product.unitLabel,
+    minQuantity: product.minQuantity,
+    stepQuantity: product.stepQuantity,
+    allowCustomQuantity: product.allowCustomQuantity,
+    stockTrackingMode: product.stockTrackingMode,
+    hasNutritionalInfo: product.hasNutritionalInfo,
+    nutritionalInfo: product.nutritionalInfo,
+    variants: product.variants,
     thumbnail: product.thumbnail,
     images: product.images,
     description: product.description,
@@ -152,7 +174,7 @@ export class ProductService {
     const skip = (filters.page - 1) * filters.limit;
     const sortDirection: 1 | -1 = filters.sortOrder === "asc" ? 1 : -1;
     const sort = { [filters.sortBy]: sortDirection };
-    const safeFields = "productId name sku brand price discountPrice thumbnail images description isActive isPublished isDeleted isFeatured isBestseller isTrending quantity categoryId storeId createdAt updatedAt";
+    const safeFields = "productId name sku brand price discountPrice sellingType baseUnit unitLabel minQuantity stepQuantity allowCustomQuantity stockTrackingMode variants thumbnail images description isActive isPublished isDeleted isFeatured isBestseller isTrending quantity categoryId storeId createdAt updatedAt";
 
     const [products, total, statsResult] = await Promise.all([
       Product.find(query).select(safeFields).sort(sort).skip(skip).limit(filters.limit).lean(),
@@ -216,6 +238,16 @@ export class ProductService {
           isFeatured: product.isFeatured ?? false,
           isBestseller: product.isBestseller ?? false,
           isTrending: product.isTrending ?? false,
+          sellingType: product.sellingType,
+          baseUnit: product.baseUnit,
+          unitLabel: product.unitLabel,
+          minQuantity: product.minQuantity,
+          stepQuantity: product.stepQuantity,
+          allowCustomQuantity: product.allowCustomQuantity,
+          stockTrackingMode: product.stockTrackingMode,
+          hasNutritionalInfo: product.hasNutritionalInfo,
+          nutritionalInfo: product.nutritionalInfo,
+          variants: product.variants,
           quantity: inventory?.availableQuantity ?? product.quantity ?? 0,
           inventoryStatus: inventory?.status ?? "unavailable",
           category: category ? { categoryId: category.categoryId, name: category.name } : null,
@@ -264,7 +296,9 @@ export class ProductService {
       .replace(/(^-|-$)/g, "") || "product";
   }
 
-  private static async enrichProductsWithInventory<T extends { productId?: string; quantity?: number }>(products: T[]) {
+  private static async enrichProductsWithInventory<
+    T extends { productId?: string; quantity?: number; storeId?: string; storeName?: string }
+  >(products: T[]) {
     const productIds = products
       .map((product) => product.productId)
       .filter((productId): productId is string => Boolean(productId));
@@ -287,15 +321,34 @@ export class ProductService {
       }
     }
 
+    const missingStoreProducts = products.filter(
+      (p): p is T & { storeId: string } => !p.storeName && Boolean(p.storeId)
+    );
+    if (missingStoreProducts.length > 0) {
+      const storeIds: string[] = Array.from(new Set(missingStoreProducts.map((p) => p.storeId)));
+      const stores = await Store.find({ storeId: { $in: storeIds } }).select("storeId storeName").lean();
+      const storeMap = new Map(stores.map((s) => [s.storeId, s.storeName]));
+      for (const p of missingStoreProducts) {
+        if (storeMap.has(p.storeId)) {
+          p.storeName = storeMap.get(p.storeId);
+        }
+      }
+    }
+
     return products;
   }
 
-  private static async buildUniqueSlug(name: string) {
+  private static async buildUniqueSlug(name: string, excludeProductId?: string) {
     const baseSlug = this.generateSlug(name);
     let slug = baseSlug;
     let counter = 1;
 
-    while (await Product.findOne({ slug })) {
+    while (
+      await Product.findOne({
+        slug,
+        ...(excludeProductId ? { productId: { $ne: excludeProductId } } : {}),
+      })
+    ) {
       slug = `${baseSlug}-${counter}`;
       counter += 1;
     }
@@ -332,6 +385,7 @@ export class ProductService {
 
   static async createProduct(data: CreateProductInput, userId: string, imageBuffer?: Buffer, role?: string) {
     let storeId: string;
+    let storeName = "";
     if (role === "platform_admin") {
       if (data.storeId) {
         const store = await Store.findOne({ storeId: data.storeId });
@@ -339,12 +393,14 @@ export class ProductService {
           throw new AppError("Store not found", 404);
         }
         storeId = store.storeId;
+        storeName = store.storeName;
       } else {
         const store = await Store.findOne({ status: STORE_STATUS.APPROVED });
         if (!store) {
           throw new AppError("No approved store found to associate with product", 400);
         }
         storeId = store.storeId;
+        storeName = store.storeName;
       }
     } else {
       const store = await Store.findOne({ ownerId: userId, status: STORE_STATUS.APPROVED });
@@ -353,6 +409,7 @@ export class ProductService {
         throw new AppError("Only approved store owners can create products", 403);
       }
       storeId = store.storeId;
+      storeName = store.storeName;
     }
 
     const category = await Category.findOne({ categoryId: data.categoryId, isActive: true });
@@ -394,6 +451,7 @@ export class ProductService {
     const imageUrls = data.imageUrl ? [data.imageUrl, ...data.images.filter((url) => url !== data.imageUrl)] : data.images;
     const product = await Product.create({
       storeId,
+      storeName,
       categoryId: data.categoryId,
       name: data.name,
       slug,
@@ -403,6 +461,26 @@ export class ProductService {
       price: data.price,
       discountPrice: data.discountPrice ?? 0,
       quantity: data.quantity ?? 0,
+      sellingType: data.sellingType ?? "PIECE",
+      baseUnit: data.baseUnit ?? "piece",
+      unitLabel: data.unitLabel ?? "",
+      minQuantity: data.minQuantity ?? 1,
+      stepQuantity: data.stepQuantity ?? 1,
+      allowCustomQuantity: data.allowCustomQuantity ?? false,
+      stockTrackingMode: data.stockTrackingMode ?? "SEPARATE",
+      hasNutritionalInfo: data.hasNutritionalInfo ?? false,
+      nutritionalInfo: data.hasNutritionalInfo ? data.nutritionalInfo : null,
+      variants: (data.variants || []).map((v) => ({
+        variantId: v.variantId || uuidv4(),
+        label: v.label,
+        unit: v.unit,
+        value: v.value,
+        price: v.price,
+        discountPrice: v.discountPrice,
+        sku: v.sku,
+        stock: v.stock ?? 0,
+        packQuantity: v.packQuantity ?? 1,
+      })),
       image,
       images: image ? [image.url, ...imageUrls.filter((url) => url !== image?.url)] : imageUrls,
       thumbnail: image?.url || imageUrls[0] || "",
@@ -415,7 +493,17 @@ export class ProductService {
       updatedBy: userId,
     });
 
-    await InventoryService.createInventoryForProduct(product.productId, userId, data.quantity ?? 0);
+    const finalQuantity =
+      (data.stockTrackingMode ?? "SEPARATE") === "SEPARATE" && (data.variants || []).length > 0
+        ? (data.variants || []).reduce((sum, v) => sum + (v.stock || 0), 0)
+        : (data.quantity ?? 0);
+
+    if (finalQuantity !== (data.quantity ?? 0)) {
+      product.quantity = finalQuantity;
+      await product.save();
+    }
+
+    await InventoryService.createInventoryForProduct(product.productId, userId, finalQuantity);
 
     return product;
   }
@@ -553,9 +641,9 @@ export class ProductService {
       throw new AppError("Discount price cannot be greater than price", 400);
     }
 
-    if (data.name) {
+    if (data.name && data.name !== product.name) {
       product.name = data.name;
-      product.slug = await this.buildUniqueSlug(data.name);
+      product.slug = await this.buildUniqueSlug(data.name, product.productId);
     }
 
     if (typeof data.description === "string") {
@@ -640,6 +728,70 @@ export class ProductService {
       product.isTrending = data.isTrending;
     }
 
+    if (data.sellingType !== undefined) {
+      product.sellingType = data.sellingType;
+      product.markModified("sellingType");
+    }
+
+    if (data.baseUnit !== undefined) {
+      product.baseUnit = data.baseUnit;
+      product.markModified("baseUnit");
+    }
+
+    if (data.unitLabel !== undefined) {
+      product.unitLabel = data.unitLabel;
+      product.markModified("unitLabel");
+    }
+
+    if (typeof data.minQuantity === "number") {
+      product.minQuantity = data.minQuantity;
+      product.markModified("minQuantity");
+    }
+
+    if (typeof data.stepQuantity === "number") {
+      product.stepQuantity = data.stepQuantity;
+      product.markModified("stepQuantity");
+    }
+
+    if (typeof data.allowCustomQuantity === "boolean") {
+      product.allowCustomQuantity = data.allowCustomQuantity;
+      product.markModified("allowCustomQuantity");
+    }
+
+    if (data.stockTrackingMode !== undefined) {
+      product.stockTrackingMode = data.stockTrackingMode;
+      product.markModified("stockTrackingMode");
+    }
+
+    if (typeof data.hasNutritionalInfo === "boolean") {
+      product.hasNutritionalInfo = data.hasNutritionalInfo;
+      product.markModified("hasNutritionalInfo");
+    }
+
+    if (data.nutritionalInfo !== undefined) {
+      product.nutritionalInfo = (data.hasNutritionalInfo ?? product.hasNutritionalInfo) ? data.nutritionalInfo : null;
+      product.markModified("nutritionalInfo");
+    }
+
+    if (Array.isArray(data.variants)) {
+      product.variants = data.variants.map((v) => ({
+        variantId: v.variantId || uuidv4(),
+        label: v.label,
+        unit: v.unit,
+        value: v.value,
+        price: v.price,
+        discountPrice: v.discountPrice,
+        sku: v.sku,
+        stock: v.stock ?? 0,
+        packQuantity: v.packQuantity ?? 1,
+      }));
+      product.markModified("variants");
+
+      if (product.stockTrackingMode === "SEPARATE" && product.variants.length > 0) {
+        product.quantity = product.variants.reduce((sum, v) => sum + (v.stock || 0), 0);
+      }
+    }
+
     if (role === "platform_admin" && data.storeId) {
       product.storeId = data.storeId;
     }
@@ -647,14 +799,12 @@ export class ProductService {
     product.updatedBy = userId;
     await product.save();
 
-    if (typeof data.quantity === "number") {
-      await InventoryService.syncProductQuantity(
-        product.productId,
-        product.quantity,
-        product.createdBy ?? userId,
-        userId,
-      );
-    }
+    await InventoryService.syncProductQuantity(
+      product.productId,
+      product.quantity,
+      product.createdBy ?? userId,
+      userId,
+    );
 
     return product;
   }
@@ -912,5 +1062,104 @@ export class ProductService {
 
     const enriched = await this.enrichProductsWithInventory([duplicated]);
     return enriched[0];
+  }
+
+  static async cloneProductsToStore(data: CloneProductsToStoreInput, userId: string) {
+    const targetStore = await Store.findOne({ storeId: data.targetStoreId });
+    if (!targetStore) {
+      throw new AppError("Target store not found", 404);
+    }
+
+    const sourceProducts = await Product.find({
+      productId: { $in: data.productIds },
+      isDeleted: { $ne: true },
+    });
+
+    if (!sourceProducts.length) {
+      throw new AppError("No valid products found to clone", 404);
+    }
+
+    const clonedProducts = [];
+    const storeSuffix = targetStore.storeId.slice(-4).toUpperCase();
+
+    for (const source of sourceProducts) {
+      // Generate unique SKU for target store
+      const cleanSku = source.sku.replace(/-STR\w+$/, "");
+      let candidateSku = `${cleanSku}-STR${storeSuffix}`;
+      let skuIndex = 1;
+      while (await Product.exists({ sku: candidateSku })) {
+        candidateSku = `${cleanSku}-STR${storeSuffix}-${skuIndex}`;
+        skuIndex++;
+      }
+
+      // Generate unique slug
+      const newSlug = await this.buildUniqueSlug(source.name);
+      const defaultStock = data.defaultStock ?? 0;
+      const isSeparate = source.stockTrackingMode === "SEPARATE";
+
+      // Clone variants with fresh variantIds and defaultStock
+      const clonedVariants = (source.variants || []).map((v) => ({
+        variantId: uuidv4(),
+        label: v.label,
+        unit: v.unit,
+        value: v.value,
+        price: v.price,
+        discountPrice: v.discountPrice,
+        sku: `${candidateSku}-${v.label.replace(/\s+/g, "").toUpperCase()}`,
+        stock: defaultStock,
+        packQuantity: v.packQuantity ?? 1,
+      }));
+
+      const finalQuantity =
+        isSeparate && clonedVariants.length > 0
+          ? clonedVariants.reduce((sum, v) => sum + (v.stock || 0), 0)
+          : defaultStock;
+
+      const cloned = await Product.create({
+        storeId: targetStore.storeId,
+        storeName: targetStore.storeName,
+        categoryId: source.categoryId,
+        name: source.name,
+        slug: newSlug,
+        description: source.description || "",
+        brand: source.brand || "",
+        sku: candidateSku,
+        price: source.price,
+        discountPrice: source.discountPrice ?? 0,
+        quantity: finalQuantity,
+        sellingType: source.sellingType ?? "PIECE",
+        baseUnit: source.baseUnit ?? "piece",
+        unitLabel: source.unitLabel ?? "",
+        minQuantity: source.minQuantity ?? 1,
+        stepQuantity: source.stepQuantity ?? 1,
+        allowCustomQuantity: source.allowCustomQuantity ?? false,
+        stockTrackingMode: source.stockTrackingMode ?? "SEPARATE",
+        hasNutritionalInfo: source.hasNutritionalInfo ?? false,
+        nutritionalInfo: source.nutritionalInfo,
+        variants: clonedVariants,
+        image: source.image,
+        images: source.images || [],
+        thumbnail: source.thumbnail || "",
+        isPublished: data.isPublished ?? true,
+        isActive: true,
+        isFeatured: false,
+        isBestseller: false,
+        isTrending: false,
+        createdBy: userId,
+        updatedBy: userId,
+      });
+
+      await InventoryService.createInventoryForProduct(cloned.productId, userId, finalQuantity);
+      clonedProducts.push(cloned);
+    }
+
+    return {
+      targetStore: {
+        storeId: targetStore.storeId,
+        storeName: targetStore.storeName,
+      },
+      clonedCount: clonedProducts.length,
+      products: clonedProducts,
+    };
   }
 }

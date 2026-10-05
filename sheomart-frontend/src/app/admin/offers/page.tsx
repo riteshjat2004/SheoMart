@@ -207,6 +207,7 @@ export default function AdminOffersPage() {
         actions={
           <Button
             onClick={() => {
+              saveMutation.reset();
               setEditingOffer(null);
               setFormOpen(true);
             }}
@@ -605,7 +606,9 @@ export default function AdminOffersPage() {
         stores={stores}
         categories={categories}
         isSubmitting={saveMutation.isPending}
+        submissionError={saveMutation.error instanceof Error ? saveMutation.error.message : null}
         onClose={() => {
+          saveMutation.reset();
           setFormOpen(false);
           setEditingOffer(null);
         }}
@@ -617,6 +620,7 @@ export default function AdminOffersPage() {
         offer={detailsOffer}
         onClose={() => setDetailsOffer(null)}
         onEdit={(offer) => {
+          saveMutation.reset();
           setDetailsOffer(null);
           setEditingOffer(offer);
           setFormOpen(true);

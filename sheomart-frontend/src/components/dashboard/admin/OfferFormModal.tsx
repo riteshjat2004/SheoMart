@@ -37,7 +37,19 @@ const offerFormSchema = z.object({
   buyQuantity: z.number().int().min(1).optional(),
   getQuantity: z.number().int().min(1).optional(),
   targetScope: z.enum(["marketplace", "store", "category", "product"]),
-  bannerImage: z.string().trim().optional(),
+  bannerImage: z
+    .string()
+    .trim()
+    .refine((value) => {
+      if (!value) return true;
+      try {
+        const url = new URL(value);
+        return url.protocol === "https:" && url.hostname === "res.cloudinary.com" && /^\/[^/]+\/image\/upload\/.+/.test(url.pathname);
+      } catch {
+        return false;
+      }
+    }, "Enter a valid HTTPS Cloudinary image URL")
+    .optional(),
   colorTheme: z.string().trim().optional(),
   showOnHero: z.boolean(),
   showOnFeatured: z.boolean(),
@@ -57,6 +69,7 @@ interface OfferFormModalProps {
   stores: StoreItem[];
   categories: CategoryItem[];
   isSubmitting?: boolean;
+  submissionError?: string | null;
   onClose: () => void;
   onSubmit: (data: FormData) => void;
 }
@@ -75,6 +88,7 @@ export function OfferFormModal({
   stores,
   categories,
   isSubmitting = false,
+  submissionError,
   onClose,
   onSubmit,
 }: OfferFormModalProps) {
@@ -188,6 +202,7 @@ export function OfferFormModal({
     const file = e.target.files?.[0];
     if (file) {
       setSelectedFile(file);
+      setValue("bannerImage", "", { shouldValidate: true });
       const objectUrl = URL.createObjectURL(file);
       setPreviewUrl(objectUrl);
     }
@@ -296,6 +311,15 @@ export function OfferFormModal({
           onSubmit={handleSubmit(onFormSubmit)}
           className="flex-1 overflow-y-auto p-6 space-y-6"
         >
+          {submissionError && (
+            <div
+              role="alert"
+              className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-300"
+            >
+              {submissionError}
+            </div>
+          )}
+
           {/* Section 1: Campaign Details */}
           <div className="space-y-4">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
@@ -457,6 +481,26 @@ export function OfferFormModal({
                   </p>
                   <p className="text-[11px] text-stone-400">PNG, JPG, WebP up to 5MB</p>
                 </button>
+                <label
+                  htmlFor="offer-banner-url"
+                  className="mt-3 block text-xs font-semibold text-stone-700 dark:text-stone-300"
+                >
+                  Or paste a Cloudinary image URL
+                </label>
+                <input
+                  id="offer-banner-url"
+                  type="url"
+                  placeholder="https://res.cloudinary.com/…/image/upload/…"
+                  {...register("bannerImage", {
+                    onChange: (event) => {
+                      const url = event.target.value.trim();
+                      setSelectedFile(null);
+                      if (fileInputRef.current) fileInputRef.current.value = "";
+                      setPreviewUrl(url);
+                    },
+                  })}
+                  className="mt-1 w-full rounded-xl border border-stone-200 bg-white px-3.5 py-2 text-sm outline-none transition focus:border-emerald-500 dark:border-stone-800 dark:bg-stone-950"
+                />
                 {errors.bannerImage && <p className="mt-1 text-xs text-rose-500">{errors.bannerImage.message}</p>}
               </div>
 

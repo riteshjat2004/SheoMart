@@ -60,7 +60,7 @@ fun AdminUsersScreen(
                 }
             )
         },
-        containerColor = Background,
+        containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         Column(
@@ -139,7 +139,7 @@ fun AdminUsersScreen(
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             shadowElevation = 4.dp,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.surface
                         ) {
                             Row(
                                 modifier = Modifier
@@ -151,7 +151,7 @@ fun AdminUsersScreen(
                                 Text(
                                     text = "Page ${uiState.currentPage} of ${uiState.pagination.totalPages} (${uiState.pagination.total} users)",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = SecondaryText
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     OutlinedButton(
@@ -203,8 +203,8 @@ private fun AdminUserCard(user: AdminUserItem) {
             .fillMaxWidth()
             .shadow(2.dp, shape = RoundedCornerShape(18.dp), spotColor = Color(0x14000000))
             .clip(RoundedCornerShape(18.dp))
-            .background(Color.White)
-            .border(1.dp, Border, RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(18.dp))
             .padding(14.dp)
     ) {
         Row(
@@ -219,7 +219,7 @@ private fun AdminUserCard(user: AdminUserItem) {
                     .clip(CircleShape)
                     .background(
                         when (user.role.lowercase()) {
-                            "platform_admin" -> PrimaryGreen
+                            "platform_admin" -> MaterialTheme.colorScheme.primary
                             "store_owner" -> Color(0xFFD97706)
                             else -> Color(0xFF6B7280)
                         }
@@ -241,7 +241,7 @@ private fun AdminUserCard(user: AdminUserItem) {
                     Text(
                         text = user.name,
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, fontSize = 14.sp),
-                        color = PrimaryText,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -268,7 +268,7 @@ private fun AdminUserCard(user: AdminUserItem) {
                     Text(
                         text = "✉️ ${user.email}",
                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                        color = SecondaryText,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -278,7 +278,7 @@ private fun AdminUserCard(user: AdminUserItem) {
                     Text(
                         text = "📱 ${user.mobile}",
                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                        color = SecondaryText
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
@@ -297,7 +297,7 @@ private fun AdminUserCard(user: AdminUserItem) {
                     Text(
                         text = if (user.isActive) "• Active" else "• Inactive",
                         fontSize = 10.sp,
-                        color = if (user.isActive) PrimaryGreen else Error
+                        color = if (user.isActive) MaterialTheme.colorScheme.primary else Error
                     )
                 }
             }

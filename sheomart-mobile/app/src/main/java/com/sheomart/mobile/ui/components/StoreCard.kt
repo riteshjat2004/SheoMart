@@ -31,18 +31,19 @@ fun StoreCard(
     val isRoyal = store.badge.equals("royal", ignoreCase = true)
     val isVerified = store.badge.equals("verified", ignoreCase = true)
 
+    val defaultBorder = MaterialTheme.colorScheme.outlineVariant
     val borderColor = when {
         isRoyal -> Color(0xFFFDE68A)
         isVerified -> Color(0xFFA7F3D0)
-        else -> Border
+        else -> defaultBorder
     }
 
     Box(
         modifier = modifier
             .width(220.dp)
-            .shadow(3.dp, shape = RoundedCornerShape(20.dp), spotColor = Color(0x14000000))
+            .shadow(2.dp, shape = RoundedCornerShape(20.dp), spotColor = Color(0x14000000))
             .clip(RoundedCornerShape(20.dp))
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.surface)
             .border(1.2.dp, borderColor, RoundedCornerShape(20.dp))
             .clickable(onClick = onClick)
     ) {
@@ -52,7 +53,7 @@ fun StoreCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(90.dp)
-                    .background(Surface)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 if (!store.banner.isNullOrBlank()) {
                     AsyncImageLoader(
@@ -118,8 +119,8 @@ fun StoreCard(
                         .size(44.dp)
                         .shadow(2.dp, shape = CircleShape)
                         .clip(CircleShape)
-                        .background(Color.White)
-                        .border(2.dp, Color.White, CircleShape),
+                        .background(MaterialTheme.colorScheme.surface)
+                        .border(2.dp, MaterialTheme.colorScheme.surface, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     if (!store.logo.isNullOrBlank()) {
@@ -135,7 +136,7 @@ fun StoreCard(
                         Text(
                             text = store.storeName.take(1).uppercase(),
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = PrimaryGreen
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -153,7 +154,7 @@ fun StoreCard(
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp
                     ),
-                    color = PrimaryText,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -164,7 +165,7 @@ fun StoreCard(
                 Text(
                     text = listOfNotNull(store.address, store.city).joinToString(", ").ifBlank { "Sheopur" },
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                    color = SecondaryText,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -185,13 +186,13 @@ fun StoreCard(
                         Text(
                             text = if (store.rating != null && store.rating > 0.0) String.format("%.1f", store.rating) else "New",
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                            color = PrimaryText
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         if (store.totalReviews > 0) {
                             Text(
                                 text = "(${store.totalReviews})",
                                 style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
-                                color = SecondaryText
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -199,7 +200,7 @@ fun StoreCard(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(if (store.deliveryEnabled) Color(0xFFECFDF5) else Surface)
+                            .background(if (store.deliveryEnabled) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant)
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
@@ -208,7 +209,7 @@ fun StoreCard(
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.SemiBold
                             ),
-                            color = if (store.deliveryEnabled) PrimaryGreen else SecondaryText
+                            color = if (store.deliveryEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }

@@ -34,7 +34,7 @@ fun SheoBottomNavigation(
     cartCount: Int = 0
 ) {
     NavigationBar(
-        containerColor = Color.White,
+        containerColor = MaterialTheme.colorScheme.surface,
         tonalElevation = 8.dp
     ) {
         CustomerNavTab.values().forEach { tab ->
@@ -53,8 +53,8 @@ fun SheoBottomNavigation(
                         badge = {
                             if (badgeCount > 0) {
                                 Badge(
-                                    containerColor = PrimaryGreen,
-                                    contentColor = Color.White
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
                                 ) {
                                     Text(
                                         text = if (badgeCount > 99) "99+" else badgeCount.toString(),
@@ -77,11 +77,11 @@ fun SheoBottomNavigation(
                     )
                 },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = PrimaryGreen,
-                    selectedTextColor = PrimaryGreen,
-                    unselectedIconColor = SecondaryText,
-                    unselectedTextColor = SecondaryText,
-                    indicatorColor = PrimaryGreen.copy(alpha = 0.12f)
+                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                 )
             )
         }

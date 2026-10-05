@@ -40,6 +40,7 @@ interface StoreDetailsModalProps {
   onActivate: (store: StoreItem) => void;
   onDeactivate: (store: StoreItem) => void;
   onUpdateBadge: (store: StoreItem, badge: StoreBadge) => void;
+  onAssignProducts?: (store: StoreItem) => void;
   isActionLoading?: boolean;
 }
 
@@ -52,6 +53,7 @@ export function StoreDetailsModal({
   onActivate,
   onDeactivate,
   onUpdateBadge,
+  onAssignProducts,
   isActionLoading = false,
 }: StoreDetailsModalProps) {
   const [selectedBadge, setSelectedBadge] = useState<StoreBadge>(store?.badge ?? "normal");
@@ -238,6 +240,17 @@ export function StoreDetailsModal({
                 >
                   <Power className="mr-1.5 h-4 w-4" />
                   {status === "inactive" || status === "suspended" ? "Reactivate" : "Activate"}
+                </Button>
+              )}
+
+              {onAssignProducts && (
+                <Button
+                  size="sm"
+                  className="bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
+                  onClick={() => onAssignProducts(store)}
+                >
+                  <Sparkles className="mr-1.5 h-4 w-4" />
+                  Stock Catalog
                 </Button>
               )}
 

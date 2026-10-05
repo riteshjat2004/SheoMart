@@ -30,8 +30,8 @@ fun HomeSearchBar(
             .fillMaxWidth()
             .shadow(2.dp, shape = RoundedCornerShape(22.dp), spotColor = Color(0x1A000000))
             .clip(RoundedCornerShape(22.dp))
-            .background(Color.White)
-            .border(1.dp, Border, RoundedCornerShape(22.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(22.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 18.dp, vertical = 14.dp)
     ) {
@@ -52,21 +52,21 @@ fun HomeSearchBar(
                 Text(
                     text = placeholderText,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = SecondaryText
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(12.dp))
-                    .background(PrimaryGreen.copy(alpha = 0.1f))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
                     .padding(horizontal = 8.dp, vertical = 4.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = "⚡ Sheopur",
                     style = MaterialTheme.typography.labelSmall,
-                    color = PrimaryGreen
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
         }

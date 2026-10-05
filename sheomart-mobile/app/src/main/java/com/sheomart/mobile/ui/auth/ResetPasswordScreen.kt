@@ -41,7 +41,7 @@ fun ResetPasswordScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
-        containerColor = Background,
+        containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
         Column(
             modifier = Modifier
@@ -54,7 +54,7 @@ fun ResetPasswordScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Row(Modifier.fillMaxWidth()) {
-                TextButton(onClick = onBack) { Text("← Back", color = PrimaryGreen) }
+                TextButton(onClick = onBack) { Text("← Back", color = MaterialTheme.colorScheme.primary) }
             }
 
             Spacer(Modifier.height(8.dp))
@@ -64,7 +64,6 @@ fun ResetPasswordScreen(
             )
 
             // New password field
-            // SheoTextField(value, onValueChange, placeholder, leadingIcon, leadingContentDescription, modifier, trailingIcon, passwordMode, keyboardType, ...)
             SheoTextField(
                 value = newPassword,
                 onValueChange = { newPassword = it },
@@ -101,7 +100,7 @@ fun ResetPasswordScreen(
                 Spacer(Modifier.height(6.dp))
                 Text(
                     it,
-                    color = Error,
+                    color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -136,19 +135,21 @@ private fun PasswordStrengthRow(password: String) {
         "Number"         to password.any { it.isDigit() },
         "Special char"   to password.any { !it.isLetterOrDigit() },
     )
+    val primary = MaterialTheme.colorScheme.primary
+    val secondary = MaterialTheme.colorScheme.onSurfaceVariant
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         checks.forEach { (label, met) ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = if (met) "✓" else "○",
-                    color = if (met) PrimaryGreen else SecondaryText,
+                    color = if (met) primary else secondary,
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.width(20.dp),
                 )
                 Text(
                     text = label,
-                    color = if (met) PrimaryGreen else SecondaryText,
+                    color = if (met) primary else secondary,
                     style = MaterialTheme.typography.bodySmall,
                 )
             }

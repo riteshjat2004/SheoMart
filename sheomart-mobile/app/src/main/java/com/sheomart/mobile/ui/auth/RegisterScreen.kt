@@ -42,7 +42,7 @@ fun RegisterScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
-        containerColor = Background,
+        containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
         // Outer Box fills the screen so we can place the footer at the bottom
         Box(
@@ -89,7 +89,7 @@ fun RegisterScreen(
                     Spacer(Modifier.height(8.dp))
                     Text(
                         it,
-                        color = Error,
+                        color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -117,8 +117,8 @@ fun RegisterScreen(
                     .fillMaxWidth()
                     .padding(bottom = 8.dp),
             ) {
-                Text("Already have an account? ", color = SecondaryText)
-                Text("Login", color = PrimaryGreen)
+                Text("Already have an account? ", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Login", color = MaterialTheme.colorScheme.primary)
             }
         }
     }

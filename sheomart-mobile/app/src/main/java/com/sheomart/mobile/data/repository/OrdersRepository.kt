@@ -125,7 +125,10 @@ class OrdersRepository(private val tokenStore: SecureTokenStore) {
         storeId: String?,
         paymentMethod: String,
         addressId: String?,
-        couponCode: String?
+        couponCode: String?,
+        deliveryMethod: String = "delivery",
+        deliverySlot: String? = null,
+        pickupSlot: String? = null
     ): Result<String> = withContext(Dispatchers.IO) {
         runCatching {
             val itemsArray = JSONArray()
@@ -135,8 +138,39 @@ class OrdersRepository(private val tokenStore: SecureTokenStore) {
             val body = JSONObject().apply {
                 put("items", itemsArray)
                 if (!storeId.isNullOrBlank()) put("storeId", storeId)
-                put("paymentMethod", paymentMethod)
-                if (!addressId.isNullOrBlank()) put("addressId", addressId)
+                put("deliveryMethod", deliveryMethod)
+                put("fulfillmentType", deliveryMethod)
+
+                val backendPaymentMethod = when (paymentMethod) {
+                    "ONLINE" -> "ONLINE"
+                    "PAY_AT_PICKUP" -> "PAY_AT_PICKUP"
+                    "PAY_AT_DELIVERY" -> "PAY_AT_DELIVERY"
+                    "COD" -> if (deliveryMethod == "pickup") "PAY_AT_PICKUP" else "PAY_AT_DELIVERY"
+                    else -> if (deliveryMethod == "pickup") "PAY_AT_PICKUP" else "PAY_AT_DELIVERY"
+                }
+                put("paymentMethod", backendPaymentMethod)
+
+                if (deliveryMethod == "pickup") {
+                    if (!pickupSlot.isNullOrBlank()) {
+                        put("pickupSlot", pickupSlot)
+                        put("pickupSlotId", pickupSlot.lowercase().replace(" ", "_"))
+                        put("pickupSlotLabel", pickupSlot)
+                        put("estimatedDeliveryWindow", pickupSlot)
+                    }
+                    put("deliveryFee", 0)
+                    put("deliveryFeeCharged", 0)
+                    put("freeDeliveryApplied", true)
+                } else {
+                    if (!addressId.isNullOrBlank()) {
+                        put("addressId", addressId)
+                        put("selectedAddressId", addressId)
+                    }
+                    if (!deliverySlot.isNullOrBlank()) {
+                        put("deliverySlot", deliverySlot)
+                        put("deliverySlotLabel", deliverySlot)
+                        put("estimatedDeliveryWindow", deliverySlot)
+                    }
+                }
                 if (!couponCode.isNullOrBlank()) put("couponCode", couponCode)
             }
             val json = request("/orders", "POST", body)

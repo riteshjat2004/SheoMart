@@ -16,6 +16,26 @@ export interface CategoryItem {
   updatedAt?: string;
 }
 
+export interface ProductVariant {
+  variantId: string;
+  label: string; // e.g. "250 gm", "500 gm", "1 kg", "500 ml", "1 L"
+  unit: string; // "gm", "kg", "ml", "L", "piece", etc.
+  value: number;
+  price: number;
+  discountPrice?: number;
+  sku?: string;
+  stock?: number;
+  packQuantity?: number;
+}
+
+export interface NutritionalInfo {
+  servingSize?: string;
+  energy?: string;
+  protein?: string;
+  carbs?: string;
+  fats?: string;
+}
+
 export interface ProductItem {
   _id?: string;
   productId?: string;
@@ -26,6 +46,16 @@ export interface ProductItem {
   price: number;
   discount?: number;
   discountPrice?: number;
+  sellingType?: "PIECE" | "WEIGHT" | "VOLUME";
+  baseUnit?: string;
+  unitLabel?: string;
+  minQuantity?: number;
+  stepQuantity?: number;
+  allowCustomQuantity?: boolean;
+  stockTrackingMode?: "SEPARATE" | "SHARED";
+  hasNutritionalInfo?: boolean;
+  nutritionalInfo?: NutritionalInfo | null;
+  variants?: ProductVariant[];
   thumbnail?: string;
   images?: string[];
   image?: {
@@ -48,6 +78,7 @@ export interface ProductItem {
   inventoryStatus?: string;
   category?: string;
   store?: string;
+  storeName?: string;
   storePincode?: string;
   storeCity?: string;
 }
@@ -55,6 +86,10 @@ export interface ProductItem {
 export interface CartItem {
   cartItemId: string;
   quantity: number;
+  variantId?: string;
+  variantLabel?: string;
+  unitPrice?: number;
+  unitDiscountPrice?: number;
   storeId?: string;
   product: ProductItem;
   isAvailable?: boolean;

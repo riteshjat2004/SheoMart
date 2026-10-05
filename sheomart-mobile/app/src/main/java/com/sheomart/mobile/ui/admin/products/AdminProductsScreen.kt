@@ -61,7 +61,7 @@ fun AdminProductsScreen(
                 }
             )
         },
-        containerColor = Background,
+        containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         Column(
@@ -145,7 +145,7 @@ fun AdminProductsScreen(
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             shadowElevation = 4.dp,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.surface
                         ) {
                             Row(
                                 modifier = Modifier
@@ -157,7 +157,7 @@ fun AdminProductsScreen(
                                 Text(
                                     text = "Page ${uiState.currentPage} of ${uiState.pagination.totalPages} (${uiState.pagination.total} items)",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = SecondaryText
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     OutlinedButton(
@@ -224,8 +224,8 @@ private fun AdminProductCard(
             .fillMaxWidth()
             .shadow(2.dp, shape = RoundedCornerShape(20.dp), spotColor = Color(0x14000000))
             .clip(RoundedCornerShape(20.dp))
-            .background(Color.White)
-            .border(1.dp, Border, RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp))
             .padding(14.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -239,8 +239,8 @@ private fun AdminProductCard(
                     modifier = Modifier
                         .size(68.dp)
                         .clip(RoundedCornerShape(14.dp))
-                        .background(Surface)
-                        .border(1.dp, Border, RoundedCornerShape(14.dp)),
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(14.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     if (!product.thumbnail.isNullOrBlank()) {
@@ -263,7 +263,7 @@ private fun AdminProductCard(
                         Text(
                             text = product.name,
                             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, fontSize = 14.sp),
-                            color = PrimaryText,
+                            color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f)
@@ -292,7 +292,7 @@ private fun AdminProductCard(
                         Text(
                             text = "${product.storeName ?: "Store"} · ${product.categoryName ?: "Category"}",
                             style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                            color = SecondaryText,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -311,14 +311,14 @@ private fun AdminProductCard(
                         ) {
                             Text(
                                 text = "₹${product.displayPrice.toInt()}",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = PrimaryGreen, fontSize = 15.sp)
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 15.sp)
                             )
                             if (product.discountPrice != null && product.discountPrice < product.price) {
                                 Text(
                                     text = "₹${product.price.toInt()}",
                                     style = MaterialTheme.typography.bodySmall.copy(
                                         fontSize = 11.sp,
-                                        color = SecondaryText,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough
                                     )
                                 )
@@ -329,7 +329,7 @@ private fun AdminProductCard(
                             text = "Stock: ${product.quantity}",
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = FontWeight.Bold,
-                                color = if (product.quantity > 5) PrimaryText else if (product.quantity > 0) Color(0xFFD97706) else Error
+                                color = if (product.quantity > 5) MaterialTheme.colorScheme.onSurface else if (product.quantity > 0) Color(0xFFD97706) else Error
                             )
                         )
                     }
@@ -350,7 +350,7 @@ private fun AdminProductCard(
                     modifier = Modifier.weight(1f).height(34.dp),
                     contentPadding = PaddingValues(horizontal = 6.dp)
                 ) {
-                    Text("📊 Update Stock", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold), color = PrimaryText)
+                    Text("📊 Update Stock", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurface)
                 }
 
                 OutlinedButton(
@@ -362,7 +362,7 @@ private fun AdminProductCard(
                     Text(
                         text = if (product.isActive) "Deactivate" else "Activate",
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                        color = if (product.isActive) Color(0xFFD97706) else PrimaryGreen
+                        color = if (product.isActive) Color(0xFFD97706) else MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -402,7 +402,7 @@ private fun InventoryEditDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Text("Inventory Status", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = SecondaryText))
+                Text("Inventory Status", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant))
 
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     statusOptions.forEach { (key, label) ->
@@ -411,18 +411,18 @@ private fun InventoryEditDialog(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(if (isSelected) PrimaryGreen.copy(alpha = 0.1f) else Surface)
-                                .border(1.dp, if (isSelected) PrimaryGreen else Border, RoundedCornerShape(10.dp))
-                                .clickable { selectedStatus = key }
-                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                                .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant)
+                                .border(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(10.dp))
+                            .clickable { selectedStatus = key }
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(text = label, style = MaterialTheme.typography.bodyMedium, color = if (isSelected) PrimaryGreen else PrimaryText, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
-                                if (isSelected) Text("✓", color = PrimaryGreen, fontWeight = FontWeight.Bold)
+                                Text(text = label, style = MaterialTheme.typography.bodyMedium, color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
+                                if (isSelected) Text("✓", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -436,7 +436,7 @@ private fun InventoryEditDialog(
                     onSave(qty, selectedStatus)
                 },
                 enabled = !isSubmitting,
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 shape = RoundedCornerShape(10.dp)
             ) {
                 Text(if (isSubmitting) "Saving..." else "Update Stock", fontWeight = FontWeight.Bold)
@@ -444,10 +444,10 @@ private fun InventoryEditDialog(
         },
         dismissButton = {
             OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(10.dp)) {
-                Text("Cancel", color = PrimaryText)
+                Text("Cancel", color = MaterialTheme.colorScheme.onSurface)
             }
         },
         shape = RoundedCornerShape(20.dp),
-        containerColor = Color.White
+        containerColor = MaterialTheme.colorScheme.surface
     )
 }

@@ -65,7 +65,7 @@ fun AdminCategoriesScreen(
                 }
             )
         },
-        containerColor = Background,
+        containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         Column(
@@ -182,8 +182,8 @@ private fun CategoryAdminCard(
             .fillMaxWidth()
             .shadow(2.dp, shape = RoundedCornerShape(18.dp), spotColor = Color(0x14000000))
             .clip(RoundedCornerShape(18.dp))
-            .background(Color.White)
-            .border(1.dp, Border, RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(18.dp))
             .padding(16.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -201,8 +201,8 @@ private fun CategoryAdminCard(
                         modifier = Modifier
                             .size(42.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Surface)
-                            .border(1.dp, Border, RoundedCornerShape(12.dp)),
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(text = "🗂️", fontSize = 18.sp)
@@ -216,7 +216,7 @@ private fun CategoryAdminCard(
                             Text(
                                 text = category.name,
                                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, fontSize = 15.sp),
-                                color = PrimaryText,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -240,7 +240,7 @@ private fun CategoryAdminCard(
                             Text(
                                 text = category.description,
                                 style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                                color = SecondaryText,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -250,7 +250,7 @@ private fun CategoryAdminCard(
 
                 Text(
                     text = "Order: ${category.sortOrder}",
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, color = SecondaryText)
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 )
             }
 
@@ -270,7 +270,7 @@ private fun CategoryAdminCard(
                     Text(
                         text = if (category.isActive) "Deactivate" else "Activate",
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                        color = if (category.isActive) Color(0xFFD97706) else PrimaryGreen
+                        color = if (category.isActive) Color(0xFFD97706) else MaterialTheme.colorScheme.primary
                     )
                 }
 
@@ -280,7 +280,7 @@ private fun CategoryAdminCard(
                     modifier = Modifier.weight(1f).height(34.dp),
                     contentPadding = PaddingValues(horizontal = 6.dp)
                 ) {
-                    Text("✏️ Edit", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold), color = PrimaryText)
+                    Text("✏️ Edit", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurface)
                 }
 
                 OutlinedButton(
@@ -365,7 +365,7 @@ private fun CategoryFormDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(10.dp))
-                        .background(Surface)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                         .clickable { isActive = !isActive }
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -375,7 +375,7 @@ private fun CategoryFormDialog(
                     Switch(
                         checked = isActive,
                         onCheckedChange = { isActive = it },
-                        colors = SwitchDefaults.colors(checkedThumbColor = PrimaryGreen)
+                        colors = SwitchDefaults.colors(checkedThumbColor = MaterialTheme.colorScheme.primary)
                     )
                 }
 
@@ -395,7 +395,7 @@ private fun CategoryFormDialog(
                     onSave(name.trim(), description.trim(), sort, isActive, imageUrl.trim().ifBlank { null })
                 },
                 enabled = !isSubmitting,
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 shape = RoundedCornerShape(10.dp)
             ) {
                 Text(if (isSubmitting) "Saving..." else if (isEditing) "Save Changes" else "Create", fontWeight = FontWeight.Bold)
@@ -403,10 +403,10 @@ private fun CategoryFormDialog(
         },
         dismissButton = {
             OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(10.dp)) {
-                Text("Cancel", color = PrimaryText)
+                Text("Cancel", color = MaterialTheme.colorScheme.onSurface)
             }
         },
         shape = RoundedCornerShape(20.dp),
-        containerColor = Color.White
+        containerColor = MaterialTheme.colorScheme.surface
     )
 }

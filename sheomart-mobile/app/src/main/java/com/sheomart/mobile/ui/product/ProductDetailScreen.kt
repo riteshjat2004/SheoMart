@@ -95,7 +95,7 @@ fun ProductDetailScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Text("←", fontSize = 22.sp, color = PrimaryText, fontWeight = FontWeight.Bold)
+                        Text("←", fontSize = 22.sp, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
                     }
                 },
                 actions = {
@@ -116,7 +116,7 @@ fun ProductDetailScreen(
                                     .offset(x = (-4).dp, y = 4.dp)
                                     .size(18.dp)
                                     .clip(CircleShape)
-                                    .background(PrimaryGreen),
+                                    .background(MaterialTheme.colorScheme.primary),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
@@ -124,7 +124,7 @@ fun ProductDetailScreen(
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         fontSize = 9.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color.White
+                                        color = MaterialTheme.colorScheme.onPrimary
                                     )
                                 )
                             }
@@ -132,12 +132,12 @@ fun ProductDetailScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Surface,
-                    titleContentColor = PrimaryText
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         },
-        containerColor = Background,
+        containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             if (state is UiState.Success) {
                 val prod = (state as UiState.Success<ProductDetail>).data
@@ -1091,9 +1091,9 @@ private fun BottomCartBar(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = Surface,
+        color = MaterialTheme.colorScheme.surface,
         shadowElevation = 12.dp,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Border)
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Row(
             modifier = Modifier
@@ -1107,8 +1107,8 @@ private fun BottomCartBar(
             Row(
                 modifier = Modifier
                     .clip(RoundedCornerShape(14.dp))
-                    .background(Background)
-                    .border(1.dp, Border, RoundedCornerShape(14.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(14.dp))
                     .padding(horizontal = 4.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -1118,13 +1118,13 @@ private fun BottomCartBar(
                     modifier = Modifier.size(32.dp),
                     enabled = quantity > 1
                 ) {
-                    Text("-", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = PrimaryText)
+                    Text("-", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                 }
 
                 Text(
                     text = "$quantity",
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                    color = PrimaryText
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 IconButton(
@@ -1132,7 +1132,7 @@ private fun BottomCartBar(
                     modifier = Modifier.size(32.dp),
                     enabled = quantity < product.quantity
                 ) {
-                    Text("+", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = PrimaryGreen)
+                    Text("+", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 }
             }
 

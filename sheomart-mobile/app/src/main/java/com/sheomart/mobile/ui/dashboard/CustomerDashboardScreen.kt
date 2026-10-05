@@ -47,12 +47,15 @@ fun CustomerDashboardScreen(
     onEditProfileClick: () -> Unit,
     onExploreClick: () -> Unit,
     onLogout: () -> Unit,
+    onSwitchToSeller: (() -> Unit)? = null,
+    onSwitchToAdmin: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scrollState = rememberScrollState()
     val context = LocalContext.current
+    val themeManager = LocalThemeManager.current
 
     LaunchedEffect(uiState.feedbackMessage) {
         uiState.feedbackMessage?.let { msg ->
@@ -78,7 +81,7 @@ fun CustomerDashboardScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = Background,
+        containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             SheoBottomNavigation(
@@ -102,8 +105,8 @@ fun CustomerDashboardScreen(
                     .padding(horizontal = 20.dp, vertical = 16.dp)
                     .shadow(2.dp, shape = RoundedCornerShape(24.dp), spotColor = Color(0x14000000))
                     .clip(RoundedCornerShape(24.dp))
-                    .background(Color.White)
-                    .border(1.dp, Border, RoundedCornerShape(24.dp))
+                    .background(MaterialTheme.colorScheme.surface)
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(24.dp))
                     .padding(20.dp)
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
@@ -122,7 +125,7 @@ fun CustomerDashboardScreen(
                                 modifier = Modifier
                                     .size(62.dp)
                                     .clip(CircleShape)
-                                    .background(PrimaryGreen),
+                                    .background(MaterialTheme.colorScheme.primary),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
@@ -131,7 +134,7 @@ fun CustomerDashboardScreen(
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 24.sp
                                     ),
-                                    color = Color.White
+                                    color = MaterialTheme.colorScheme.onPrimary
                                 )
                             }
 
@@ -146,25 +149,11 @@ fun CustomerDashboardScreen(
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 18.sp
                                         ),
-                                        color = PrimaryText,
+                                        color = MaterialTheme.colorScheme.onSurface,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .background(Color(0xFFECFDF5))
-                                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                                    ) {
-                                        Text(
-                                            text = "✓ Verified",
-                                            style = MaterialTheme.typography.labelSmall.copy(
-                                                fontSize = 9.sp,
-                                                fontWeight = FontWeight.Bold
-                                            ),
-                                            color = Color(0xFF047857)
-                                        )
-                                    }
+                                    StatusBadge(text = user?.role ?: "Customer")
                                 }
 
                                 if (customerMobile.isNotBlank()) {
@@ -172,7 +161,7 @@ fun CustomerDashboardScreen(
                                     Text(
                                         text = "📱 $customerMobile",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = SecondaryText
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
 
@@ -180,7 +169,7 @@ fun CustomerDashboardScreen(
                                     Text(
                                         text = "✉️ $customerEmail",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = SecondaryText,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
@@ -192,8 +181,8 @@ fun CustomerDashboardScreen(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(Surface)
-                                .border(1.dp, Border, RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
                                 .clickable(onClick = onEditProfileClick)
                                 .padding(horizontal = 10.dp, vertical = 6.dp),
                             contentAlignment = Alignment.Center
@@ -203,7 +192,7 @@ fun CustomerDashboardScreen(
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     fontWeight = FontWeight.SemiBold
                                 ),
-                                color = PrimaryGreen
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
@@ -215,7 +204,7 @@ fun CustomerDashboardScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Surface.copy(alpha = 0.6f))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -228,16 +217,103 @@ fun CustomerDashboardScreen(
                             Text(
                                 text = "Default delivery: Sheopur, MP 476337",
                                 style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-                                color = PrimaryText
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
                         Text(
                             text = "Change",
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = FontWeight.Bold,
-                                color = PrimaryGreen
+                                color = MaterialTheme.colorScheme.primary
                             ),
                             modifier = Modifier.clickable(onClick = onAddressesClick)
+                        )
+                    }
+                }
+            }
+
+            // Role Switcher Shortcuts (Web Parity)
+            if (user?.isStoreOwner == true && onSwitchToSeller != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 4.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                        .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f), RoundedCornerShape(16.dp))
+                        .clickable(onClick = onSwitchToSeller)
+                        .padding(14.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Text(text = "🏪", fontSize = 20.sp)
+                            Column {
+                                Text(
+                                    text = "Merchant Console",
+                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = "Open Billing & POS, Orders, Products",
+                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        Text(
+                            text = "Switch →",
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+
+            if (user?.isPlatformAdmin == true && onSwitchToAdmin != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 4.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFF2563EB).copy(alpha = 0.12f))
+                        .border(1.dp, Color(0xFF2563EB).copy(alpha = 0.35f), RoundedCornerShape(16.dp))
+                        .clickable(onClick = onSwitchToAdmin)
+                        .padding(14.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Text(text = "🛡️", fontSize = 20.sp)
+                            Column {
+                                Text(
+                                    text = "Admin Workspace",
+                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = Color(0xFF2563EB)
+                                )
+                                Text(
+                                    text = "Manage stores, users, promotions & settings",
+                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        Text(
+                            text = "Switch →",
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            color = Color(0xFF2563EB)
                         )
                     }
                 }
@@ -521,7 +597,109 @@ fun CustomerDashboardScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             // ==========================================
-            // 6. LOGOUT SECTION
+            // 6. APPEARANCE & THEME
+            // ==========================================
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+            ) {
+                Text(
+                    text = "APPEARANCE & THEME",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(1.dp, shape = RoundedCornerShape(20.dp), spotColor = Color(0x10000000))
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp))
+                        .padding(16.dp)
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Text(
+                                    text = when (themeManager.themeMode) {
+                                        ThemeMode.DARK -> "🌙"
+                                        ThemeMode.LIGHT -> "☀️"
+                                        ThemeMode.SYSTEM -> "📱"
+                                    },
+                                    fontSize = 20.sp
+                                )
+                                Column {
+                                    Text(
+                                        text = "Theme Mode",
+                                        style = MaterialTheme.typography.titleSmall.copy(
+                                            fontWeight = FontWeight.Bold
+                                        ),
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = when (themeManager.themeMode) {
+                                            ThemeMode.DARK -> "Dark Theme enabled"
+                                            ThemeMode.LIGHT -> "Light Theme enabled"
+                                            ThemeMode.SYSTEM -> "Following system settings"
+                                        },
+                                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            ThemeSelectionPill(
+                                title = "System",
+                                icon = "📱",
+                                isSelected = themeManager.themeMode == ThemeMode.SYSTEM,
+                                onClick = { themeManager.setTheme(ThemeMode.SYSTEM) },
+                                modifier = Modifier.weight(1f)
+                            )
+                            ThemeSelectionPill(
+                                title = "Light",
+                                icon = "☀️",
+                                isSelected = themeManager.themeMode == ThemeMode.LIGHT,
+                                onClick = { themeManager.setTheme(ThemeMode.LIGHT) },
+                                modifier = Modifier.weight(1f)
+                            )
+                            ThemeSelectionPill(
+                                title = "Dark",
+                                icon = "🌙",
+                                isSelected = themeManager.themeMode == ThemeMode.DARK,
+                                onClick = { themeManager.setTheme(ThemeMode.DARK) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // ==========================================
+            // 7. LOGOUT SECTION
             // ==========================================
             Box(
                 modifier = Modifier
@@ -535,23 +713,60 @@ fun CustomerDashboardScreen(
                         .height(52.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Error
+                        contentColor = MaterialTheme.colorScheme.error
                     ),
                     border = ButtonDefaults.outlinedButtonBorder.copy(
-                        brush = androidx.compose.ui.graphics.SolidColor(Error.copy(alpha = 0.5f))
+                        brush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
                     )
                 ) {
                     Text(
                         text = "Sign Out",
                         style = MaterialTheme.typography.labelLarge.copy(
                             fontWeight = FontWeight.Bold,
-                            color = Error
+                            color = MaterialTheme.colorScheme.error
                         )
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(36.dp))
+        }
+    }
+}
+
+@Composable
+private fun ThemeSelectionPill(
+    title: String,
+    icon: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant)
+            .border(
+                width = if (isSelected) 1.5.dp else 1.dp,
+                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                shape = RoundedCornerShape(12.dp)
+            )
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp, horizontal = 4.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(text = icon, fontSize = 13.sp)
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                ),
+                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -568,8 +783,8 @@ private fun MetricCard(
         modifier = modifier
             .shadow(1.dp, shape = RoundedCornerShape(16.dp), spotColor = Color(0x10000000))
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.White)
-            .border(1.dp, Border, RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
             .padding(vertical = 12.dp, horizontal = 8.dp),
         contentAlignment = Alignment.Center
@@ -583,12 +798,12 @@ private fun MetricCard(
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp
                 ),
-                color = PrimaryText
+                color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = label,
                 style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                color = SecondaryText
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -604,8 +819,8 @@ private fun ActionGridCard(
         modifier = modifier
             .shadow(1.dp, shape = RoundedCornerShape(18.dp), spotColor = Color(0x10000000))
             .clip(RoundedCornerShape(18.dp))
-            .background(Color.White)
-            .border(1.dp, Border, RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(18.dp))
             .clickable(onClick = onClick)
             .padding(14.dp)
     ) {
@@ -619,7 +834,7 @@ private fun ActionGridCard(
                     modifier = Modifier
                         .size(38.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Surface),
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(text = action.icon, fontSize = 18.sp)
@@ -630,7 +845,7 @@ private fun ActionGridCard(
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontWeight = FontWeight.Bold
                     ),
-                    color = SecondaryText
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -642,7 +857,7 @@ private fun ActionGridCard(
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp
                 ),
-                color = PrimaryText
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             Spacer(modifier = Modifier.height(2.dp))
@@ -650,7 +865,7 @@ private fun ActionGridCard(
             Text(
                 text = action.subtitle,
                 style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                color = SecondaryText,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -669,8 +884,8 @@ private fun CouponCard(
             .width(260.dp)
             .shadow(2.dp, shape = RoundedCornerShape(18.dp), spotColor = Color(0x1416A34A))
             .clip(RoundedCornerShape(18.dp))
-            .background(Color.White)
-            .border(1.2.dp, Color(0xFFA7F3D0), RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f), RoundedCornerShape(18.dp))
             .padding(14.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -685,7 +900,7 @@ private fun CouponCard(
                         style = MaterialTheme.typography.titleSmall.copy(
                             fontWeight = FontWeight.Bold
                         ),
-                        color = PrimaryText,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -693,7 +908,7 @@ private fun CouponCard(
                         text = coupon.displayDiscount,
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold,
-                            color = PrimaryGreen
+                            color = MaterialTheme.colorScheme.primary
                         )
                     )
                 }
@@ -702,13 +917,13 @@ private fun CouponCard(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Surface)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
                             text = "Min ₹${coupon.minimumCartValue.toInt()}",
                             style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                            color = SecondaryText
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -721,8 +936,8 @@ private fun CouponCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0xFFF0FDF4))
-                    .border(1.dp, Color(0xFFBBF7D0), RoundedCornerShape(10.dp))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                    .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
                     .padding(horizontal = 10.dp, vertical = 6.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
@@ -732,7 +947,7 @@ private fun CouponCard(
                     style = MaterialTheme.typography.labelMedium.copy(
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp,
-                        color = Color(0xFF15803D)
+                        color = MaterialTheme.colorScheme.primary
                     )
                 )
 
@@ -740,7 +955,7 @@ private fun CouponCard(
                     text = "Copy Code",
                     style = MaterialTheme.typography.labelSmall.copy(
                         fontWeight = FontWeight.Bold,
-                        color = PrimaryGreen
+                        color = MaterialTheme.colorScheme.primary
                     ),
                     modifier = Modifier.clickable(onClick = onCopy)
                 )

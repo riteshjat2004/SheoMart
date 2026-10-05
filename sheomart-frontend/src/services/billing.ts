@@ -3,6 +3,8 @@ import type { ApiResponse } from "@/types/api";
 
 export interface CreateOfflineInvoiceItemPayload {
   productId: string;
+  variantId?: string;
+  variantLabel?: string;
   quantity: number;
   unitPrice: number;
   discount: number;
@@ -47,6 +49,13 @@ export interface PosCatalogProduct {
   brand: string;
   price: number;
   discountPrice: number;
+  sellingType?: "PIECE" | "WEIGHT" | "VOLUME";
+  baseUnit?: string;
+  unitLabel?: string;
+  minQuantity?: number;
+  stepQuantity?: number;
+  allowCustomQuantity?: boolean;
+  variants?: import("@/types/marketplace").ProductVariant[];
   availableQuantity: number;
   lowStockThreshold: number;
   stockStatus: StockStatus;

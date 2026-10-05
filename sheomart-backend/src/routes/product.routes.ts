@@ -17,6 +17,7 @@ import {
   updateThumbnail,
   toggleProductFeatured,
   updateProductFeaturedPriority,
+  cloneProductsToStore,
 } from "../controllers/product.controller";
 import { authenticate } from "../middleware/auth.middleware";
 import { authorize } from "../middleware/role.middleware";
@@ -37,6 +38,12 @@ router.post(
   authenticate,
   authorize(USER_ROLES.PLATFORM_ADMIN),
   asyncHandler(bulkProductAction)
+);
+router.post(
+  "/admin/clone-to-store",
+  authenticate,
+  authorize(USER_ROLES.PLATFORM_ADMIN),
+  asyncHandler(cloneProductsToStore)
 );
 router.patch(
   "/admin/:productId/feature",

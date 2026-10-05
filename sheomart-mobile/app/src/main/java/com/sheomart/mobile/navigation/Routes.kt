@@ -46,10 +46,14 @@ object Routes {
     const val StoreRoute    = "store/{storeId}"
 
     // ── Seller Merchant routes ─────────────────────────────────────────────
-    const val SellerDashboard = "seller_dashboard"
-    const val SellerProducts  = "seller_products"
-    const val SellerOrders    = "seller_orders"
-    const val SellerInventory = "seller_inventory"
+    const val SellerDashboard     = "seller_dashboard"
+    const val SellerProducts      = "seller_products"
+    const val SellerOrders        = "seller_orders"
+    const val SellerInventory     = "seller_inventory"
+    const val SellerPos           = "seller_pos"
+    const val SellerPickupQueue   = "seller_pickup_queue"
+    const val SellerInvoices      = "seller_invoices"
+    const val SellerCashRegister  = "seller_cash_register"
 
     // ── Admin Workspace routes ─────────────────────────────────────────────
     const val AdminDashboard  = "admin_dashboard"

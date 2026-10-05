@@ -19,6 +19,8 @@ export interface AddCartItemPayload {
   productId: string;
   storeId?: string;
   quantity?: number;
+  variantId?: string;
+  variantLabel?: string;
 }
 
 export interface AddCartItemResponse {

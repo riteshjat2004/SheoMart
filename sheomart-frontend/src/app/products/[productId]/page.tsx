@@ -49,6 +49,7 @@ export function ProductDetailContent({ productId, storeId }: { productId?: strin
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   const product = productQuery.data;
@@ -64,7 +65,17 @@ export function ProductDetailContent({ productId, storeId }: { productId?: strin
     if (product?.productId) {
       addRecentlyViewedProduct(product.productId);
     }
-  }, [product]);
+    if (product?.variants && product.variants.length > 0) {
+      setSelectedVariantId(product.variants[0].variantId);
+    } else {
+      setSelectedVariantId(null);
+    }
+  }, [product?.productId, product?.variants]);
+
+  const selectedVariant = useMemo(() => {
+    if (!product?.variants?.length || !selectedVariantId) return null;
+    return product.variants.find((v) => v.variantId === selectedVariantId) ?? null;
+  }, [product?.variants, selectedVariantId]);
 
   // Gallery images
   const allImages = useMemo(() => {
@@ -82,13 +93,21 @@ export function ProductDetailContent({ productId, storeId }: { productId?: strin
 
   const activeImage = allImages[selectedImageIndex] ?? allImages[0];
 
-  const discountPercent =
-    product?.discount ??
-    (product?.discountPrice && product?.price
-      ? Math.round(((product.price - product.discountPrice) / product.price) * 100)
-      : 0);
+  const activePrice = selectedVariant
+    ? selectedVariant.price
+    : product?.price ?? 0;
 
-  const displayPrice = product?.discountPrice ?? product?.price ?? 0;
+  const activeDiscountPrice = selectedVariant
+    ? (selectedVariant.discountPrice && selectedVariant.discountPrice > 0 ? selectedVariant.discountPrice : selectedVariant.price)
+    : product?.discountPrice ?? product?.price ?? 0;
+
+  const displayPrice = activeDiscountPrice;
+
+  const discountPercent =
+    activePrice > 0 && activePrice > activeDiscountPrice
+      ? Math.round(((activePrice - activeDiscountPrice) / activePrice) * 100)
+      : product?.discount ?? 0;
+
   const isOutOfStock = (product?.quantity ?? 0) <= 0;
 
   // Related products
@@ -139,10 +158,18 @@ export function ProductDetailContent({ productId, storeId }: { productId?: strin
 
     setMessage(null);
     addCartItemMutation.mutate(
-      { productId: product.productId, storeId: selectedStoreId ?? undefined, quantity },
+      {
+        productId: product.productId,
+        storeId: selectedStoreId ?? undefined,
+        quantity,
+        variantId: selectedVariant?.variantId,
+        variantLabel: selectedVariant?.label,
+      },
       {
         onSuccess: () => {
-          setMessage(`Added ${quantity} item(s) to your cart.`);
+          setMessage(
+            `Added ${quantity} item(s) ${selectedVariant ? `(${selectedVariant.label}) ` : ""}to your cart.`
+          );
         },
         onError: (error) => {
           setMessage(error instanceof Error ? error.message : "Unable to add item to cart.");
@@ -282,7 +309,15 @@ export function ProductDetailContent({ productId, storeId }: { productId?: strin
                         </span>
                       )}
                       <span className="rounded-full bg-stone-100 px-2.5 py-1 font-medium text-stone-600 dark:bg-stone-800 dark:text-stone-300">
-                        {product.unit || "1 pack"}
+                        {selectedVariant
+                          ? selectedVariant.label
+                          : product.unitLabel
+                          ? product.unitLabel
+                          : product.sellingType === "WEIGHT"
+                          ? `Base: per ${product.baseUnit || "kg"}`
+                          : product.sellingType === "VOLUME"
+                          ? `Base: per ${product.baseUnit || "L"}`
+                          : product.unit || "1 pack"}
                       </span>
                       <span
                         className={`rounded-full px-2.5 py-1 font-medium ${
@@ -295,25 +330,79 @@ export function ProductDetailContent({ productId, storeId }: { productId?: strin
                       </span>
                     </div>
 
+                    {/* Portion / Variant Selector */}
+                    {product.variants && product.variants.length > 0 && (
+                      <div className="space-y-2 rounded-2xl border border-stone-200/80 bg-stone-50/60 p-4 dark:border-stone-800 dark:bg-stone-900/40">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300">
+                            Select Pack / Portion Size
+                          </label>
+                          {selectedVariant && (
+                            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                              Selected: {selectedVariant.label}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-2.5 pt-1">
+                          {product.variants.map((variant) => {
+                            const isSelected = selectedVariantId === variant.variantId;
+                            const vPrice =
+                              variant.discountPrice &&
+                              variant.discountPrice > 0 &&
+                              variant.discountPrice < variant.price
+                                ? variant.discountPrice
+                                : variant.price;
+                            return (
+                              <button
+                                key={variant.variantId}
+                                type="button"
+                                onClick={() => setSelectedVariantId(variant.variantId)}
+                                className={`flex items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-semibold transition ${
+                                  isSelected
+                                    ? "border-emerald-600 bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-600/20"
+                                    : "border-stone-200 bg-white text-stone-700 hover:border-emerald-500/50 hover:bg-emerald-50/30 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-200"
+                                }`}
+                              >
+                                <span>{variant.label}</span>
+                                <span
+                                  className={`text-[11px] font-bold ${
+                                    isSelected
+                                      ? "text-emerald-100"
+                                      : "text-emerald-600 dark:text-emerald-400"
+                                  }`}
+                                >
+                                  ₹{vPrice}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Price section */}
                     <div className="rounded-2xl border border-stone-100 bg-stone-50 p-4 dark:border-stone-800 dark:bg-stone-950/50">
                       <div className="flex items-baseline gap-3">
                         <span className="text-3xl font-extrabold text-stone-900 dark:text-stone-50">
                           ₹{displayPrice}
                         </span>
-                        {displayPrice !== product.price && (
+                        {displayPrice !== activePrice && (
                           <span className="text-lg text-stone-400 line-through">
-                            ₹{product.price}
+                            ₹{activePrice}
                           </span>
                         )}
                         {discountPercent ? (
                           <span className="text-xs font-bold text-emerald-600">
-                            Save ₹{product.price - displayPrice} ({discountPercent}% OFF)
+                            Save ₹{activePrice - displayPrice} ({discountPercent}% OFF)
                           </span>
                         ) : null}
                       </div>
                       <p className="mt-1 text-[11px] text-stone-500">
-                        Inclusive of all taxes • Superfast local delivery
+                        {selectedVariant
+                          ? `Price for ${selectedVariant.label} • Inclusive of all taxes`
+                          : product.unitLabel
+                          ? `Price ${product.unitLabel} • Inclusive of all taxes`
+                          : "Inclusive of all taxes • Superfast local delivery"}
                       </p>
                     </div>
 
@@ -328,30 +417,78 @@ export function ProductDetailContent({ productId, storeId }: { productId?: strin
                       </p>
                     </div>
 
-                    {/* Nutrition facts placeholder */}
-                    <div className="rounded-2xl border border-stone-200 bg-white p-4 dark:border-stone-800 dark:bg-zinc-900">
-                      <h4 className="text-xs font-semibold uppercase tracking-wider text-stone-700 dark:text-stone-300">
-                        Nutritional Information (Approx per 100g)
-                      </h4>
-                      <div className="mt-3 grid grid-cols-4 gap-2 text-center text-xs">
-                        <div className="rounded-xl bg-stone-50 p-2 dark:bg-stone-800">
-                          <p className="text-[10px] text-stone-500">Energy</p>
-                          <p className="font-bold text-stone-900 dark:text-stone-50">120 kcal</p>
+                    {/* Nutritional Information or Store Guarantees */}
+                    {product.hasNutritionalInfo && product.nutritionalInfo ? (
+                      <div className="rounded-2xl border border-stone-200 bg-white p-4 dark:border-stone-800 dark:bg-zinc-900">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs font-semibold uppercase tracking-wider text-stone-700 dark:text-stone-300">
+                            Nutritional Information
+                          </h4>
+                          <span className="text-[11px] font-medium text-stone-400">
+                            {product.nutritionalInfo.servingSize || "Approx per 100g"}
+                          </span>
                         </div>
-                        <div className="rounded-xl bg-stone-50 p-2 dark:bg-stone-800">
-                          <p className="text-[10px] text-stone-500">Protein</p>
-                          <p className="font-bold text-stone-900 dark:text-stone-50">3.2 g</p>
-                        </div>
-                        <div className="rounded-xl bg-stone-50 p-2 dark:bg-stone-800">
-                          <p className="text-[10px] text-stone-500">Carbs</p>
-                          <p className="font-bold text-stone-900 dark:text-stone-50">18.5 g</p>
-                        </div>
-                        <div className="rounded-xl bg-stone-50 p-2 dark:bg-stone-800">
-                          <p className="text-[10px] text-stone-500">Fats</p>
-                          <p className="font-bold text-stone-900 dark:text-stone-50">1.1 g</p>
+                        <div className="mt-3 grid grid-cols-4 gap-2 text-center text-xs">
+                          <div className="rounded-xl bg-stone-50 p-2 dark:bg-stone-800">
+                            <p className="text-[10px] text-stone-500">Energy</p>
+                            <p className="font-bold text-stone-900 dark:text-stone-50">
+                              {product.nutritionalInfo.energy || "—"}
+                            </p>
+                          </div>
+                          <div className="rounded-xl bg-stone-50 p-2 dark:bg-stone-800">
+                            <p className="text-[10px] text-stone-500">Protein</p>
+                            <p className="font-bold text-stone-900 dark:text-stone-50">
+                              {product.nutritionalInfo.protein || "—"}
+                            </p>
+                          </div>
+                          <div className="rounded-xl bg-stone-50 p-2 dark:bg-stone-800">
+                            <p className="text-[10px] text-stone-500">Carbs</p>
+                            <p className="font-bold text-stone-900 dark:text-stone-50">
+                              {product.nutritionalInfo.carbs || "—"}
+                            </p>
+                          </div>
+                          <div className="rounded-xl bg-stone-50 p-2 dark:bg-stone-800">
+                            <p className="text-[10px] text-stone-500">Fats</p>
+                            <p className="font-bold text-stone-900 dark:text-stone-50">
+                              {product.nutritionalInfo.fats || "—"}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    ) : (
+                      /* When unticked by seller: fill this space with SheoMart Store Quality & Guarantees */
+                      <div className="rounded-2xl border border-stone-200/80 bg-stone-50/70 p-4 dark:border-stone-800 dark:bg-stone-900/40">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="text-xs font-semibold uppercase tracking-wider text-stone-700 dark:text-stone-300">
+                            Quality &amp; Store Guarantees
+                          </h4>
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                            <ShieldCheck className="h-3.5 w-3.5" />
+                            Verified Quality
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="flex items-center gap-2 rounded-xl bg-white p-2.5 shadow-2xs dark:bg-stone-800">
+                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                              <CheckCircle2 className="h-4 w-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-bold text-[11px] text-stone-900 dark:text-stone-100 truncate">100% Inspected</p>
+                              <p className="text-[10px] text-stone-400 truncate">Hygienic handling</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 rounded-xl bg-white p-2.5 shadow-2xs dark:bg-stone-800">
+                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                              <Truck className="h-4 w-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-bold text-[11px] text-stone-900 dark:text-stone-100 truncate">Direct Delivery</p>
+                              <p className="text-[10px] text-stone-400 truncate">Local store dispatch</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Quantity & Action Buttons */}

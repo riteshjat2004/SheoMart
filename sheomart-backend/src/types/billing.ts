@@ -66,6 +66,8 @@ export interface OfflineInvoiceData {
 export interface OfflineInvoiceItemData {
   invoiceId: string;
   productId: string;
+  variantId?: string;
+  variantLabel?: string;
   productNameSnapshot: string;
   skuSnapshot: string;
   categorySnapshot: string;

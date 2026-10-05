@@ -72,12 +72,21 @@ export function ProductCard({ product, storeBadge }: ProductCardProps) {
       return;
     }
 
+    if (product.variants && product.variants.length > 1) {
+      openProduct();
+      return;
+    }
+
     setMessage(null);
+
+    const firstVariant = product.variants?.[0];
 
     addCartMutation.mutate(
       {
         productId: product.productId,
         quantity: 1,
+        variantId: firstVariant?.variantId,
+        variantLabel: firstVariant?.label,
       },
       {
         onSuccess: () => {
@@ -148,19 +157,19 @@ export function ProductCard({ product, storeBadge }: ProductCardProps) {
         ) : null}
 
         {isRoyal ? (
-          <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-100/90 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-900 shadow-sm backdrop-blur-sm dark:border-amber-400/50 dark:bg-black/80 dark:text-amber-300">
-            <Crown className="h-2.5 w-2.5 fill-amber-500 text-amber-500 dark:fill-amber-400 dark:text-amber-400" />
-            Royal
+          <span className="absolute bottom-3 left-3 inline-flex max-w-[170px] items-center gap-1 rounded-full border border-amber-300 bg-amber-100/90 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-900 shadow-sm backdrop-blur-sm dark:border-amber-400/50 dark:bg-black/80 dark:text-amber-300">
+            <Crown className="h-2.5 w-2.5 shrink-0 fill-amber-500 text-amber-500 dark:fill-amber-400 dark:text-amber-400" />
+            <span className="truncate">{product.storeName || "Royal"}</span>
           </span>
         ) : isVerified ? (
-          <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full border border-emerald-400/50 bg-white/95 px-2 py-0.5 text-[9px] font-bold text-emerald-800 shadow-sm backdrop-blur-sm dark:bg-stone-900/90 dark:text-emerald-300">
-            <ShieldCheck className="h-2.5 w-2.5 text-emerald-600 dark:text-emerald-400" />
-            Verified Store
+          <span className="absolute bottom-3 left-3 inline-flex max-w-[170px] items-center gap-1 rounded-full border border-emerald-400/50 bg-white/95 px-2 py-0.5 text-[9px] font-bold text-emerald-800 shadow-sm backdrop-blur-sm dark:bg-stone-900/90 dark:text-emerald-300">
+            <ShieldCheck className="h-2.5 w-2.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+            <span className="truncate">{product.storeName || "Verified Store"}</span>
           </span>
         ) : (
-          <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full border border-stone-200/80 bg-white/95 px-2 py-0.5 text-[9px] font-semibold text-stone-700 shadow-xs backdrop-blur-sm dark:border-stone-700 dark:bg-stone-900/90 dark:text-stone-300">
-            <Store className="h-2.5 w-2.5 text-emerald-600 dark:text-emerald-400" />
-            Local Store
+          <span className="absolute bottom-3 left-3 inline-flex max-w-[170px] items-center gap-1 rounded-full border border-stone-200/80 bg-white/95 px-2 py-0.5 text-[9px] font-semibold text-stone-700 shadow-xs backdrop-blur-sm dark:border-stone-700 dark:bg-stone-900/90 dark:text-stone-300">
+            <Store className="h-2.5 w-2.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+            <span className="truncate">{product.storeName || "Local Store"}</span>
           </span>
         )}
       </div>
@@ -175,9 +184,18 @@ export function ProductCard({ product, storeBadge }: ProductCardProps) {
             >
               {product.name}
             </h3>
-            <p className={`mt-1 text-xs ${isRoyal ? "text-amber-800/80 dark:text-amber-200/70" : isVerified ? "text-emerald-700 dark:text-emerald-400 font-medium" : "text-stone-500 dark:text-stone-400"}`}>
-              {product.brand ?? (isRoyal ? "Royal Selection" : isVerified ? "Verified Merchant" : "Local Merchant")}
-            </p>
+            <div className="mt-1 flex items-center gap-1.5 text-xs">
+              <span className={`inline-flex items-center gap-1 text-[11px] font-medium ${isRoyal ? "text-amber-800 dark:text-amber-300" : "text-emerald-700 dark:text-emerald-400"}`}>
+                <Store className="h-3 w-3 shrink-0" />
+                <span className="max-w-[140px] truncate">{product.storeName || (isRoyal ? "Royal Selection" : isVerified ? "Verified Merchant" : "Local Merchant")}</span>
+              </span>
+              {product.brand ? (
+                <>
+                  <span className="text-stone-300 dark:text-stone-600">•</span>
+                  <span className="truncate text-stone-500 dark:text-stone-400">{product.brand}</span>
+                </>
+              ) : null}
+            </div>
           </div>
 
           {typeof product.rating === "number" ? (
@@ -194,9 +212,22 @@ export function ProductCard({ product, storeBadge }: ProductCardProps) {
           ) : null}
         </div>
 
-        <p className={`mt-3 text-sm ${isRoyal ? "text-stone-500 dark:text-stone-400" : "text-stone-500 dark:text-stone-400"}`}>
-          {product.unit ?? "Standard pack"}
-        </p>
+        <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+          <p className="text-xs text-stone-500 dark:text-stone-400">
+            {product.unitLabel
+              ? product.unitLabel
+              : product.sellingType === "WEIGHT"
+              ? `per ${product.baseUnit || "kg"}`
+              : product.sellingType === "VOLUME"
+              ? `per ${product.baseUnit || "L"}`
+              : product.unit ?? "Standard pack"}
+          </p>
+          {product.variants && product.variants.length > 0 && (
+            <span className="inline-flex items-center rounded-md bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold text-stone-600 dark:bg-stone-800 dark:text-stone-300">
+              {product.variants.length} sizes available
+            </span>
+          )}
+        </div>
 
         <div className="mt-4 flex items-end justify-between gap-3">
           <div>
@@ -241,7 +272,7 @@ export function ProductCard({ product, storeBadge }: ProductCardProps) {
                   : "bg-emerald-600 text-white font-semibold shadow-xs hover:bg-emerald-700 active:scale-[0.98]"
               }`}
             >
-              {isOutOfStock ? "Out of Stock" : "Add to Cart"}
+              {isOutOfStock ? "Out of Stock" : product.variants && product.variants.length > 1 ? "Select Size" : "Add to Cart"}
             </button>
 
             <button

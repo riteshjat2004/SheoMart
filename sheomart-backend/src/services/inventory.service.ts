@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import { AppError } from "../errors/AppError";
 import { Inventory, INVENTORY_STATUS } from "../models/inventory.model";
 import { InventoryLedger } from "../models/inventoryLedger.model";
@@ -229,6 +230,53 @@ export class InventoryService {
 
     const inventory = await this.ensureInventory(productId);
 
+    const product = await Product.findOne({ productId });
+    if (!product) {
+      throw new AppError("Product not found", 404);
+    }
+
+    let variantsModified = false;
+    if (Array.isArray(data.variants) && data.variants.length > 0) {
+      product.variants = data.variants.map((v) => ({
+        variantId: v.variantId || uuidv4(),
+        label: v.label,
+        unit: v.unit,
+        value: v.value,
+        price: v.price,
+        discountPrice: v.discountPrice,
+        sku: v.sku,
+        stock: Math.max(0, v.stock ?? 0),
+        packQuantity: v.packQuantity,
+      }));
+      variantsModified = true;
+      if (product.stockTrackingMode !== "SHARED") {
+        data.availableQuantity = product.variants.reduce((acc, curr) => acc + (curr.stock ?? 0), 0);
+      }
+    } else if (Array.isArray(data.variantStocks) && data.variantStocks.length > 0) {
+      const stockById = new Map<string, number>();
+      const stockByLabel = new Map<string, number>();
+      for (const vs of data.variantStocks) {
+        if (vs.variantId) stockById.set(vs.variantId, Math.max(0, vs.stock));
+        if (vs.label) stockByLabel.set(vs.label.toLowerCase().trim(), Math.max(0, vs.stock));
+      }
+      product.variants = (product.variants || []).map((v) => {
+        let newStock = v.stock;
+        if (v.variantId && stockById.has(v.variantId)) {
+          newStock = stockById.get(v.variantId);
+        } else if (v.label && stockByLabel.has(v.label.toLowerCase().trim())) {
+          newStock = stockByLabel.get(v.label.toLowerCase().trim());
+        }
+        return {
+          ...v,
+          stock: newStock,
+        };
+      });
+      variantsModified = true;
+      if (product.stockTrackingMode !== "SHARED") {
+        data.availableQuantity = product.variants.reduce((acc, curr) => acc + (curr.stock ?? 0), 0);
+      }
+    }
+
     if (
       data.availableQuantity !== undefined &&
       data.availableQuantity < 0
@@ -317,22 +365,26 @@ export class InventoryService {
       userId
     );
 
+    if (variantsModified) {
+      product.quantity = inventory.availableQuantity;
+      product.updatedBy = userId;
+      product.markModified("variants");
+      await product.save();
+    }
+
     if (data.availableQuantity !== undefined && data.availableQuantity !== previousQuantity) {
       const quantityChange = inventory.availableQuantity - previousQuantity;
-      const product = await Product.findOne({ productId });
-      if (product) {
-        await InventoryLedger.create({
-          storeId: product.storeId,
-          productId,
-          movementType: quantityChange > 0 ? INVENTORY_MOVEMENT_TYPE.RESTOCK : INVENTORY_MOVEMENT_TYPE.ADJUSTMENT,
-          referenceType: REFERENCE_TYPE.MANUAL,
-          referenceId: `MANUAL-${Date.now()}`,
-          quantityChange,
-          previousQuantity,
-          newQuantity: inventory.availableQuantity,
-          performedBy: userId,
-        });
-      }
+      await InventoryLedger.create({
+        storeId: product.storeId,
+        productId,
+        movementType: quantityChange > 0 ? INVENTORY_MOVEMENT_TYPE.RESTOCK : INVENTORY_MOVEMENT_TYPE.ADJUSTMENT,
+        referenceType: REFERENCE_TYPE.MANUAL,
+        referenceId: data.note ? `MANUAL: ${data.note.slice(0, 40)}` : `MANUAL-${Date.now()}`,
+        quantityChange,
+        previousQuantity,
+        newQuantity: inventory.availableQuantity,
+        performedBy: userId,
+      });
     }
 
     return inventory;

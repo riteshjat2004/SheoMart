@@ -21,6 +21,7 @@ import com.sheomart.mobile.data.model.SellerInventoryItem
 import com.sheomart.mobile.ui.components.AsyncImageLoader
 import com.sheomart.mobile.ui.components.SectionEmptyView
 import com.sheomart.mobile.ui.components.SectionErrorView
+import com.sheomart.mobile.ui.components.StatusBadge
 import com.sheomart.mobile.ui.state.UiState
 import com.sheomart.mobile.ui.theme.*
 
@@ -30,6 +31,8 @@ fun SellerInventoryScreen(
     viewModel: SellerInventoryViewModel,
     onBack: () -> Unit
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     val state by viewModel.inventoryState.collectAsState()
     val query by viewModel.searchQuery.collectAsState()
     val actionMsg by viewModel.actionMessage.collectAsState()
@@ -47,16 +50,22 @@ fun SellerInventoryScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Inventory & Stock Sync", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)) },
+                title = {
+                    Text(
+                        text = "Inventory & Stock Sync",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = colorScheme.onSurface
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Text("←", fontSize = 20.sp, color = PrimaryGreen)
+                        Text("←", fontSize = 22.sp, color = colorScheme.primary, fontWeight = FontWeight.Bold)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = colorScheme.surface)
             )
         },
-        containerColor = Background
+        containerColor = colorScheme.background
     ) { padding ->
         Column(
             modifier = Modifier
@@ -67,32 +76,40 @@ fun SellerInventoryScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color.White)
+                    .background(colorScheme.surface)
                     .padding(horizontal = 16.dp, vertical = 10.dp)
             ) {
                 TextField(
                     value = query,
                     onValueChange = { viewModel.onSearchQueryChange(it) },
-                    placeholder = { Text("Search product inventory...", color = SecondaryText, fontSize = 14.sp) },
+                    placeholder = {
+                        Text(
+                            text = "Search product inventory...",
+                            color = colorScheme.onSurfaceVariant,
+                            fontSize = 14.sp
+                        )
+                    },
                     singleLine = true,
                     colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Surface,
-                        unfocusedContainerColor = Surface,
+                        focusedContainerColor = colorScheme.surfaceContainerHighest,
+                        unfocusedContainerColor = colorScheme.surfaceContainerHighest,
                         focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent
+                        unfocusedIndicatorColor = Color.Transparent,
+                        focusedTextColor = colorScheme.onSurface,
+                        unfocusedTextColor = colorScheme.onSurface
                     ),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth().height(48.dp)
                 )
             }
 
-            Divider(color = Border, thickness = 0.5.dp)
+            HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
 
             Box(modifier = Modifier.fillMaxSize()) {
                 when (val res = state) {
                     is UiState.Loading -> {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = PrimaryGreen)
+                            CircularProgressIndicator(color = colorScheme.primary)
                         }
                     }
                     is UiState.Error -> {
@@ -141,7 +158,7 @@ fun SellerInventoryScreen(
                                 contentPadding = PaddingValues(16.dp),
                                 verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                items(list) { item ->
+                                items(list, key = { it.productId }) { item ->
                                     SellerInventoryCard(
                                         item = item,
                                         onIncrease = { viewModel.updateStock(item.productId, item.quantity + 5) },
@@ -163,18 +180,14 @@ private fun SellerInventoryCard(
     onIncrease: () -> Unit,
     onDecrease: () -> Unit
 ) {
-    val (statusColor, statusBg) = when (item.status) {
-        "out_of_stock" -> Color(0xFFDC2626) to Color(0xFFFEE2E2)
-        "low_stock" -> Color(0xFFD97706) to Color(0xFFFEF3C7)
-        else -> Color(0xFF059669) to Color(0xFFD1FAE5)
-    }
+    val colorScheme = MaterialTheme.colorScheme
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.White)
-            .border(1.dp, Border, RoundedCornerShape(16.dp))
+            .background(colorScheme.surface)
+            .border(1.dp, colorScheme.outlineVariant, RoundedCornerShape(16.dp))
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -185,7 +198,7 @@ private fun SellerInventoryCard(
             modifier = Modifier
                 .size(60.dp)
                 .clip(RoundedCornerShape(10.dp))
-                .background(Surface),
+                .background(colorScheme.surfaceContainerHighest),
             contentScale = ContentScale.Crop,
             fallbackText = item.productName
         )
@@ -194,7 +207,7 @@ private fun SellerInventoryCard(
             Text(
                 text = item.productName,
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                color = PrimaryText,
+                color = colorScheme.onSurface,
                 maxLines = 2
             )
             Spacer(modifier = Modifier.height(2.dp))
@@ -202,22 +215,11 @@ private fun SellerInventoryCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(statusBg)
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                ) {
-                    Text(
-                        text = item.status.replace("_", " ").uppercase(),
-                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.Bold),
-                        color = statusColor
-                    )
-                }
+                StatusBadge(text = item.status)
                 Text(
                     text = "Stock: ${item.quantity}",
                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-                    color = PrimaryText
+                    color = if (item.quantity <= 5) colorScheme.error else colorScheme.onSurface
                 )
             }
         }
@@ -226,17 +228,17 @@ private fun SellerInventoryCard(
         Row(
             modifier = Modifier
                 .clip(RoundedCornerShape(10.dp))
-                .background(Surface)
-                .border(1.dp, Border, RoundedCornerShape(10.dp))
+                .background(colorScheme.surfaceContainerHighest)
+                .border(1.dp, colorScheme.outlineVariant, RoundedCornerShape(10.dp))
                 .padding(horizontal = 4.dp, vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             IconButton(onClick = onDecrease, modifier = Modifier.size(28.dp)) {
-                Text("-1", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PrimaryText)
+                Text("-1", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
             }
             IconButton(onClick = onIncrease, modifier = Modifier.size(28.dp)) {
-                Text("+5", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = PrimaryGreen)
+                Text("+5", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = colorScheme.primary)
             }
         }
     }

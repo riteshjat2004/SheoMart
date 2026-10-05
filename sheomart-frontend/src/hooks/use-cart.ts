@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { addCartItem, clearCart, fetchCart, removeCartItem, updateCartItem, type CartMutationResponse } from "@/services/cart";
+import { addCartItem, clearCart, fetchCart, removeCartItem, updateCartItem, type AddCartItemPayload, type CartMutationResponse } from "@/services/cart";
 import type { CartResponse } from "@/services/cart";
 import type { CartItem } from "@/types/marketplace";
 
@@ -17,7 +17,7 @@ export function useCart() {
 
 export function useAddCartItem() {
   const queryClient = useQueryClient();
-  return useMutation<{ cartItem?: CartItem; cart: CartResponse }, Error, { productId: string; storeId?: string; quantity?: number }, { previousCount?: number; previousCart?: CartResponse }>({
+  return useMutation<{ cartItem?: CartItem; cart: CartResponse }, Error, AddCartItemPayload, { previousCount?: number; previousCart?: CartResponse }>({
     mutationFn: addCartItem,
     onMutate: async ({ quantity = 1 }) => {
       await queryClient.cancelQueries({ queryKey: ["cart-count"] });

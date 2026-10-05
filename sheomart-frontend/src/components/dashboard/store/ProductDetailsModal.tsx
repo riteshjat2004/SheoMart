@@ -1,6 +1,6 @@
 "use client";
 
-import { X, Tag, Package, Store, CheckCircle2, ShieldCheck, Sparkles, AlertCircle, Edit, Layers } from "lucide-react";
+import { X, Tag, Package, Store, CheckCircle2, ShieldCheck, Sparkles, AlertCircle, Edit, Layers, Scale, Droplets } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import type { ProductItem, StoreItem } from "@/types/marketplace";
@@ -144,6 +144,80 @@ export function ProductDetailsModal({
             </div>
           </div>
 
+          {/* Selling Type & Measurement Units Details */}
+          <div className="space-y-3 rounded-2xl border border-emerald-500/20 bg-emerald-50/20 p-4 dark:border-emerald-500/10 dark:bg-emerald-950/10">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {product.sellingType === "WEIGHT" ? (
+                  <Scale className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                ) : product.sellingType === "VOLUME" ? (
+                  <Droplets className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                ) : (
+                  <Package className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                )}
+                <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+                  Measurement & Selling Type:{" "}
+                  <span className="capitalize">{product.sellingType?.toLowerCase() || "piece"}</span>
+                </h4>
+              </div>
+              <span className="rounded-lg bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                Base Unit: {product.baseUnit || "piece"} {product.unitLabel ? `(${product.unitLabel})` : ""}
+              </span>
+            </div>
+
+            {product.allowCustomQuantity ? (
+              <div className="rounded-xl border border-emerald-500/20 bg-white/70 px-3 py-2 text-xs text-stone-700 dark:border-stone-800 dark:bg-stone-900/60 dark:text-stone-300">
+                ✓ <strong>Custom Quantities Allowed:</strong> Buyers can choose fractional amounts (Min: {product.minQuantity ?? 1} {product.baseUnit}, Step: {product.stepQuantity ?? 1} {product.baseUnit})
+              </div>
+            ) : null}
+
+            {/* Variants table */}
+            {product.variants && product.variants.length > 0 ? (
+              <div className="space-y-1.5 pt-1">
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] font-semibold text-stone-500">Configured Portion Sizes ({product.variants.length}):</p>
+                  <span className="text-[10px] font-medium text-stone-500">
+                    Mode: {product.stockTrackingMode === "SHARED" ? "Shared Master Stock" : "Separate Stock per Pack"}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {product.variants.map((v, i) => (
+                    <div
+                      key={v.variantId || i}
+                      className="flex items-center justify-between rounded-xl border border-stone-200 bg-white p-2.5 text-xs dark:border-stone-800 dark:bg-stone-900"
+                    >
+                      <div>
+                        <span className="font-bold text-stone-900 dark:text-stone-100">{v.label}</span>
+                        {product.stockTrackingMode === "SHARED" ? (
+                          <p className="text-[10px] text-stone-500">
+                            {v.packQuantity || 1} items/pack • <strong className="text-emerald-600 dark:text-emerald-400">{Math.floor((product.quantity ?? 0) / (v.packQuantity || 1))} available</strong>
+                          </p>
+                        ) : (
+                          <p className="text-[10px] text-stone-500">
+                            Stock: <strong className="text-emerald-600 dark:text-emerald-400">{v.stock ?? 0} units</strong>
+                          </p>
+                        )}
+                        {v.sku ? <p className="text-[10px] text-stone-400 font-mono">{v.sku}</p> : null}
+                      </div>
+                      <div className="text-right">
+                        <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                          ₹{(v.discountPrice && v.discountPrice > 0 ? v.discountPrice : v.price).toLocaleString("en-IN")}
+                        </span>
+                        {v.discountPrice && v.discountPrice > 0 && v.discountPrice < v.price ? (
+                          <span className="ml-1 text-[10px] text-stone-400 line-through">
+                            ₹{v.price.toLocaleString("en-IN")}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-stone-500 italic">No portion variants configured. Sold at base unit price.</p>
+            )}
+          </div>
+
           {/* Gallery Preview if multiple images */}
           {uniqueImages.length > 1 ? (
             <div className="space-y-2">
@@ -168,6 +242,33 @@ export function ProductDetailsModal({
               {product.description?.trim() ? product.description : "No description provided for this product."}
             </div>
           </div>
+
+          {/* Nutritional Information if available */}
+          {product.hasNutritionalInfo && product.nutritionalInfo ? (
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-stone-500">
+                Nutritional Information ({product.nutritionalInfo.servingSize || "Approx per 100g"})
+              </h4>
+              <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                <div className="rounded-xl border border-stone-200/80 bg-stone-50 p-2.5 dark:border-stone-800 dark:bg-stone-900/50">
+                  <p className="text-[10px] text-stone-400">Energy</p>
+                  <p className="font-bold text-stone-900 dark:text-stone-100">{product.nutritionalInfo.energy || "—"}</p>
+                </div>
+                <div className="rounded-xl border border-stone-200/80 bg-stone-50 p-2.5 dark:border-stone-800 dark:bg-stone-900/50">
+                  <p className="text-[10px] text-stone-400">Protein</p>
+                  <p className="font-bold text-stone-900 dark:text-stone-100">{product.nutritionalInfo.protein || "—"}</p>
+                </div>
+                <div className="rounded-xl border border-stone-200/80 bg-stone-50 p-2.5 dark:border-stone-800 dark:bg-stone-900/50">
+                  <p className="text-[10px] text-stone-400">Carbs</p>
+                  <p className="font-bold text-stone-900 dark:text-stone-100">{product.nutritionalInfo.carbs || "—"}</p>
+                </div>
+                <div className="rounded-xl border border-stone-200/80 bg-stone-50 p-2.5 dark:border-stone-800 dark:bg-stone-900/50">
+                  <p className="text-[10px] text-stone-400">Fats</p>
+                  <p className="font-bold text-stone-900 dark:text-stone-100">{product.nutritionalInfo.fats || "—"}</p>
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           {/* Store & Admin Integration Badges */}
           <div className="space-y-2">

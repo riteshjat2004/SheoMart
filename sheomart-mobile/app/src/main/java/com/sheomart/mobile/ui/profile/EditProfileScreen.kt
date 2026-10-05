@@ -59,16 +59,16 @@ fun EditProfileScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Edit Profile", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)) },
+                title = { Text("Edit Profile", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.onSurface) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Text("←", fontSize = 20.sp, color = PrimaryGreen)
+                        Text("←", fontSize = 20.sp, color = MaterialTheme.colorScheme.primary)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
             )
         },
-        containerColor = Background
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Column(
             modifier = Modifier
@@ -84,8 +84,8 @@ fun EditProfileScreen(
                 modifier = Modifier
                     .size(80.dp)
                     .clip(CircleShape)
-                    .background(Surface)
-                    .border(2.dp, PrimaryGreen, CircleShape),
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Text("👤", fontSize = 36.sp)
@@ -94,7 +94,18 @@ fun EditProfileScreen(
             Text(
                 text = "Personal Information",
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = PrimaryText
+                color = MaterialTheme.colorScheme.onBackground
+            )
+
+            val tfColors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
             )
 
             OutlinedTextField(
@@ -103,7 +114,8 @@ fun EditProfileScreen(
                 label = { Text("Full Name") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = tfColors
             )
 
             OutlinedTextField(
@@ -112,7 +124,8 @@ fun EditProfileScreen(
                 label = { Text("Email Address") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = tfColors
             )
 
             OutlinedTextField(
@@ -121,7 +134,8 @@ fun EditProfileScreen(
                 label = { Text("Mobile Number") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = tfColors
             )
 
             Spacer(modifier = Modifier.height(16.dp))

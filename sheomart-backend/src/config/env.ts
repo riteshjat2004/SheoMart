@@ -18,7 +18,7 @@ const envSchema = z.object({
 
   JWT_REFRESH_EXPIRES_IN: z.string().default("7d"),
 
-  CORS_ORIGIN: z.string().default("http://localhost:8081"),
+  CORS_ORIGIN: z.string().default("http://localhost:3000"),
   FRONTEND_URL: z.string().optional(),
 
   SMTP_HOST: z.string().optional(),

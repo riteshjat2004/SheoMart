@@ -74,7 +74,7 @@ fun AdminPromotionsScreen(
                 }
             )
         },
-        containerColor = Background,
+        containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         Column(
@@ -85,8 +85,8 @@ fun AdminPromotionsScreen(
             // Tab Selector
             TabRow(
                 selectedTabIndex = uiState.selectedTab,
-                containerColor = Color.White,
-                contentColor = PrimaryGreen
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary
             ) {
                 Tab(
                     selected = uiState.selectedTab == 0,
@@ -251,8 +251,8 @@ private fun CouponAdminCard(
             .fillMaxWidth()
             .shadow(2.dp, shape = RoundedCornerShape(18.dp), spotColor = Color(0x14000000))
             .clip(RoundedCornerShape(18.dp))
-            .background(Color.White)
-            .border(1.dp, Border, RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(18.dp))
             .padding(16.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -287,7 +287,7 @@ private fun CouponAdminCard(
                             text = coupon.displayDiscount,
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold,
-                                color = PrimaryGreen,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontSize = 15.sp
                             )
                         )
@@ -297,7 +297,7 @@ private fun CouponAdminCard(
                     Text(
                         text = coupon.title,
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                        color = PrimaryText
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
@@ -316,11 +316,11 @@ private fun CouponAdminCard(
                 Text(
                     text = "Min ₹${coupon.minimumCartValue.toInt()}${if (coupon.usageLimit != null) " · Limit: ${coupon.usageLimit}" else ""}",
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                    color = SecondaryText
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
                     text = "Used: ${coupon.usageCount} times",
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = PrimaryText)
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                 )
             }
         }
@@ -337,8 +337,8 @@ private fun OfferAdminCard(
             .fillMaxWidth()
             .shadow(2.dp, shape = RoundedCornerShape(18.dp), spotColor = Color(0x14000000))
             .clip(RoundedCornerShape(18.dp))
-            .background(Color.White)
-            .border(1.dp, Border, RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(18.dp))
             .padding(14.dp)
     ) {
         Row(
@@ -350,7 +350,7 @@ private fun OfferAdminCard(
                 modifier = Modifier
                     .size(68.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Surface),
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
                 if (!offer.bannerImage.isNullOrBlank()) {
@@ -373,7 +373,7 @@ private fun OfferAdminCard(
                     Text(
                         text = offer.title,
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                        color = PrimaryText,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
@@ -387,7 +387,7 @@ private fun OfferAdminCard(
                     Text(
                         text = "Festival: ${offer.festivalName}",
                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                        color = SecondaryText
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
@@ -399,11 +399,11 @@ private fun OfferAdminCard(
                 ) {
                     Text(
                         text = offer.displayDiscount,
-                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = PrimaryGreen)
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     )
                     Text(
                         text = "Priority: ${offer.priority}",
-                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, color = SecondaryText)
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     )
                 }
             }
@@ -512,7 +512,7 @@ private fun CreateCouponDialog(
                     )
                 },
                 enabled = !isSubmitting,
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 shape = RoundedCornerShape(10.dp)
             ) {
                 Text(if (isSubmitting) "Saving..." else "Create Coupon", fontWeight = FontWeight.Bold)
@@ -520,11 +520,11 @@ private fun CreateCouponDialog(
         },
         dismissButton = {
             OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(10.dp)) {
-                Text("Cancel", color = PrimaryText)
+                Text("Cancel", color = MaterialTheme.colorScheme.onSurface)
             }
         },
         shape = RoundedCornerShape(20.dp),
-        containerColor = Color.White
+        containerColor = MaterialTheme.colorScheme.surface
     )
 }
 
@@ -626,7 +626,7 @@ private fun CreateOfferDialog(
                     )
                 },
                 enabled = !isSubmitting,
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 shape = RoundedCornerShape(10.dp)
             ) {
                 Text(if (isSubmitting) "Saving..." else "Create Offer", fontWeight = FontWeight.Bold)
@@ -634,10 +634,10 @@ private fun CreateOfferDialog(
         },
         dismissButton = {
             OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(10.dp)) {
-                Text("Cancel", color = PrimaryText)
+                Text("Cancel", color = MaterialTheme.colorScheme.onSurface)
             }
         },
         shape = RoundedCornerShape(20.dp),
-        containerColor = Color.White
+        containerColor = MaterialTheme.colorScheme.surface
     )
 }

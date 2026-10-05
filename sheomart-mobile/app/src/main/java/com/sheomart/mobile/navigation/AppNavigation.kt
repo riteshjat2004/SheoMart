@@ -77,6 +77,14 @@ import com.sheomart.mobile.ui.seller.orders.SellerOrdersScreen
 import com.sheomart.mobile.ui.seller.orders.SellerOrdersViewModel
 import com.sheomart.mobile.ui.seller.products.SellerProductsScreen
 import com.sheomart.mobile.ui.seller.products.SellerProductsViewModel
+import com.sheomart.mobile.ui.seller.pos.SellerPosScreen
+import com.sheomart.mobile.ui.seller.pos.SellerPosViewModel
+import com.sheomart.mobile.ui.seller.pickup.SellerPickupQueueScreen
+import com.sheomart.mobile.ui.seller.pickup.SellerPickupQueueViewModel
+import com.sheomart.mobile.ui.seller.invoices.SellerInvoicesScreen
+import com.sheomart.mobile.ui.seller.invoices.SellerInvoicesViewModel
+import com.sheomart.mobile.ui.seller.reconciliation.SellerCashRegisterScreen
+import com.sheomart.mobile.ui.seller.reconciliation.SellerCashRegisterViewModel
 import com.sheomart.mobile.ui.theme.Background
 import com.sheomart.mobile.ui.theme.PrimaryGreen
 import com.sheomart.mobile.ui.theme.SecondaryText
@@ -103,6 +111,7 @@ fun AppNavigation(auth: AuthState) {
     val promotionsRepository = remember { PromotionsRepository(tokenStore) }
     val userRepository = remember { UserRepository(tokenStore) }
     val sellerRepository = remember { SellerRepository(tokenStore) }
+    val billingRepository = remember { BillingRepository(tokenStore) }
     val adminRepository = remember { AdminRepository(tokenStore) }
     val authRepository = remember { AuthRepository(tokenStore) }
 
@@ -133,6 +142,10 @@ fun AppNavigation(auth: AuthState) {
     val sellerProductsViewModel = remember { SellerProductsViewModel(sellerRepository) }
     val sellerOrdersViewModel = remember { SellerOrdersViewModel(sellerRepository) }
     val sellerInventoryViewModel = remember { SellerInventoryViewModel(sellerRepository) }
+    val sellerPosViewModel = remember { SellerPosViewModel(billingRepository) }
+    val sellerPickupQueueViewModel = remember { SellerPickupQueueViewModel(billingRepository) }
+    val sellerInvoicesViewModel = remember { SellerInvoicesViewModel(billingRepository) }
+    val sellerCashRegisterViewModel = remember { SellerCashRegisterViewModel(billingRepository) }
 
     // Admin ViewModels
     val adminDashboardViewModel = remember { AdminDashboardViewModel(adminRepository) }
@@ -346,7 +359,9 @@ fun AppNavigation(auth: AuthState) {
                 onLogout = {
                     auth.logout()
                     navController.navigate(Routes.Login) { popUpTo(0) { inclusive = true } }
-                }
+                },
+                onSwitchToSeller = { navController.navigate(Routes.SellerDashboard) },
+                onSwitchToAdmin = { navController.navigate(Routes.AdminDashboard) }
             )
         }
 
@@ -497,6 +512,11 @@ fun AppNavigation(auth: AuthState) {
                 onNavigateProducts = { navController.navigate(Routes.SellerProducts) },
                 onNavigateOrders = { navController.navigate(Routes.SellerOrders) },
                 onNavigateInventory = { navController.navigate(Routes.SellerInventory) },
+                onNavigatePos = { navController.navigate(Routes.SellerPos) },
+                onNavigatePickupQueue = { navController.navigate(Routes.SellerPickupQueue) },
+                onNavigateInvoices = { navController.navigate(Routes.SellerInvoices) },
+                onNavigateCashRegister = { navController.navigate(Routes.SellerCashRegister) },
+                onSwitchToCustomer = { navController.navigate(Routes.Home) },
                 onLogout = {
                     auth.logout()
                     navController.navigate(Routes.Login) { popUpTo(0) { inclusive = true } }
@@ -521,6 +541,34 @@ fun AppNavigation(auth: AuthState) {
         composable(Routes.SellerInventory) {
             SellerInventoryScreen(
                 viewModel = sellerInventoryViewModel,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.SellerPos) {
+            SellerPosScreen(
+                viewModel = sellerPosViewModel,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.SellerPickupQueue) {
+            SellerPickupQueueScreen(
+                viewModel = sellerPickupQueueViewModel,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.SellerInvoices) {
+            SellerInvoicesScreen(
+                viewModel = sellerInvoicesViewModel,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(Routes.SellerCashRegister) {
+            SellerCashRegisterScreen(
+                viewModel = sellerCashRegisterViewModel,
                 onBack = { navController.popBackStack() }
             )
         }
@@ -564,6 +612,7 @@ fun AppNavigation(auth: AuthState) {
                 onNavigateUsers = { navController.navigate(Routes.AdminUsers) },
                 onNavigateAnalytics = { navController.navigate(Routes.AdminAnalytics) },
                 onNavigateSettings = { navController.navigate(Routes.AdminSettings) },
+                onNavigateCustomerApp = { navController.navigate(Routes.Home) },
                 onLogout = {
                     auth.logout()
                     navController.navigate(Routes.Login) { popUpTo(0) { inclusive = true } }

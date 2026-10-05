@@ -44,6 +44,8 @@ fun CartScreen(
     onProductClick: (String) -> Unit,
     onCheckoutClick: () -> Unit
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     val cart by viewModel.cartData.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val actionMsg by viewModel.actionMessage.collectAsState()
@@ -74,30 +76,31 @@ fun CartScreen(
             title = {
                 Text(
                     text = "Clear Basket?",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = colorScheme.onSurface
                 )
             },
             text = {
                 Text(
                     text = "Are you sure you want to remove all items from your basket?",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = SecondaryText
+                    color = colorScheme.onSurfaceVariant
                 )
             },
             confirmButton = {
                 Button(
                     onClick = { viewModel.confirmClearCart() },
-                    colors = ButtonDefaults.buttonColors(containerColor = Error)
+                    colors = ButtonDefaults.buttonColors(containerColor = colorScheme.error)
                 ) {
-                    Text("Clear Basket", color = Color.White)
+                    Text("Clear Basket", color = colorScheme.onError)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.dismissClearDialog() }) {
-                    Text("Cancel", color = PrimaryText)
+                    Text("Cancel", color = colorScheme.onSurface)
                 }
             },
-            containerColor = Color.White,
+            containerColor = colorScheme.surface,
             shape = RoundedCornerShape(16.dp)
         )
     }
@@ -117,20 +120,20 @@ fun CartScreen(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 20.sp
                             ),
-                            color = PrimaryText
+                            color = colorScheme.onSurface
                         )
                         if (cart.items.isNotEmpty()) {
                             Box(
                                 modifier = Modifier
                                     .clip(CircleShape)
-                                    .background(PrimaryGreen.copy(alpha = 0.12f))
+                                    .background(colorScheme.primary.copy(alpha = 0.12f))
                                     .padding(horizontal = 8.dp, vertical = 2.dp)
                             ) {
                                 Text(
                                     text = "${cart.totalItems} items",
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         fontWeight = FontWeight.Bold,
-                                        color = PrimaryGreen
+                                        color = colorScheme.primary
                                     )
                                 )
                             }
@@ -142,13 +145,13 @@ fun CartScreen(
                         TextButton(onClick = { viewModel.requestClearCart() }) {
                             Text(
                                 text = "Clear",
-                                color = Error,
+                                color = colorScheme.error,
                                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
                             )
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = colorScheme.surface)
             )
         },
         bottomBar = {
@@ -157,7 +160,7 @@ fun CartScreen(
                 if (cart.items.isNotEmpty()) {
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        color = Color.White,
+                        color = colorScheme.surface,
                         shadowElevation = 12.dp
                     ) {
                         Row(
@@ -178,20 +181,20 @@ fun CartScreen(
                                             fontWeight = FontWeight.ExtraBold,
                                             fontSize = 20.sp
                                         ),
-                                        color = PrimaryText
+                                        color = colorScheme.onSurface
                                     )
                                     if (cart.totalSavings > 0) {
                                         Box(
                                             modifier = Modifier
                                                 .clip(RoundedCornerShape(4.dp))
-                                                .background(PrimaryGreen.copy(alpha = 0.12f))
+                                                .background(colorScheme.primary.copy(alpha = 0.15f))
                                                 .padding(horizontal = 4.dp, vertical = 1.dp)
                                         ) {
                                             Text(
                                                 text = "Save ₹${cart.totalSavings.toInt()}",
                                                 style = MaterialTheme.typography.labelSmall.copy(
                                                     fontWeight = FontWeight.Bold,
-                                                    color = PrimaryGreen,
+                                                    color = colorScheme.primary,
                                                     fontSize = 10.sp
                                                 )
                                             )
@@ -201,7 +204,7 @@ fun CartScreen(
                                 Text(
                                     text = "${cart.totalItems} item(s) to order",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = SecondaryText
+                                    color = colorScheme.onSurfaceVariant
                                 )
                             }
 
@@ -221,7 +224,7 @@ fun CartScreen(
                 )
             }
         },
-        containerColor = Background
+        containerColor = colorScheme.background
     ) { padding ->
         Box(
             modifier = Modifier
@@ -337,12 +340,13 @@ private fun AddressPreviewCard(
     address: AddressItem?,
     onChangeClick: () -> Unit
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.White)
-            .border(1.dp, Border, RoundedCornerShape(16.dp))
+            .background(colorScheme.surface)
+            .border(1.dp, colorScheme.outlineVariant, RoundedCornerShape(16.dp))
             .padding(14.dp)
     ) {
         Row(
@@ -359,7 +363,7 @@ private fun AddressPreviewCard(
                     modifier = Modifier
                         .size(38.dp)
                         .clip(CircleShape)
-                        .background(PrimaryGreen.copy(alpha = 0.12f)),
+                        .background(colorScheme.primary.copy(alpha = 0.12f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text("📍", fontSize = 18.sp)
@@ -373,19 +377,19 @@ private fun AddressPreviewCard(
                         Text(
                             text = "Deliver to ${address?.title ?: "Home"}",
                             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                            color = PrimaryText
+                            color = colorScheme.onSurface
                         )
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(PrimaryGreen.copy(alpha = 0.12f))
+                                .background(colorScheme.primary.copy(alpha = 0.12f))
                                 .padding(horizontal = 5.dp, vertical = 1.dp)
                         ) {
                             Text(
                                 text = "⚡ 15-25 mins",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     fontWeight = FontWeight.Bold,
-                                    color = PrimaryGreen,
+                                    color = colorScheme.primary,
                                     fontSize = 9.sp
                                 )
                             )
@@ -394,7 +398,7 @@ private fun AddressPreviewCard(
                     Text(
                         text = address?.addressLine ?: "Sheopur, Madhya Pradesh 476337",
                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                        color = SecondaryText,
+                        color = colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -408,7 +412,7 @@ private fun AddressPreviewCard(
                 Text(
                     text = "Change",
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                    color = PrimaryGreen
+                    color = colorScheme.primary
                 )
             }
         }
@@ -429,14 +433,15 @@ private fun CartItemCard(
     onSaveForLater: () -> Unit,
     onItemClick: () -> Unit
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.White)
+            .background(colorScheme.surface)
             .border(
                 1.dp,
-                if (!item.isAvailable) Color(0xFFFCA5A5) else Border,
+                if (!item.isAvailable) colorScheme.error.copy(alpha = 0.6f) else colorScheme.outlineVariant,
                 RoundedCornerShape(16.dp)
             )
             .padding(12.dp)
@@ -455,7 +460,7 @@ private fun CartItemCard(
                         modifier = Modifier
                             .fillMaxSize()
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Surface)
+                            .background(colorScheme.surfaceContainerHighest)
                             .clickable(onClick = onItemClick),
                         contentScale = ContentScale.Crop,
                         fallbackText = item.productName
@@ -493,13 +498,13 @@ private fun CartItemCard(
                             Text(
                                 text = item.storeName,
                                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-                                color = SecondaryText,
+                                color = colorScheme.onSurfaceVariant,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                             when (item.storeBadge.lowercase()) {
                                 "royal" -> Text("👑", fontSize = 10.sp)
-                                "verified" -> Text("✓", fontSize = 10.sp, color = PrimaryGreen, fontWeight = FontWeight.Bold)
+                                "verified" -> Text("✓", fontSize = 10.sp, color = colorScheme.primary, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -507,7 +512,7 @@ private fun CartItemCard(
                     Text(
                         text = item.productName,
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                        color = PrimaryText,
+                        color = colorScheme.onSurface,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -516,7 +521,7 @@ private fun CartItemCard(
                         Text(
                             text = item.brand,
                             style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                            color = SecondaryText
+                            color = colorScheme.onSurfaceVariant
                         )
                     }
 
@@ -531,7 +536,7 @@ private fun CartItemCard(
                             text = "₹${item.totalPrice.toInt()}",
                             style = MaterialTheme.typography.titleSmall.copy(
                                 fontWeight = FontWeight.Bold,
-                                color = PrimaryGreen,
+                                color = colorScheme.primary,
                                 fontSize = 15.sp
                             )
                         )
@@ -540,7 +545,7 @@ private fun CartItemCard(
                                 text = "₹${item.originalTotalPrice.toInt()}",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     textDecoration = TextDecoration.LineThrough,
-                                    color = SecondaryText,
+                                    color = colorScheme.onSurfaceVariant,
                                     fontSize = 11.sp
                                 )
                             )
@@ -567,8 +572,8 @@ private fun CartItemCard(
                 Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(10.dp))
-                        .background(Surface)
-                        .border(1.dp, Border, RoundedCornerShape(10.dp))
+                        .background(colorScheme.surfaceContainerHighest)
+                        .border(1.dp, colorScheme.outlineVariant, RoundedCornerShape(10.dp))
                         .padding(horizontal = 4.dp, vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -582,17 +587,17 @@ private fun CartItemCard(
                             Icon(
                                 imageVector = Icons.Default.Delete,
                                 contentDescription = "Remove",
-                                tint = Error,
+                                tint = colorScheme.error,
                                 modifier = Modifier.size(14.dp)
                             )
                         } else {
-                            Text("-", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = PrimaryText)
+                            Text("-", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
                         }
                     }
 
                     if (isUpdating) {
                         CircularProgressIndicator(
-                            color = PrimaryGreen,
+                            color = colorScheme.primary,
                             modifier = Modifier.size(12.dp),
                             strokeWidth = 1.5.dp
                         )
@@ -600,7 +605,7 @@ private fun CartItemCard(
                         Text(
                             text = "${item.quantity}",
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                            color = PrimaryText
+                            color = colorScheme.onSurface
                         )
                     }
 
@@ -613,14 +618,14 @@ private fun CartItemCard(
                             text = "+",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (item.quantity < item.maxAvailableQuantity) PrimaryGreen else SecondaryText
+                            color = if (item.quantity < item.maxAvailableQuantity) colorScheme.primary else colorScheme.onSurfaceVariant
                         )
                     }
                 }
             }
 
             // Bottom Actions (Save for later)
-            HorizontalDivider(color = Border.copy(alpha = 0.4f), thickness = 0.5.dp)
+            HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -631,7 +636,7 @@ private fun CartItemCard(
                     Text(
                         text = item.availabilityMessage,
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = Error
+                        color = colorScheme.error
                     )
                 } else if (item.maxAvailableQuantity <= 5) {
                     Text(
@@ -651,7 +656,7 @@ private fun CartItemCard(
                         text = "Save for later",
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = FontWeight.SemiBold,
-                            color = SecondaryText
+                            color = colorScheme.onSurfaceVariant
                         ),
                         modifier = Modifier
                             .clickable(onClick = onSaveForLater)
@@ -662,7 +667,7 @@ private fun CartItemCard(
                         text = "Remove",
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = FontWeight.SemiBold,
-                            color = Error
+                            color = colorScheme.error
                         ),
                         modifier = Modifier
                             .clickable(onClick = onRemove)
@@ -688,12 +693,13 @@ private fun CouponsSection(
     onApplyCoupon: (Coupon) -> Unit,
     onRemoveCoupon: () -> Unit
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.White)
-            .border(1.dp, Border, RoundedCornerShape(16.dp))
+            .background(colorScheme.surface)
+            .border(1.dp, colorScheme.outlineVariant, RoundedCornerShape(16.dp))
             .padding(14.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -705,7 +711,7 @@ private fun CouponsSection(
                 Text(
                     text = "Offers & Coupons",
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                    color = PrimaryText
+                    color = colorScheme.onSurface
                 )
             }
 
@@ -715,8 +721,8 @@ private fun CouponsSection(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(PrimaryGreen.copy(alpha = 0.08f))
-                        .border(1.dp, PrimaryGreen.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                        .background(colorScheme.primary.copy(alpha = 0.08f))
+                        .border(1.dp, colorScheme.primary.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
                         .padding(12.dp)
                 ) {
                     Row(
@@ -734,13 +740,13 @@ private fun CouponsSection(
                                     text = "'${appliedCoupon.code}' Applied",
                                     style = MaterialTheme.typography.labelMedium.copy(
                                         fontWeight = FontWeight.Bold,
-                                        color = PrimaryGreen
+                                        color = colorScheme.primary
                                     )
                                 )
                                 Text(
                                     text = appliedCoupon.title,
                                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 10.sp),
-                                    color = SecondaryText
+                                    color = colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -753,7 +759,7 @@ private fun CouponsSection(
                                 text = "Remove",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     fontWeight = FontWeight.Bold,
-                                    color = Error
+                                    color = colorScheme.error
                                 )
                             )
                         }
@@ -770,16 +776,18 @@ private fun CouponsSection(
                         value = couponInput,
                         onValueChange = onInputChange,
                         placeholder = {
-                            Text("Enter coupon code", style = MaterialTheme.typography.bodySmall, color = SecondaryText)
+                            Text("Enter coupon code", style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant)
                         },
                         singleLine = true,
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(10.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryGreen,
-                            unfocusedBorderColor = Border,
-                            focusedContainerColor = Color.White,
-                            unfocusedContainerColor = Surface
+                            focusedBorderColor = colorScheme.primary,
+                            unfocusedBorderColor = colorScheme.outlineVariant,
+                            focusedContainerColor = colorScheme.surface,
+                            unfocusedContainerColor = colorScheme.surfaceContainerHighest,
+                            focusedTextColor = colorScheme.onSurface,
+                            unfocusedTextColor = colorScheme.onSurface
                         )
                     )
 
@@ -787,7 +795,7 @@ private fun CouponsSection(
                         onClick = onApplyInput,
                         enabled = couponInput.isNotBlank(),
                         shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen)
+                        colors = ButtonDefaults.buttonColors(containerColor = colorScheme.primary)
                     ) {
                         Text("Apply", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
                     }
@@ -803,8 +811,8 @@ private fun CouponsSection(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(10.dp))
-                                    .background(Surface)
-                                    .border(1.dp, Border, RoundedCornerShape(10.dp))
+                                    .background(colorScheme.surfaceContainerHighest)
+                                    .border(1.dp, colorScheme.outlineVariant, RoundedCornerShape(10.dp))
                                     .clickable { onApplyCoupon(coupon) }
                                     .padding(horizontal = 10.dp, vertical = 6.dp)
                             ) {
@@ -817,14 +825,14 @@ private fun CouponsSection(
                                             text = coupon.code,
                                             style = MaterialTheme.typography.labelSmall.copy(
                                                 fontWeight = FontWeight.Bold,
-                                                color = PrimaryText
+                                                color = colorScheme.onSurface
                                             )
                                         )
                                         Text(
                                             text = "Min ₹${coupon.minimumCartValue.toInt()}",
                                             style = MaterialTheme.typography.labelSmall.copy(
                                                 fontSize = 9.sp,
-                                                color = SecondaryText
+                                                color = colorScheme.onSurfaceVariant
                                             )
                                         )
                                     }
@@ -832,7 +840,7 @@ private fun CouponsSection(
                                         text = "APPLY",
                                         style = MaterialTheme.typography.labelSmall.copy(
                                             fontWeight = FontWeight.Bold,
-                                            color = PrimaryGreen,
+                                            color = colorScheme.primary,
                                             fontSize = 10.sp
                                         )
                                     )
@@ -852,27 +860,28 @@ private fun CouponsSection(
 
 @Composable
 private fun BillSummaryCard(cart: CartData) {
+    val colorScheme = MaterialTheme.colorScheme
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.White)
-            .border(1.dp, Border, RoundedCornerShape(16.dp))
+            .background(colorScheme.surface)
+            .border(1.dp, colorScheme.outlineVariant, RoundedCornerShape(16.dp))
             .padding(16.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(
                 text = "Bill Details",
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                color = PrimaryText
+                color = colorScheme.onSurface
             )
 
-            HorizontalDivider(color = Border.copy(alpha = 0.5f), thickness = 0.5.dp)
+            HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
 
             // Item Total
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Item Total", style = MaterialTheme.typography.bodyMedium, color = SecondaryText)
-                Text("₹${cart.subtotal.toInt()}", style = MaterialTheme.typography.bodyMedium, color = PrimaryText)
+                Text("Item Total", style = MaterialTheme.typography.bodyMedium, color = colorScheme.onSurfaceVariant)
+                Text("₹${cart.subtotal.toInt()}", style = MaterialTheme.typography.bodyMedium, color = colorScheme.onSurface)
             }
 
             // Delivery Fee
@@ -881,19 +890,19 @@ private fun BillSummaryCard(cart: CartData) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Text("Delivery Fee", style = MaterialTheme.typography.bodyMedium, color = SecondaryText)
+                    Text("Delivery Fee", style = MaterialTheme.typography.bodyMedium, color = colorScheme.onSurfaceVariant)
                     if (cart.deliveryFee == 0.0) {
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(PrimaryGreen.copy(alpha = 0.12f))
+                                .background(colorScheme.primary.copy(alpha = 0.12f))
                                 .padding(horizontal = 4.dp, vertical = 1.dp)
                         ) {
                             Text(
                                 text = "FREE OVER ₹499",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     fontWeight = FontWeight.Bold,
-                                    color = PrimaryGreen,
+                                    color = colorScheme.primary,
                                     fontSize = 8.sp
                                 )
                             )
@@ -901,35 +910,35 @@ private fun BillSummaryCard(cart: CartData) {
                     }
                 }
                 if (cart.deliveryFee == 0.0) {
-                    Text("FREE", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = PrimaryGreen)
+                    Text("FREE", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = colorScheme.primary)
                 } else {
-                    Text("₹${cart.deliveryFee.toInt()}", style = MaterialTheme.typography.bodyMedium, color = PrimaryText)
+                    Text("₹${cart.deliveryFee.toInt()}", style = MaterialTheme.typography.bodyMedium, color = colorScheme.onSurface)
                 }
             }
 
             // Platform Fee
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Platform Fee", style = MaterialTheme.typography.bodyMedium, color = SecondaryText)
-                Text("₹${cart.platformFee.toInt()}", style = MaterialTheme.typography.bodyMedium, color = PrimaryText)
+                Text("Platform Fee", style = MaterialTheme.typography.bodyMedium, color = colorScheme.onSurfaceVariant)
+                Text("₹${cart.platformFee.toInt()}", style = MaterialTheme.typography.bodyMedium, color = colorScheme.onSurface)
             }
 
             // Coupon Discount
             if (cart.discountAmount > 0) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Coupon Discount", style = MaterialTheme.typography.bodyMedium, color = PrimaryGreen)
-                    Text("-₹${cart.discountAmount.toInt()}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = PrimaryGreen)
+                    Text("Coupon Discount", style = MaterialTheme.typography.bodyMedium, color = colorScheme.primary)
+                    Text("-₹${cart.discountAmount.toInt()}", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = colorScheme.primary)
                 }
             }
 
-            HorizontalDivider(color = Border.copy(alpha = 0.5f), thickness = 0.5.dp)
+            HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
 
             // Grand Total
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("To Pay", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = PrimaryText)
+                Text("To Pay", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = colorScheme.onSurface)
                 Text(
                     text = "₹${cart.totalAmount.toInt()}",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
-                    color = PrimaryGreen
+                    color = colorScheme.primary
                 )
             }
 
@@ -939,7 +948,7 @@ private fun BillSummaryCard(cart: CartData) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(10.dp))
-                        .background(PrimaryGreen.copy(alpha = 0.08f))
+                        .background(colorScheme.primary.copy(alpha = 0.1f))
                         .padding(horizontal = 10.dp, vertical = 8.dp)
                 ) {
                     Row(
@@ -951,7 +960,7 @@ private fun BillSummaryCard(cart: CartData) {
                             text = "You saved ₹${cart.totalSavings.toInt()} on this order!",
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = FontWeight.Bold,
-                                color = PrimaryGreen
+                                color = colorScheme.primary
                             )
                         )
                     }
@@ -1002,6 +1011,7 @@ private fun CartSkeletonLoading() {
 
 @Composable
 private fun EmptyCartView(onExploreClick: () -> Unit) {
+    val colorScheme = MaterialTheme.colorScheme
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -1016,7 +1026,7 @@ private fun EmptyCartView(onExploreClick: () -> Unit) {
                 modifier = Modifier
                     .size(90.dp)
                     .clip(CircleShape)
-                    .background(Surface),
+                    .background(colorScheme.surfaceContainerHighest),
                 contentAlignment = Alignment.Center
             ) {
                 Text("🛒", fontSize = 42.sp)
@@ -1029,12 +1039,12 @@ private fun EmptyCartView(onExploreClick: () -> Unit) {
                 Text(
                     text = "Your basket is empty",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = PrimaryText
+                    color = colorScheme.onSurface
                 )
                 Text(
                     text = "Discover local spices, fresh farm produce, and daily staples from stores in Sheopur.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = SecondaryText,
+                    color = colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 16.dp),
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )

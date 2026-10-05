@@ -238,8 +238,21 @@ export class OrderService {
         throw new AppError(`Insufficient stock for ${product.name}`, 400);
       }
 
-      const price = product.price;
-      const discountPrice = product.discountPrice ?? product.price;
+      let price = product.price;
+      let discountPrice = product.discountPrice ?? product.price;
+      let variantLabel = item.variantLabel || "";
+      let unit = product.unitLabel || product.baseUnit || "";
+
+      if (item.variantId && product.variants?.length) {
+        const v = product.variants.find((v) => v.variantId === item.variantId);
+        if (v) {
+          price = v.price;
+          discountPrice = v.discountPrice ?? v.price;
+          variantLabel = v.label;
+          unit = v.unit || unit;
+        }
+      }
+
       const itemTotal = discountPrice * item.quantity;
 
       originalTotal += price * item.quantity;
@@ -247,9 +260,11 @@ export class OrderService {
 
       itemsSummary.push({
         productId: product.productId,
-        name: product.name,
+        variantId: item.variantId || "",
+        variantLabel,
+        name: variantLabel ? `${product.name} (${variantLabel})` : product.name,
         image: product.images?.[0] || "",
-        unit: "",
+        unit,
         quantity: item.quantity,
         price,
         discountPrice,
@@ -361,8 +376,19 @@ export class OrderService {
       if (!product) throw new AppError(`Product ${item.productId} is unavailable`, 400);
       const inventory = await Inventory.findOne({ productId: item.productId });
       if ((inventory?.availableQuantity ?? product.quantity) < item.quantity) throw new AppError(`Insufficient stock for ${product.name}`, 400);
-      const discountPrice = product.discountPrice ?? product.price;
-      originalTotal += product.price * item.quantity;
+      
+      let price = product.price;
+      let discountPrice = product.discountPrice ?? product.price;
+
+      if (item.variantId && product.variants?.length) {
+        const v = product.variants.find((v) => v.variantId === item.variantId);
+        if (v) {
+          price = v.price;
+          discountPrice = v.discountPrice ?? v.price;
+        }
+      }
+
+      originalTotal += price * item.quantity;
       discountedTotal += discountPrice * item.quantity;
       orderItems.push({ productId: product.productId, quantity: item.quantity, discountPrice });
     }
@@ -744,6 +770,9 @@ export class OrderService {
     const orderItems = [] as Array<{
       orderItemId: string;
       productId: string;
+      variantId?: string;
+      variantLabel?: string;
+      unit?: string;
       name: string;
       sku: string;
       quantity: number;
@@ -768,8 +797,21 @@ export class OrderService {
         throw new AppError(`Insufficient stock for ${product.name}`, 400);
       }
 
-      const price = product.price;
-      const discountPrice = product.discountPrice ?? product.price;
+      let price = product.price;
+      let discountPrice = product.discountPrice ?? product.price;
+      let variantLabel = item.variantLabel || "";
+      let unit = product.unitLabel || product.baseUnit || "";
+
+      if (item.variantId && product.variants?.length) {
+        const v = product.variants.find((v) => v.variantId === item.variantId);
+        if (v) {
+          price = v.price;
+          discountPrice = v.discountPrice ?? v.price;
+          variantLabel = v.label;
+          unit = v.unit || unit;
+        }
+      }
+
       const totalPrice = discountPrice * item.quantity;
 
       originalTotal += price * item.quantity;
@@ -778,7 +820,10 @@ export class OrderService {
       orderItems.push({
         orderItemId: item.cartItemId,
         productId: product.productId,
-        name: product.name,
+        variantId: item.variantId || "",
+        variantLabel,
+        unit,
+        name: variantLabel ? `${product.name} (${variantLabel})` : product.name,
         sku: product.sku,
         quantity: item.quantity,
         price,

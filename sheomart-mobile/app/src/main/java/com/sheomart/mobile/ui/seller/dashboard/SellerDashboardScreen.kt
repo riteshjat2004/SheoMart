@@ -21,6 +21,7 @@ import com.sheomart.mobile.data.model.AuthUser
 import com.sheomart.mobile.data.model.SellerDashboardStats
 import com.sheomart.mobile.data.model.SellerStoreProfile
 import com.sheomart.mobile.ui.components.SectionErrorView
+import com.sheomart.mobile.ui.components.StatusBadge
 import com.sheomart.mobile.ui.state.UiState
 import com.sheomart.mobile.ui.theme.*
 
@@ -32,8 +33,15 @@ fun SellerDashboardScreen(
     onNavigateProducts: () -> Unit,
     onNavigateOrders: () -> Unit,
     onNavigateInventory: () -> Unit,
+    onNavigatePos: () -> Unit = {},
+    onNavigatePickupQueue: () -> Unit = {},
+    onNavigateInvoices: () -> Unit = {},
+    onNavigateCashRegister: () -> Unit = {},
+    onSwitchToCustomer: () -> Unit = {},
     onLogout: () -> Unit
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     val storeState by viewModel.storeState.collectAsState()
     val statsState by viewModel.statsState.collectAsState()
 
@@ -43,25 +51,29 @@ fun SellerDashboardScreen(
                 title = {
                     Column {
                         Text(
-                            text = "Merchant Control Center",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                            text = "Merchant Console",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = colorScheme.onSurface
                         )
                         Text(
                             text = user?.name ?: "Store Owner",
                             style = MaterialTheme.typography.bodySmall,
-                            color = SecondaryText
+                            color = colorScheme.onSurfaceVariant
                         )
                     }
                 },
                 actions = {
+                    TextButton(onClick = onSwitchToCustomer) {
+                        Text("🛍️ Customer App", fontSize = 12.sp, color = colorScheme.primary, fontWeight = FontWeight.Bold)
+                    }
                     IconButton(onClick = onLogout) {
                         Text("🚪", fontSize = 18.sp)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = colorScheme.surface)
             )
         },
-        containerColor = Background
+        containerColor = colorScheme.background
     ) { padding ->
         Column(
             modifier = Modifier
@@ -77,7 +89,7 @@ fun SellerDashboardScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(20.dp))
-                    .background(Color(0xFF065F46))
+                    .background(colorScheme.primary)
                     .padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -108,7 +120,7 @@ fun SellerDashboardScreen(
                             Text(
                                 text = "${store?.city ?: "Sheopur"}, MP",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color.White.copy(alpha = 0.8f)
+                                color = Color.White.copy(alpha = 0.85f)
                             )
                         }
                     }
@@ -116,13 +128,13 @@ fun SellerDashboardScreen(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFFF59E0B))
+                            .background(Color.White.copy(alpha = 0.25f))
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
                             text = (store?.badge ?: "Verified").uppercase(),
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                            color = Color(0xFF065F46)
+                            color = Color.White
                         )
                     }
                 }
@@ -134,7 +146,7 @@ fun SellerDashboardScreen(
             Text(
                 text = "Overview Performance",
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = PrimaryText
+                color = colorScheme.onSurface
             )
 
             Row(
@@ -145,14 +157,14 @@ fun SellerDashboardScreen(
                     title = "Revenue",
                     value = "₹${stats.todaysRevenue.toInt()}",
                     icon = "💰",
-                    color = PrimaryGreen,
+                    color = colorScheme.primary,
                     modifier = Modifier.weight(1f)
                 )
                 SellerMetricCard(
                     title = "Pending Orders",
                     value = "${stats.pendingOrdersCount}",
                     icon = "📦",
-                    color = if (stats.pendingOrdersCount > 0) Color(0xFFD97706) else PrimaryGreen,
+                    color = if (stats.pendingOrdersCount > 0) Color(0xFFD97706) else colorScheme.primary,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -165,25 +177,72 @@ fun SellerDashboardScreen(
                     title = "Low Stock Items",
                     value = "${stats.lowStockCount}",
                     icon = "⚠️",
-                    color = if (stats.lowStockCount > 0) Color(0xFFDC2626) else PrimaryGreen,
+                    color = if (stats.lowStockCount > 0) colorScheme.error else colorScheme.primary,
                     modifier = Modifier.weight(1f)
                 )
                 SellerMetricCard(
                     title = "Active Products",
                     value = "${stats.activeProductsCount}",
                     icon = "🏷️",
-                    color = PrimaryGreen,
+                    color = colorScheme.primary,
                     modifier = Modifier.weight(1f)
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
-            // Quick Operations Navigation
+            // POS & Invoicing Operations (Priority Section)
             Text(
-                text = "Store Operations",
+                text = "Point of Sale & Billing",
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = PrimaryText
+                color = colorScheme.onSurface
+            )
+
+            SellerActionTile(
+                title = "Billing & POS Terminal",
+                subtitle = "Generate invoices for Walk-in, Registered, and SheoMart Plus customers.",
+                icon = "🧾",
+                badge = "FAST POS",
+                onClick = onNavigatePos
+            )
+
+            SellerActionTile(
+                title = "Pickup Orders Queue",
+                subtitle = "Manage self-pickup orders, mark packed, confirm pickup payments.",
+                icon = "🛍️",
+                badge = if (stats.pendingOrdersCount > 0) "${stats.pendingOrdersCount} ACTIVE" else null,
+                onClick = onNavigatePickupQueue
+            )
+
+            SellerActionTile(
+                title = "Invoice History & Payment Confirm",
+                subtitle = "View offline/online bills, mark pending payments collected.",
+                icon = "📋",
+                onClick = onNavigateInvoices
+            )
+
+            SellerActionTile(
+                title = "Cash Register & Reconciliation",
+                subtitle = "Daily cash opening/closing, UPI split, and drawer balancing.",
+                icon = "💵",
+                onClick = onNavigateCashRegister
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Store Operations Navigation
+            Text(
+                text = "Catalog & Deliveries",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = colorScheme.onSurface
+            )
+
+            SellerActionTile(
+                title = "Customer Delivery Orders",
+                subtitle = "Fulfill live delivery orders, dispatch rider, and update ETA.",
+                icon = "🛵",
+                badge = if (stats.pendingOrdersCount > 0) "${stats.pendingOrdersCount} NEW" else null,
+                onClick = onNavigateOrders
             )
 
             SellerActionTile(
@@ -194,19 +253,13 @@ fun SellerDashboardScreen(
             )
 
             SellerActionTile(
-                title = "Customer Orders",
-                subtitle = "Fulfill live delivery & pickup orders, update ETA timelines.",
-                icon = "🛵",
-                badge = if (stats.pendingOrdersCount > 0) "${stats.pendingOrdersCount} NEW" else null,
-                onClick = onNavigateOrders
-            )
-
-            SellerActionTile(
                 title = "Inventory & Stock Levels",
                 subtitle = "Update shelf quantities, restock items, and prevent stockouts.",
                 icon = "📊",
                 onClick = onNavigateInventory
             )
+
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
@@ -219,11 +272,12 @@ private fun SellerMetricCard(
     color: Color,
     modifier: Modifier = Modifier
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.White)
-            .border(1.dp, Border, RoundedCornerShape(16.dp))
+            .background(colorScheme.surface)
+            .border(1.dp, colorScheme.outlineVariant, RoundedCornerShape(16.dp))
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
@@ -232,7 +286,7 @@ private fun SellerMetricCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(title, style = MaterialTheme.typography.bodySmall, color = SecondaryText)
+            Text(title, style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant)
             Text(icon, fontSize = 16.sp)
         }
         Text(
@@ -251,12 +305,13 @@ private fun SellerActionTile(
     badge: String? = null,
     onClick: () -> Unit
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.White)
-            .border(1.dp, Border, RoundedCornerShape(16.dp))
+            .background(colorScheme.surface)
+            .border(1.dp, colorScheme.outlineVariant, RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -266,7 +321,7 @@ private fun SellerActionTile(
             modifier = Modifier
                 .size(44.dp)
                 .clip(CircleShape)
-                .background(Surface),
+                .background(colorScheme.surfaceContainerHighest),
             contentAlignment = Alignment.Center
         ) {
             Text(icon, fontSize = 20.sp)
@@ -280,22 +335,22 @@ private fun SellerActionTile(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                    color = PrimaryText
+                    color = colorScheme.onSurface
                 )
                 if (badge != null) {
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
-                            .background(Color(0xFFFEF3C7))
+                            .background(colorScheme.primary.copy(alpha = 0.12f))
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
                             text = badge,
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold
-                            ),
-                            color = Color(0xFFD97706)
+                                fontWeight = FontWeight.Bold,
+                                color = colorScheme.primary
+                            )
                         )
                     }
                 }
@@ -306,10 +361,10 @@ private fun SellerActionTile(
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = SecondaryText
+                color = colorScheme.onSurfaceVariant
             )
         }
 
-        Text("→", color = PrimaryGreen, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Text("→", color = colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
     }
 }

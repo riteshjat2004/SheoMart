@@ -5,6 +5,8 @@ export interface ICartItem extends Document {
   cartItemId: string;
   userId: string;
   productId: string;
+  variantId?: string;
+  variantLabel?: string;
   storeId?: string;
   quantity: number;
   createdAt: Date;
@@ -29,6 +31,15 @@ const cartSchema = new Schema<ICartItem>(
       required: true,
       index: true,
     },
+    variantId: {
+      type: String,
+      default: "",
+      index: true,
+    },
+    variantLabel: {
+      type: String,
+      default: "",
+    },
     storeId: {
       type: String,
       index: true,
@@ -44,6 +55,6 @@ const cartSchema = new Schema<ICartItem>(
   }
 );
 
-cartSchema.index({ userId: 1, productId: 1 }, { unique: true });
+cartSchema.index({ userId: 1, productId: 1, variantId: 1 }, { unique: true });
 
 export const CartItem = model<ICartItem>("CartItem", cartSchema);

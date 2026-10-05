@@ -242,7 +242,11 @@ export default function CartPage() {
                 <div className="rounded-[2rem] border border-stone-200/90 bg-white p-5 shadow-sm dark:border-stone-800 dark:bg-zinc-900">
                   <div className="divide-y divide-stone-100 dark:divide-stone-800">
                     {cartItems.map((item) => {
-                      const effPrice = item.product.discountPrice ?? item.product.price;
+                      const effPrice =
+                        item.unitDiscountPrice ??
+                        item.unitPrice ??
+                        item.product.discountPrice ??
+                        item.product.price;
                       const itemTotal = effPrice * item.quantity;
                       return (
                         <div
@@ -264,12 +268,19 @@ export default function CartPage() {
                             </div>
 
                             <div className="space-y-1">
-                              <Link
-                                href={`/products/${item.product.productId}`}
-                                className="font-semibold text-stone-900 hover:text-emerald-700 transition-colors line-clamp-1 dark:text-stone-50 dark:hover:text-emerald-400"
-                              >
-                                {item.product.name}
-                              </Link>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Link
+                                  href={`/products/${item.product.productId}`}
+                                  className="font-semibold text-stone-900 hover:text-emerald-700 transition-colors line-clamp-1 dark:text-stone-50 dark:hover:text-emerald-400"
+                                >
+                                  {item.product.name}
+                                </Link>
+                                {item.variantLabel && (
+                                  <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+                                    {item.variantLabel}
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-xs text-stone-500 dark:text-stone-400">
                                 {item.product.brand || "SheoMart"} • ₹{effPrice} each
                               </p>

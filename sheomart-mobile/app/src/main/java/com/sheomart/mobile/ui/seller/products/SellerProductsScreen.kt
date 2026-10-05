@@ -32,6 +32,8 @@ fun SellerProductsScreen(
     viewModel: SellerProductsViewModel,
     onBack: () -> Unit
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     val state by viewModel.productsState.collectAsState()
     val actionMsg by viewModel.actionMessage.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
@@ -49,21 +51,31 @@ fun SellerProductsScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Store Products", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)) },
+                title = {
+                    Text(
+                        text = "Store Products",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = colorScheme.onSurface
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Text("←", fontSize = 20.sp, color = PrimaryGreen)
+                        Text("←", fontSize = 22.sp, color = colorScheme.primary, fontWeight = FontWeight.Bold)
                     }
                 },
                 actions = {
                     TextButton(onClick = { showAddDialog = true }) {
-                        Text("+ Add", color = PrimaryGreen, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
+                        Text(
+                            text = "+ Add",
+                            color = colorScheme.primary,
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+                        )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = colorScheme.surface)
             )
         },
-        containerColor = Background
+        containerColor = colorScheme.background
     ) { padding ->
         Box(
             modifier = Modifier
@@ -73,7 +85,7 @@ fun SellerProductsScreen(
             when (val res = state) {
                 is UiState.Loading -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = PrimaryGreen)
+                        CircularProgressIndicator(color = colorScheme.primary)
                     }
                 }
                 is UiState.Error -> {
@@ -144,7 +156,7 @@ fun SellerProductsScreen(
                             contentPadding = PaddingValues(16.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            items(products) { item ->
+                            items(products, key = { it.productId }) { item ->
                                 SellerProductCard(
                                     product = item,
                                     onToggleStatus = { viewModel.toggleProductStatus(item.productId, item.isActive) },
@@ -175,12 +187,14 @@ private fun SellerProductCard(
     onToggleStatus: () -> Unit,
     onDelete: () -> Unit
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.White)
-            .border(1.dp, Border, RoundedCornerShape(16.dp))
+            .background(colorScheme.surface)
+            .border(1.dp, colorScheme.outlineVariant, RoundedCornerShape(16.dp))
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -191,7 +205,7 @@ private fun SellerProductCard(
             modifier = Modifier
                 .size(68.dp)
                 .clip(RoundedCornerShape(10.dp))
-                .background(Surface),
+                .background(colorScheme.surfaceContainerHighest),
             contentScale = ContentScale.Crop,
             fallbackText = product.name
         )
@@ -200,26 +214,26 @@ private fun SellerProductCard(
             Text(
                 text = product.name,
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                color = PrimaryText,
+                color = colorScheme.onSurface,
                 maxLines = 2
             )
             Text(
                 text = "Stock: ${product.quantity} units",
                 style = MaterialTheme.typography.bodySmall,
-                color = if (product.quantity <= 5) Color(0xFFDC2626) else SecondaryText
+                color = if (product.quantity <= 5) colorScheme.error else colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(2.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = "₹${product.displayPrice.toInt()}",
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                    color = PrimaryGreen
+                    color = colorScheme.primary
                 )
                 if (product.discountPrice != null) {
                     Text(
                         text = "₹${product.price.toInt()}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = SecondaryText
+                        color = colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -234,7 +248,7 @@ private fun SellerProductCard(
                 onCheckedChange = { onToggleStatus() },
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = Color.White,
-                    checkedTrackColor = PrimaryGreen
+                    checkedTrackColor = colorScheme.primary
                 ),
                 modifier = Modifier.height(24.dp)
             )
@@ -259,6 +273,8 @@ private fun AddSellerProductDialog(
         brand: String?
     ) -> Unit
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     var name by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var priceStr by remember { mutableStateOf("") }
@@ -269,7 +285,7 @@ private fun AddSellerProductDialog(
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(20.dp),
-            color = Color.White,
+            color = colorScheme.surface,
             modifier = Modifier.fillMaxWidth().padding(16.dp)
         ) {
             Column(
@@ -279,7 +295,7 @@ private fun AddSellerProductDialog(
                 Text(
                     text = "Add Product",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = PrimaryText
+                    color = colorScheme.onSurface
                 )
 
                 OutlinedTextField(
@@ -337,7 +353,9 @@ private fun AddSellerProductDialog(
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    TextButton(onClick = onDismiss) { Text("Cancel", color = SecondaryText) }
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel", color = colorScheme.onSurfaceVariant)
+                    }
                     Spacer(modifier = Modifier.width(8.dp))
                     PrimaryButton(
                         text = "Save Product",

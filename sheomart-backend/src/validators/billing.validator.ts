@@ -16,6 +16,8 @@ export const paymentStatusSchema = z.enum([
 
 export const createOfflineInvoiceItemSchema = z.object({
   productId: z.string().trim().min(1, "Product ID is required"),
+  variantId: z.string().trim().optional(),
+  variantLabel: z.string().trim().optional(),
   quantity: z.number().positive("Quantity must be greater than 0"),
   discount: z.number().min(0, "Discount must be 0 or greater").optional(),
 });

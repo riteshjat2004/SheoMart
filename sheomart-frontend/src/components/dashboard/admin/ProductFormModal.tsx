@@ -23,6 +23,9 @@ const productFormSchema = z.object({
   isPublished: z.boolean(),
   isActive: z.boolean(),
   isFeatured: z.boolean(),
+  sellingType: z.enum(["PIECE", "WEIGHT", "VOLUME"]).optional(),
+  baseUnit: z.string().trim().optional(),
+  unitLabel: z.string().trim().optional(),
 });
 
 export type ProductFormValues = z.infer<typeof productFormSchema>;
@@ -157,6 +160,9 @@ export function ProductFormModal({
     formData.append("isPublished", String(data.isPublished));
     formData.append("isActive", String(data.isActive));
     formData.append("isFeatured", String(data.isFeatured));
+    if (data.sellingType) formData.append("sellingType", data.sellingType);
+    if (data.baseUnit) formData.append("baseUnit", data.baseUnit);
+    if (data.unitLabel) formData.append("unitLabel", data.unitLabel);
 
     if (selectedFile) {
       formData.append("image", selectedFile);

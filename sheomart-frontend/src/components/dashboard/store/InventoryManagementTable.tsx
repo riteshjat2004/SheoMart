@@ -5,7 +5,7 @@ import { Package, History, SlidersHorizontal, AlertCircle, CheckCircle2, XCircle
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/dashboard/DataTable";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
-import type { ProductItem } from "@/types/marketplace";
+import type { ProductItem, ProductVariant } from "@/types/marketplace";
 import type { InventoryItem } from "@/types/inventory";
 import { InventoryLedgerDrawer } from "@/components/dashboard/store/InventoryLedgerDrawer";
 import { QuickStockAdjustModal } from "@/components/dashboard/store/QuickStockAdjustModal";
@@ -22,7 +22,12 @@ interface InventoryManagementTableProps {
   onToggleSelect: (productId: string) => void;
   onSelectAll: (select: boolean) => void;
   onEditFull: (product: ProductItem) => void;
-  onQuickAdjustSubmit: (productId: string, newQuantity: number, note?: string) => Promise<void>;
+  onQuickAdjustSubmit: (
+    productId: string,
+    newQuantity: number,
+    note?: string,
+    variants?: ProductVariant[]
+  ) => Promise<void>;
   isAdjusting?: boolean;
 }
 
@@ -164,7 +169,7 @@ export function InventoryManagementTable({
 
               {/* Available Stock & Health Bar */}
               <td className="px-4 py-3">
-                <div className="w-36 space-y-1.5">
+                <div className="w-40 space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-stone-900 dark:text-stone-100">
                       {available} units
@@ -185,6 +190,35 @@ export function InventoryManagementTable({
                       style={{ width: `${percent}%` }}
                     />
                   </div>
+
+                  {/* Pack variants preview pills */}
+                  {product.variants && product.variants.length > 0 ? (
+                    <div className="flex flex-wrap gap-1 pt-0.5">
+                      {product.variants.slice(0, 3).map((v) => (
+                        <span
+                          key={v.variantId || v.label}
+                          className="inline-flex items-center rounded-md bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-stone-600 dark:bg-stone-800/80 dark:text-stone-300"
+                          title={`${v.label}: ${
+                            product.stockTrackingMode === "SHARED"
+                              ? `Pack of ${v.packQuantity || 1}`
+                              : `${v.stock ?? 0} units in stock`
+                          }`}
+                        >
+                          {v.label}:{" "}
+                          <strong className="ml-0.5 font-bold text-stone-900 dark:text-stone-100">
+                            {product.stockTrackingMode === "SHARED"
+                              ? Math.floor(available / Math.max(1, v.packQuantity || 1))
+                              : (v.stock ?? 0)}
+                          </strong>
+                        </span>
+                      ))}
+                      {product.variants.length > 3 ? (
+                        <span className="text-[10px] text-stone-400">
+                          +{product.variants.length - 3} more
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
               </td>
 
@@ -266,9 +300,9 @@ export function InventoryManagementTable({
           lowStockThreshold={currentAdjustInventory?.lowStockThreshold ?? 5}
           isSubmitting={isAdjusting}
           onClose={() => setAdjustingProduct(null)}
-          onSubmit={async (newQuantity, note) => {
+          onSubmit={async (newQuantity, note, variants) => {
             if (adjustingProduct.productId) {
-              await onQuickAdjustSubmit(adjustingProduct.productId, newQuantity, note);
+              await onQuickAdjustSubmit(adjustingProduct.productId, newQuantity, note, variants);
               setAdjustingProduct(null);
             }
           }}

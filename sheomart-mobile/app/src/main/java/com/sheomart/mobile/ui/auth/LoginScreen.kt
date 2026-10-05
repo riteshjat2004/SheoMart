@@ -31,27 +31,27 @@ fun LoginScreen(error: String?, loading: Boolean, onLogin: (String, String) -> U
         SheoTextField(identifier, { identifier = it }, "Email or Mobile Number", EmailIcon, "Email or mobile number", Modifier.fillMaxWidth(), keyboardType = KeyboardType.Email, imeAction = ImeAction.Next)
         Spacer(Modifier.height(14.dp))
         SheoTextField(password, { password = it }, "Password", LockIcon, "Password", Modifier.fillMaxWidth(), trailingIcon = { PasswordToggle(visible) { visible = !visible } }, passwordMode = !visible, imeAction = ImeAction.Done)
-        TextButton(onClick = onForgotPassword, Modifier.align(Alignment.End)) { Text("Forgot Password?", color = PrimaryGreen) }
-        validation?.let { Text(it, color = Error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth()) }
+        TextButton(onClick = onForgotPassword, Modifier.align(Alignment.End)) { Text("Forgot Password?", color = MaterialTheme.colorScheme.primary) }
+        validation?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth()) }
         Spacer(Modifier.height(8.dp))
         PrimaryButton("Continue", { if (identifier.trim().isEmpty() || password.length < 8) validation = "Enter your email or mobile and an 8-character password" else { validation = null; onLogin(identifier.trim(), password) } }, loading = loading)
         Spacer(Modifier.height(20.dp))
-        TextButton(onClick = onRegister) { Text("Don't have an account? ", color = SecondaryText); Text("Sign Up", color = PrimaryGreen) }
+        TextButton(onClick = onRegister) { Text("Don't have an account? ", color = MaterialTheme.colorScheme.onSurfaceVariant); Text("Sign Up", color = MaterialTheme.colorScheme.primary) }
     }
 }
 
 @Composable
 fun AuthScaffold(snackbar: SnackbarHostState, content: @Composable ColumnScope.() -> Unit) {
-    Scaffold(snackbarHost = { SnackbarHost(snackbar) }, containerColor = Background) { padding ->
+    Scaffold(snackbarHost = { SnackbarHost(snackbar) }, containerColor = MaterialTheme.colorScheme.background) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).statusBarsPadding().imePadding().padding(horizontal = 24.dp, vertical = 28.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center, content = content)
     }
 }
 
 @Composable
 fun AuthHeader(title: String, subtitle: String) {
-    Image(painterResource(R.drawable.appicon), "SheoMart logo", Modifier.size(88.dp).background(Surface, CircleShape).padding(14.dp))
-    Spacer(Modifier.height(24.dp)); Text(title, style = MaterialTheme.typography.headlineLarge, textAlign = TextAlign.Center)
-    Spacer(Modifier.height(8.dp)); Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = SecondaryText, textAlign = TextAlign.Center)
+    Image(painterResource(R.drawable.appicon), "SheoMart logo", Modifier.size(88.dp).background(MaterialTheme.colorScheme.surfaceVariant, CircleShape).padding(14.dp))
+    Spacer(Modifier.height(24.dp)); Text(title, style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onBackground, textAlign = TextAlign.Center)
+    Spacer(Modifier.height(8.dp)); Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
     Spacer(Modifier.height(28.dp))
 }
 

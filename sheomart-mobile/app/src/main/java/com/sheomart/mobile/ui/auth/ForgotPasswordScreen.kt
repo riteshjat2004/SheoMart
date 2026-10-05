@@ -32,7 +32,7 @@ fun ForgotPasswordScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
-        containerColor = Background,
+        containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
         Column(
             modifier = Modifier
@@ -47,7 +47,7 @@ fun ForgotPasswordScreen(
             // Back row
             Row(Modifier.fillMaxWidth()) {
                 TextButton(onClick = onBack) {
-                    Text("← Back", color = PrimaryGreen)
+                    Text("← Back", color = MaterialTheme.colorScheme.primary)
                 }
             }
 
@@ -72,7 +72,7 @@ fun ForgotPasswordScreen(
                 Spacer(Modifier.height(6.dp))
                 Text(
                     it,
-                    color = Error,
+                    color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -98,7 +98,7 @@ fun ForgotPasswordScreen(
             Text(
                 "OTP is valid for 10 minutes.",
                 style = MaterialTheme.typography.bodySmall,
-                color = SecondaryText,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }

@@ -12,6 +12,7 @@ import {
   removeImageSchema,
   updateProductSchema,
   updateThumbnailSchema,
+  cloneProductsToStoreSchema,
 } from "../validators/product.validator";
 
 export const getAdminProducts = async (
@@ -293,5 +294,27 @@ export const updateProductFeaturedPriority = async (
 
   res.status(200).json(
     new ApiResponse(true, "Product featured priority updated successfully", { product })
+  );
+};
+
+export const cloneProductsToStore = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const payload = (req.body && typeof req.body === "object" ? req.body : {}) as Record<string, unknown>;
+  const result = cloneProductsToStoreSchema.safeParse(payload);
+
+  if (!result.success) {
+    const message = result.error.issues[0]?.message || "Invalid clone products payload";
+    throw new AppError(message, 400);
+  }
+
+  const response = await ProductService.cloneProductsToStore(
+    result.data,
+    req.user?.userId as string
+  );
+
+  res.status(201).json(
+    new ApiResponse(true, `Successfully added ${response.clonedCount} products to store`, response)
   );
 };

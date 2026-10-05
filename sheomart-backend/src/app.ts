@@ -50,7 +50,9 @@ app.set("trust proxy", 1);
 // ── Security & Header Hardening ──────────────────────────────────────────────
 app.use(
   cors({
-    origin: env.CORS_ORIGIN,
+    origin: [env.CORS_ORIGIN, env.FRONTEND_URL].filter(
+      (origin): origin is string => Boolean(origin)
+    ),
     credentials: true,
   })
 );

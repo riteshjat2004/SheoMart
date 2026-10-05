@@ -93,18 +93,27 @@ export function NewInvoiceWorkspace() {
 
   // ── Cart helpers ────────────────────────────────────────────────────────
   const addToBill = useCallback(
-    (product: PosCatalogProduct) => {
+    (product: PosCatalogProduct, variant?: import("@/types/marketplace").ProductVariant) => {
       if (!product.productId || product.availableQuantity < 1) return;
 
-      const price =
-        product.discountPrice > 0 ? product.discountPrice : product.price;
+      const price = variant
+        ? variant.discountPrice && variant.discountPrice > 0
+          ? variant.discountPrice
+          : variant.price
+        : product.discountPrice > 0
+        ? product.discountPrice
+        : product.price;
+
+      const cartKey = `${product.productId}_${variant?.variantId || ""}`;
 
       setCartItems((current) => {
-        const existing = current.find((i) => i.productId === product.productId);
+        const existing = current.find(
+          (i) => `${i.productId}_${i.variantId || ""}` === cartKey
+        );
         if (existing) {
           if (existing.quantity >= product.availableQuantity) return current;
           return current.map((i) =>
-            i.productId === product.productId
+            `${i.productId}_${i.variantId || ""}` === cartKey
               ? {
                   ...i,
                   quantity: i.quantity + 1,
@@ -117,8 +126,10 @@ export function NewInvoiceWorkspace() {
           ...current,
           {
             productId: product.productId,
-            productName: product.name,
-            sku: product.sku,
+            variantId: variant?.variantId,
+            variantLabel: variant?.label,
+            productName: variant ? `${product.name} (${variant.label})` : product.name,
+            sku: variant?.sku || product.sku,
             image: product.thumbnail,
             price,
             availableQuantity: product.availableQuantity,
@@ -132,10 +143,10 @@ export function NewInvoiceWorkspace() {
   );
 
   const updateCartQuantity = useCallback(
-    (productId: string, quantity: number) => {
+    (cartKey: string, quantity: number) => {
       setCartItems((current) =>
         current.map((item) => {
-          if (item.productId !== productId) return item;
+          if (`${item.productId}_${item.variantId || ""}` !== cartKey) return item;
           const next = Math.max(1, Math.min(quantity, item.availableQuantity));
           return { ...item, quantity: next, lineTotal: next * item.price };
         })
@@ -144,8 +155,10 @@ export function NewInvoiceWorkspace() {
     []
   );
 
-  const removeFromBill = useCallback((productId: string) => {
-    setCartItems((current) => current.filter((i) => i.productId !== productId));
+  const removeFromBill = useCallback((cartKey: string) => {
+    setCartItems((current) =>
+      current.filter((i) => `${i.productId}_${i.variantId || ""}` !== cartKey)
+    );
   }, []);
 
   // ── Totals ──────────────────────────────────────────────────────────────
@@ -207,6 +220,8 @@ export function NewInvoiceWorkspace() {
       amountPaid: Math.min(normalizedAmountPaid, grandTotal),
       items: cartItems.map((item) => ({
         productId: item.productId,
+        variantId: item.variantId,
+        variantLabel: item.variantLabel,
         quantity: item.quantity,
         unitPrice: item.price,
         discount: 0,
@@ -471,7 +486,7 @@ export function NewInvoiceWorkspace() {
                               {product.sku || "-"}
                             </p>
                             <p className="mt-0.5 text-xs text-stone-400 dark:text-stone-500">
-                              {product.categoryName}
+                              {product.categoryName} · {product.unitLabel || (product.sellingType === "WEIGHT" ? "per kg" : product.sellingType === "VOLUME" ? "per L" : "per piece")}
                             </p>
                           </div>
                           {/* Stock chip */}
@@ -481,6 +496,27 @@ export function NewInvoiceWorkspace() {
                             {badge.label}
                           </span>
                         </div>
+
+                        {/* Variant Quick Buttons if available */}
+                        {product.variants && product.variants.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {product.variants.map((v) => {
+                              const vPrice = v.discountPrice && v.discountPrice > 0 ? v.discountPrice : v.price;
+                              return (
+                                <button
+                                  key={v.variantId}
+                                  type="button"
+                                  onClick={() => addToBill(product, v)}
+                                  disabled={isOutOfStock}
+                                  className="inline-flex items-center gap-1 rounded-md border border-stone-200 bg-white px-2 py-1 text-[11px] font-semibold text-stone-700 hover:border-emerald-500 hover:text-emerald-700 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300"
+                                >
+                                  <span>{v.label}</span>
+                                  <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{vPrice}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
 
                         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                           <div className="text-sm">
@@ -497,7 +533,7 @@ export function NewInvoiceWorkspace() {
                             onClick={() => addToBill(product)}
                             disabled={isOutOfStock}
                           >
-                            Add to Bill
+                            {product.variants && product.variants.length > 0 ? "Add Base" : "Add to Bill"}
                           </Button>
                         </div>
                       </div>
@@ -545,19 +581,22 @@ export function NewInvoiceWorkspace() {
             </div>
           ) : (
             <div className="divide-y divide-stone-200 dark:divide-stone-800">
-              {cartItems.map((item) => (
-                <BillingCartItem
-                  key={item.productId}
-                  item={item}
-                  onIncrease={() =>
-                    updateCartQuantity(item.productId, item.quantity + 1)
-                  }
-                  onDecrease={() =>
-                    updateCartQuantity(item.productId, item.quantity - 1)
-                  }
-                  onRemove={() => removeFromBill(item.productId)}
-                />
-              ))}
+              {cartItems.map((item) => {
+                const cartKey = `${item.productId}_${item.variantId || ""}`;
+                return (
+                  <BillingCartItem
+                    key={cartKey}
+                    item={item}
+                    onIncrease={() =>
+                      updateCartQuantity(cartKey, item.quantity + 1)
+                    }
+                    onDecrease={() =>
+                      updateCartQuantity(cartKey, item.quantity - 1)
+                    }
+                    onRemove={() => removeFromBill(cartKey)}
+                  />
+                );
+              })}
             </div>
           )}
         </div>

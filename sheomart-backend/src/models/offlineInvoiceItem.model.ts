@@ -18,6 +18,8 @@ const offlineInvoiceItemSchema = new Schema<IOfflineInvoiceItem>(
     },
     invoiceId: { type: String, required: true, index: true },
     productId: { type: String, required: true, index: true },
+    variantId: { type: String, default: "" },
+    variantLabel: { type: String, default: "" },
     productNameSnapshot: { type: String, required: true, trim: true },
     skuSnapshot: { type: String, required: true, trim: true },
     categorySnapshot: { type: String, required: true, trim: true },

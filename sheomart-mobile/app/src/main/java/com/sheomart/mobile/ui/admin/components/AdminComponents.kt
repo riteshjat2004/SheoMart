@@ -27,6 +27,7 @@ fun AdminTopAppBar(
     onBack: (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     TopAppBar(
         title = {
             Column {
@@ -36,13 +37,13 @@ fun AdminTopAppBar(
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp
                     ),
-                    color = PrimaryText
+                    color = colorScheme.onSurface
                 )
                 if (subtitle != null) {
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                        color = SecondaryText,
+                        color = colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -52,12 +53,12 @@ fun AdminTopAppBar(
         navigationIcon = {
             if (onBack != null) {
                 TextButton(onClick = onBack) {
-                    Text("← Back", color = PrimaryGreen, fontWeight = FontWeight.SemiBold)
+                    Text("← Back", color = colorScheme.primary, fontWeight = FontWeight.SemiBold)
                 }
             }
         },
         actions = actions,
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = colorScheme.surface)
     )
 }
 
@@ -68,15 +69,18 @@ fun AdminStatCard(
     description: String? = null,
     icon: String,
     modifier: Modifier = Modifier,
-    accentColor: Color = PrimaryGreen,
+    accentColor: Color? = null,
     onClick: (() -> Unit)? = null
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+    val effectiveAccent = accentColor ?: colorScheme.primary
+
     Box(
         modifier = modifier
-            .shadow(2.dp, shape = RoundedCornerShape(20.dp), spotColor = Color(0x14000000))
+            .shadow(1.dp, shape = RoundedCornerShape(20.dp), spotColor = Color(0x10000000))
             .clip(RoundedCornerShape(20.dp))
-            .background(Color.White)
-            .border(1.dp, Border, RoundedCornerShape(20.dp))
+            .background(colorScheme.surface)
+            .border(1.dp, colorScheme.outlineVariant, RoundedCornerShape(20.dp))
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(16.dp)
     ) {
@@ -93,13 +97,13 @@ fun AdminStatCard(
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.8.sp
                     ),
-                    color = SecondaryText
+                    color = colorScheme.onSurfaceVariant
                 )
                 Box(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(accentColor.copy(alpha = 0.12f)),
+                        .background(effectiveAccent.copy(alpha = 0.12f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(text = icon, fontSize = 16.sp)
@@ -114,7 +118,7 @@ fun AdminStatCard(
                     fontWeight = FontWeight.Bold,
                     fontSize = 22.sp
                 ),
-                color = PrimaryText
+                color = colorScheme.onSurface
             )
 
             if (description != null) {
@@ -122,7 +126,7 @@ fun AdminStatCard(
                 Text(
                     text = description,
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                    color = SecondaryText,
+                    color = colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -140,12 +144,13 @@ fun AdminActionCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     Box(
         modifier = modifier
             .shadow(1.dp, shape = RoundedCornerShape(18.dp), spotColor = Color(0x10000000))
             .clip(RoundedCornerShape(18.dp))
-            .background(Color.White)
-            .border(1.dp, Border, RoundedCornerShape(18.dp))
+            .background(colorScheme.surface)
+            .border(1.dp, colorScheme.outlineVariant, RoundedCornerShape(18.dp))
             .clickable(onClick = onClick)
             .padding(14.dp)
     ) {
@@ -159,7 +164,7 @@ fun AdminActionCard(
                     modifier = Modifier
                         .size(38.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Surface),
+                        .background(colorScheme.surfaceContainerHighest),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(text = icon, fontSize = 18.sp)
@@ -186,7 +191,7 @@ fun AdminActionCard(
                     Text(
                         text = "→",
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                        color = SecondaryText
+                        color = colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -199,7 +204,7 @@ fun AdminActionCard(
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp
                 ),
-                color = PrimaryText
+                color = colorScheme.onSurface
             )
 
             Spacer(modifier = Modifier.height(2.dp))
@@ -207,7 +212,7 @@ fun AdminActionCard(
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                color = SecondaryText,
+                color = colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -222,13 +227,14 @@ fun AdminFilterChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(if (selected) PrimaryGreen else Surface)
+            .background(if (selected) colorScheme.primary else colorScheme.surfaceContainerHighest)
             .border(
                 1.dp,
-                if (selected) PrimaryGreen else Border,
+                if (selected) colorScheme.primary else colorScheme.outlineVariant,
                 RoundedCornerShape(20.dp)
             )
             .clickable(onClick = onClick)
@@ -241,7 +247,7 @@ fun AdminFilterChip(
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                 fontSize = 12.sp
             ),
-            color = if (selected) Color.White else PrimaryText
+            color = if (selected) colorScheme.onPrimary else colorScheme.onSurface
         )
     }
 }
@@ -253,12 +259,13 @@ fun AdminSearchBar(
     placeholder: String = "Search...",
     modifier: Modifier = Modifier
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .background(Color.White)
-            .border(1.dp, Border, RoundedCornerShape(14.dp))
+            .background(colorScheme.surface)
+            .border(1.dp, colorScheme.outlineVariant, RoundedCornerShape(14.dp))
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -271,7 +278,7 @@ fun AdminSearchBar(
                 Text(
                     text = placeholder,
                     style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
-                    color = SecondaryText
+                    color = colorScheme.onSurfaceVariant
                 )
             },
             colors = TextFieldDefaults.colors(
@@ -279,7 +286,9 @@ fun AdminSearchBar(
                 unfocusedContainerColor = Color.Transparent,
                 disabledContainerColor = Color.Transparent,
                 focusedIndicatorColor = Color.Transparent,
-                unfocusedIndicatorColor = Color.Transparent
+                unfocusedIndicatorColor = Color.Transparent,
+                focusedTextColor = colorScheme.onSurface,
+                unfocusedTextColor = colorScheme.onSurface
             ),
             singleLine = true,
             modifier = Modifier.weight(1f)
@@ -288,7 +297,7 @@ fun AdminSearchBar(
             Text(
                 text = "✕",
                 fontSize = 14.sp,
-                color = SecondaryText,
+                color = colorScheme.onSurfaceVariant,
                 modifier = Modifier.clickable { onQueryChange("") }
             )
         }
@@ -300,22 +309,25 @@ fun AdminConfirmDialog(
     title: String,
     description: String,
     confirmText: String = "Confirm",
-    confirmColor: Color = PrimaryGreen,
+    confirmColor: Color? = null,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+    val effectiveColor = confirmColor ?: colorScheme.primary
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(text = title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+            Text(text = title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = colorScheme.onSurface)
         },
         text = {
-            Text(text = description, style = MaterialTheme.typography.bodyMedium, color = SecondaryText)
+            Text(text = description, style = MaterialTheme.typography.bodyMedium, color = colorScheme.onSurfaceVariant)
         },
         confirmButton = {
             Button(
                 onClick = onConfirm,
-                colors = ButtonDefaults.buttonColors(containerColor = confirmColor),
+                colors = ButtonDefaults.buttonColors(containerColor = effectiveColor),
                 shape = RoundedCornerShape(10.dp)
             ) {
                 Text(confirmText, color = Color.White, fontWeight = FontWeight.Bold)
@@ -326,11 +338,11 @@ fun AdminConfirmDialog(
                 onClick = onDismiss,
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text("Cancel", color = PrimaryText)
+                Text("Cancel", color = colorScheme.onSurface)
             }
         },
         shape = RoundedCornerShape(20.dp),
-        containerColor = Color.White
+        containerColor = colorScheme.surface
     )
 }
 
@@ -339,8 +351,10 @@ fun AdminBarBreakdownItem(
     label: String,
     count: Int,
     total: Int,
-    barColor: Color = PrimaryGreen
+    barColor: Color? = null
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+    val effectiveBarColor = barColor ?: colorScheme.primary
     val fraction = if (total > 0) (count.toFloat() / total.toFloat()).coerceIn(0.05f, 1f) else 0.05f
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Row(
@@ -351,12 +365,12 @@ fun AdminBarBreakdownItem(
             Text(
                 text = label.replace("_", " ").capitalizeWords(),
                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-                color = PrimaryText
+                color = colorScheme.onSurface
             )
             Text(
                 text = "$count",
                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                color = PrimaryText
+                color = colorScheme.onSurface
             )
         }
         Spacer(modifier = Modifier.height(4.dp))
@@ -365,14 +379,14 @@ fun AdminBarBreakdownItem(
                 .fillMaxWidth()
                 .height(8.dp)
                 .clip(RoundedCornerShape(4.dp))
-                .background(Surface)
+                .background(colorScheme.surfaceContainerHighest)
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth(fraction)
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(4.dp))
-                    .background(barColor)
+                    .background(effectiveBarColor)
             )
         }
     }

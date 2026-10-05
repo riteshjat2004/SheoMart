@@ -12,7 +12,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            SheoMartTheme {
+            val themeManager = remember { com.sheomart.mobile.ui.theme.ThemeManager(applicationContext) }
+            SheoMartTheme(themeManager = themeManager) {
                 val auth = remember { AuthState(applicationContext) }
                 AppNavigation(auth)
             }

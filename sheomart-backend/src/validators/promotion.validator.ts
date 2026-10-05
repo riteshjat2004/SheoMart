@@ -14,6 +14,19 @@ const offerTypeSchema = z.enum([
 const offerScopeSchema = z.enum(["marketplace", "store", "category", "product"]);
 const dateSchema = z.coerce.date();
 const optionalNumber = z.number().finite().nonnegative().nullable().optional();
+const cloudinaryImageUrlSchema = z
+  .string()
+  .trim()
+  .max(2000)
+  .refine((value) => {
+    if (!value) return true;
+    try {
+      const url = new URL(value);
+      return url.protocol === "https:" && url.hostname === "res.cloudinary.com" && /^\/[^/]+\/image\/upload\/.+/.test(url.pathname);
+    } catch {
+      return false;
+    }
+  }, "Provide a valid HTTPS Cloudinary image URL");
 
 export const couponFields = z.object({
   title: z.string().trim().min(2).max(120),
@@ -62,9 +75,9 @@ export const offerFields = z.object({
   festivalName: z.string().trim().min(2).max(120),
   offerType: offerTypeSchema.optional().default("percentage"),
   discountType: discountTypeSchema.optional().default("percentage"),
-  discountValue: z.number().finite().nonnegative().optional().default(0),
-  buyQuantity: z.number().int().positive().optional().default(1),
-  getQuantity: z.number().int().positive().optional().default(1),
+  discountValue: z.coerce.number().finite().nonnegative().optional().default(0),
+  buyQuantity: z.coerce.number().int().positive().optional().default(1),
+  getQuantity: z.coerce.number().int().positive().optional().default(1),
   targetScope: offerScopeSchema.optional().default("marketplace"),
   categoryIds: z.preprocess(
     (v) => (typeof v === "string" ? (v.trim() ? JSON.parse(v) : []) : v),
@@ -78,7 +91,7 @@ export const offerFields = z.object({
     (v) => (typeof v === "string" ? (v.trim() ? JSON.parse(v) : []) : v),
     z.array(z.string().trim().min(1)).optional().default([])
   ),
-  bannerImage: z.string().trim().max(2000).optional().default(""),
+  bannerImage: cloudinaryImageUrlSchema.optional().default(""),
   bannerPublicId: z.string().trim().optional().default(""),
   colorTheme: z.string().trim().optional().default("emerald"),
   showOnHero: z.preprocess((v) => (typeof v === "string" ? v === "true" : v), z.boolean().optional().default(false)),

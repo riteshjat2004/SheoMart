@@ -1,9 +1,30 @@
 import { Document, Schema, model } from "mongoose";
 import { v4 as uuidv4 } from "uuid";
 
+export interface IProductVariant {
+  variantId: string;
+  label: string; // e.g. "250 gm", "500 gm", "1 kg", "500 ml", "1 L"
+  unit: string; // "gm", "kg", "ml", "L", "piece", "pack", "dozen"
+  value: number; // e.g. 250, 500, 1
+  price: number;
+  discountPrice?: number;
+  sku?: string;
+  stock?: number;
+  packQuantity?: number;
+}
+
+export interface INutritionalInfo {
+  servingSize?: string;
+  energy?: string;
+  protein?: string;
+  carbs?: string;
+  fats?: string;
+}
+
 export interface IProduct extends Document {
   productId: string;
   storeId: string;
+  storeName?: string;
   categoryId: string;
   name: string;
   slug: string;
@@ -13,6 +34,16 @@ export interface IProduct extends Document {
   price: number;
   discountPrice: number;
   quantity: number;
+  sellingType: "PIECE" | "WEIGHT" | "VOLUME";
+  baseUnit: string;
+  unitLabel: string;
+  minQuantity: number;
+  stepQuantity: number;
+  allowCustomQuantity: boolean;
+  stockTrackingMode: "SEPARATE" | "SHARED";
+  hasNutritionalInfo: boolean;
+  nutritionalInfo?: INutritionalInfo | null;
+  variants: IProductVariant[];
   images: string[];
   image?: {
     url: string;
@@ -48,6 +79,12 @@ const productSchema = new Schema<IProduct>(
       type: String,
       required: true,
       index: true,
+    },
+
+    storeName: {
+      type: String,
+      default: "",
+      trim: true,
     },
 
     categoryId: {
@@ -110,6 +147,110 @@ const productSchema = new Schema<IProduct>(
       default: 0,
       min: 0,
     },
+
+    sellingType: {
+      type: String,
+      enum: ["PIECE", "WEIGHT", "VOLUME"],
+      default: "PIECE",
+      index: true,
+    },
+
+    baseUnit: {
+      type: String,
+      default: "piece",
+      trim: true,
+    },
+
+    unitLabel: {
+      type: String,
+      default: "piece",
+      trim: true,
+    },
+
+    minQuantity: {
+      type: Number,
+      default: 1,
+      min: 0.01,
+    },
+
+    stepQuantity: {
+      type: Number,
+      default: 1,
+      min: 0.01,
+    },
+
+    allowCustomQuantity: {
+      type: Boolean,
+      default: false,
+    },
+
+    stockTrackingMode: {
+      type: String,
+      enum: ["SEPARATE", "SHARED"],
+      default: "SEPARATE",
+    },
+
+    hasNutritionalInfo: {
+      type: Boolean,
+      default: false,
+    },
+
+    nutritionalInfo: {
+      _id: false,
+      servingSize: { type: String, default: "Approx per 100g", trim: true },
+      energy: { type: String, default: "", trim: true },
+      protein: { type: String, default: "", trim: true },
+      carbs: { type: String, default: "", trim: true },
+      fats: { type: String, default: "", trim: true },
+    },
+
+    variants: [
+      {
+        _id: false,
+        variantId: {
+          type: String,
+          default: () => uuidv4(),
+        },
+        label: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        unit: {
+          type: String,
+          required: true,
+          trim: true,
+        },
+        value: {
+          type: Number,
+          required: true,
+          min: 0,
+        },
+        price: {
+          type: Number,
+          required: true,
+          min: 0,
+        },
+        discountPrice: {
+          type: Number,
+          default: 0,
+          min: 0,
+        },
+        sku: {
+          type: String,
+          trim: true,
+        },
+        stock: {
+          type: Number,
+          default: 0,
+        },
+        packQuantity: {
+          type: Number,
+          default: 1,
+          min: 0.01,
+        },
+      },
+    ],
 
     images: {
       type: [String],

@@ -78,10 +78,12 @@ export const createOfflineInvoice = async (
         throw new AppError("Only approved store owners can create invoices", 403);
       }
 
-      const productIds = data.items.map((item) => item.productId);
-      if (new Set(productIds).size !== productIds.length) {
-        throw new AppError("Duplicate products are not allowed in an invoice", 400);
+      const itemKeys = data.items.map((item) => `${item.productId}_${item.variantId || ""}`);
+      if (new Set(itemKeys).size !== itemKeys.length) {
+        throw new AppError("Duplicate product items are not allowed in an invoice", 400);
       }
+
+      const productIds = Array.from(new Set(data.items.map((item) => item.productId)));
 
       const [products, inventories] = await Promise.all([
         Product.find({
@@ -101,11 +103,7 @@ export const createOfflineInvoice = async (
         inventories.map((inventory) => [inventory.productId, inventory])
       );
       const invoiceItems = [] as Array<Record<string, unknown>>;
-      const stockUpdates = [] as Array<{
-        productId: string;
-        quantity: number;
-        previousQuantity: number;
-      }>;
+      const stockDeductions = new Map<string, number>();
 
       let subtotal = 0;
       let discountAmount = 0;
@@ -119,13 +117,27 @@ export const createOfflineInvoice = async (
           throw new AppError(`Inventory not found for product ${item.productId}`, 404);
         }
 
-        if (inventory.availableQuantity < item.quantity) {
+        const currentRequested = (stockDeductions.get(item.productId) ?? 0) + item.quantity;
+        if (inventory.availableQuantity < currentRequested) {
           throw new AppError(`Insufficient inventory for ${product.name}`, 400);
         }
+        stockDeductions.set(item.productId, currentRequested);
 
-        const baseUnitPrice = product.price;
-        const productDiscount =
+        let baseUnitPrice = product.price;
+        let productDiscount =
           product.discountPrice > 0 ? Math.max(0, product.price - product.discountPrice) : 0;
+        let variantLabel = item.variantLabel || "";
+
+        if (item.variantId && product.variants?.length) {
+          const v = product.variants.find((variant) => variant.variantId === item.variantId);
+          if (v) {
+            baseUnitPrice = v.price;
+            productDiscount =
+              v.discountPrice && v.discountPrice > 0 ? Math.max(0, v.price - v.discountPrice) : 0;
+            variantLabel = v.label;
+          }
+        }
+
         const itemDiscount = item.discount ?? 0;
         const discountPerUnit = Math.min(baseUnitPrice, productDiscount + itemDiscount);
         const lineSubtotal = roundMoney((baseUnitPrice - discountPerUnit) * item.quantity);
@@ -135,18 +147,15 @@ export const createOfflineInvoice = async (
         totalItems += item.quantity;
         invoiceItems.push({
           productId: product.productId,
-          productNameSnapshot: product.name,
+          variantId: item.variantId || "",
+          variantLabel,
+          productNameSnapshot: variantLabel ? `${product.name} (${variantLabel})` : product.name,
           skuSnapshot: product.sku,
           categorySnapshot: product.categoryId,
           priceSnapshot: baseUnitPrice,
           discountSnapshot: discountPerUnit,
           quantity: item.quantity,
           subtotal: lineSubtotal,
-        });
-        stockUpdates.push({
-          productId: product.productId,
-          quantity: item.quantity,
-          previousQuantity: inventory.availableQuantity,
         });
       }
 
@@ -200,16 +209,18 @@ export const createOfflineInvoice = async (
         { session }
       );
 
-      for (const stockUpdate of stockUpdates) {
+      for (const [productId, deductQuantity] of stockDeductions.entries()) {
+        const currentInv = inventoryMap.get(productId);
+        const prevQty = currentInv?.availableQuantity ?? 0;
         const updatedInventory = await Inventory.findOneAndUpdate(
           {
-            productId: stockUpdate.productId,
-            availableQuantity: { $gte: stockUpdate.quantity },
+            productId,
+            availableQuantity: { $gte: deductQuantity },
           },
           {
             $inc: {
-              availableQuantity: -stockUpdate.quantity,
-              soldQuantity: stockUpdate.quantity,
+              availableQuantity: -deductQuantity,
+              soldQuantity: deductQuantity,
             },
             $set: { updatedBy: createdBy },
           },
@@ -224,12 +235,12 @@ export const createOfflineInvoice = async (
           [
             {
               storeId: store.storeId,
-              productId: stockUpdate.productId,
+              productId,
               movementType: "SALE_OFFLINE",
               referenceType: "OFFLINE_INVOICE",
               referenceId: invoice.invoiceId,
-              quantityChange: -stockUpdate.quantity,
-              previousQuantity: stockUpdate.previousQuantity,
+              quantityChange: -deductQuantity,
+              previousQuantity: prevQty,
               newQuantity: updatedInventory.availableQuantity,
               performedBy: createdBy,
             },
@@ -1507,6 +1518,13 @@ export const getPosCatalog = async (ownerId: string) => {
       brand: product.brand || "",
       price: product.price,
       discountPrice: product.discountPrice ?? 0,
+      sellingType: product.sellingType || "PIECE",
+      baseUnit: product.baseUnit || "piece",
+      unitLabel: product.unitLabel || "",
+      minQuantity: product.minQuantity || 1,
+      stepQuantity: product.stepQuantity || 1,
+      allowCustomQuantity: product.allowCustomQuantity || false,
+      variants: product.variants || [],
       availableQuantity,
       lowStockThreshold,
       stockStatus,

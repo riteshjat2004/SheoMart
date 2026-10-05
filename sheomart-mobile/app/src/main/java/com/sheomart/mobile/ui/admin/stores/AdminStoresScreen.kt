@@ -59,7 +59,7 @@ fun AdminStoresScreen(
                 }
             )
         },
-        containerColor = Background,
+        containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         Column(
@@ -203,8 +203,8 @@ private fun AdminStoreCard(
             .fillMaxWidth()
             .shadow(2.dp, shape = RoundedCornerShape(20.dp), spotColor = Color(0x14000000))
             .clip(RoundedCornerShape(20.dp))
-            .background(Color.White)
-            .border(1.dp, Border, RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp))
             .padding(16.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -222,14 +222,14 @@ private fun AdminStoreCard(
                         modifier = Modifier
                             .size(48.dp)
                             .clip(CircleShape)
-                            .background(Surface)
-                            .border(1.dp, Border, CircleShape),
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = store.storeName.take(1).uppercase(),
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = PrimaryGreen
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
 
@@ -244,7 +244,7 @@ private fun AdminStoreCard(
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 15.sp
                                 ),
-                                color = PrimaryText,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -278,7 +278,7 @@ private fun AdminStoreCard(
                             Text(
                                 text = "Owner: ${store.ownerName}${if (!store.ownerMobile.isNullOrBlank()) " · 📱 ${store.ownerMobile}" else ""}",
                                 style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                                color = SecondaryText,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -288,7 +288,7 @@ private fun AdminStoreCard(
                             Text(
                                 text = "📍 ${store.address ?: store.city ?: "Sheopur"}",
                                 style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                                color = SecondaryText,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -327,13 +327,13 @@ private fun AdminStoreCard(
                     modifier = Modifier.weight(1f).height(36.dp),
                     contentPadding = PaddingValues(horizontal = 8.dp)
                 ) {
-                    Text("🏷️ Badge", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = PrimaryText)
+                    Text("🏷️ Badge", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.onSurface)
                 }
 
                 if (store.isPending) {
                     Button(
                         onClick = onApprove,
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.weight(1f).height(36.dp),
                         contentPadding = PaddingValues(horizontal = 8.dp)
@@ -362,7 +362,7 @@ private fun AdminStoreCard(
                 } else {
                     Button(
                         onClick = onApprove,
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.weight(1f).height(36.dp),
                         contentPadding = PaddingValues(horizontal = 8.dp)
@@ -400,8 +400,8 @@ private fun BadgeSelectionDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .background(if (isSelected) PrimaryGreen.copy(alpha = 0.1f) else Surface)
-                            .border(1.dp, if (isSelected) PrimaryGreen else Border, RoundedCornerShape(12.dp))
+                            .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant)
+                            .border(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
                             .clickable { onSelectBadge(badgeKey) }
                             .padding(12.dp)
                     ) {
@@ -411,11 +411,11 @@ private fun BadgeSelectionDialog(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(text = label, fontWeight = FontWeight.Bold, color = if (isSelected) PrimaryGreen else PrimaryText)
-                                if (isSelected) Text("✓", color = PrimaryGreen, fontWeight = FontWeight.Bold)
+                                Text(text = label, fontWeight = FontWeight.Bold, color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+                                if (isSelected) Text("✓", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                             }
                             Spacer(modifier = Modifier.height(2.dp))
-                            Text(text = desc, style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp), color = SecondaryText)
+                            Text(text = desc, style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -423,10 +423,10 @@ private fun BadgeSelectionDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Close", color = PrimaryText)
+                Text("Close", color = MaterialTheme.colorScheme.onSurface)
             }
         },
         shape = RoundedCornerShape(20.dp),
-        containerColor = Color.White
+        containerColor = MaterialTheme.colorScheme.surface
     )
 }

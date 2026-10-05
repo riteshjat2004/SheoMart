@@ -60,7 +60,7 @@ fun OtpVerificationScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
-        containerColor = Background,
+        containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
         Column(
             modifier = Modifier
@@ -73,7 +73,7 @@ fun OtpVerificationScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Row(Modifier.fillMaxWidth()) {
-                TextButton(onClick = onBack) { Text("← Back", color = PrimaryGreen) }
+                TextButton(onClick = onBack) { Text("← Back", color = MaterialTheme.colorScheme.primary) }
             }
 
             Spacer(Modifier.height(8.dp))
@@ -89,15 +89,15 @@ fun OtpVerificationScreen(
 
             // Timer
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Code expires in ", style = MaterialTheme.typography.bodySmall, color = SecondaryText)
+                Text("Code expires in ", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(timerText, style = MaterialTheme.typography.bodySmall,
-                    color = if (remaining <= 60) Error else PrimaryGreen,
+                    color = if (remaining <= 60) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold)
             }
 
             validation?.let {
                 Spacer(Modifier.height(6.dp))
-                Text(it, color = Error, style = MaterialTheme.typography.bodySmall,
+                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
             }
 
@@ -129,7 +129,7 @@ fun OtpVerificationScreen(
             ) {
                 Text(
                     text = if (remaining > 0) "Resend OTP when timer ends" else "Resend OTP",
-                    color = if (remaining <= 0) PrimaryGreen else SecondaryText,
+                    color = if (remaining <= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
@@ -168,6 +168,8 @@ private fun OtpBoxRow(otp: String, onOtpChange: (String) -> Unit) {
             repeat(6) { index ->
                 val char = otp.getOrNull(index)?.toString() ?: ""
                 val isFocused = index == otp.length && otp.length < 6
+                val primary = MaterialTheme.colorScheme.primary
+                val outline = MaterialTheme.colorScheme.outlineVariant
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
@@ -175,9 +177,9 @@ private fun OtpBoxRow(otp: String, onOtpChange: (String) -> Unit) {
                         .border(
                             width = if (isFocused) 2.dp else 1.dp,
                             color = when {
-                                isFocused -> PrimaryGreen
-                                char.isNotEmpty() -> PrimaryGreen.copy(alpha = 0.7f)
-                                else -> Border
+                                isFocused -> primary
+                                char.isNotEmpty() -> primary.copy(alpha = 0.7f)
+                                else -> outline
                             },
                             shape = MaterialTheme.shapes.medium,
                         ),
@@ -186,7 +188,7 @@ private fun OtpBoxRow(otp: String, onOtpChange: (String) -> Unit) {
                         text = char,
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
-                        color = PrimaryText,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                 }
             }

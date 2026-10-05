@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 
 export interface BillingCartItemData {
   productId: string;
+  variantId?: string;
+  variantLabel?: string;
   productName: string;
   sku: string;
   image?: string;
@@ -27,7 +29,14 @@ export function BillingCartItem({ item, onIncrease, onDecrease, onRemove }: Bill
           {item.image ? <img src={item.image} alt="" className="h-full w-full object-cover" /> : <span className="text-xs">IMG</span>}
         </div>
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-stone-900 dark:text-stone-50">{item.productName}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="truncate text-sm font-medium text-stone-900 dark:text-stone-50">{item.productName}</p>
+            {item.variantLabel ? (
+              <span className="shrink-0 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+                {item.variantLabel}
+              </span>
+            ) : null}
+          </div>
           <p className="mt-1 truncate text-xs text-stone-500 dark:text-stone-400">SKU {item.sku || "-"} · ₹{item.price} each</p>
         </div>
       </div>

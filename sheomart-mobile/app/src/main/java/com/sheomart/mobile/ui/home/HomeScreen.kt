@@ -74,7 +74,7 @@ fun HomeScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = Background,
+        containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             SheoBottomNavigation(
@@ -114,7 +114,7 @@ fun HomeScreen(
                             Text(
                                 text = "Delivering to",
                                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                                color = SecondaryText
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
                                 text = "Sheopur, MP 476337",
@@ -122,7 +122,7 @@ fun HomeScreen(
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 13.sp
                                 ),
-                                color = PrimaryText
+                                color = MaterialTheme.colorScheme.onBackground
                             )
                         }
                     }
@@ -137,8 +137,8 @@ fun HomeScreen(
                             modifier = Modifier
                                 .size(40.dp)
                                 .clip(CircleShape)
-                                .background(Surface)
-                                .border(1.dp, Border, CircleShape)
+                                .background(MaterialTheme.colorScheme.surface)
+                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
                                 .clickable(onClick = onNotificationsClick),
                             contentAlignment = Alignment.Center
                         ) {
@@ -150,8 +150,8 @@ fun HomeScreen(
                             modifier = Modifier
                                 .size(40.dp)
                                 .clip(CircleShape)
-                                .background(PrimaryGreen)
-                                .border(1.5.dp, Color.White, CircleShape)
+                                .background(MaterialTheme.colorScheme.primary)
+                                .border(1.5.dp, MaterialTheme.colorScheme.surface, CircleShape)
                                 .clickable(onClick = onProfileClick),
                             contentAlignment = Alignment.Center
                         ) {
@@ -159,7 +159,7 @@ fun HomeScreen(
                                 text = firstName.take(1).uppercase(),
                                 style = MaterialTheme.typography.titleSmall.copy(
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = MaterialTheme.colorScheme.onPrimary
                                 )
                             )
                         }
@@ -181,13 +181,13 @@ fun HomeScreen(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 22.sp
                             ),
-                            color = PrimaryText
+                            color = MaterialTheme.colorScheme.onBackground
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "Fresh groceries delivered from neighborhood stores",
                             style = MaterialTheme.typography.bodySmall,
-                            color = SecondaryText
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -799,8 +799,8 @@ private fun CouponCard(
             .width(200.dp)
             .wrapContentHeight()
             .clip(RoundedCornerShape(20.dp))
-            .background(Surface)
-            .border(1.5.dp, Border, RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.5.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp))
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -809,14 +809,14 @@ private fun CouponCard(
             // Discount badge
             Surface(
                 shape = RoundedCornerShape(8.dp),
-                color = PrimaryGreen.copy(alpha = 0.12f)
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
             ) {
                 Text(
                     text = coupon.displayDiscount,
                     style = MaterialTheme.typography.labelMedium.copy(
                         fontWeight = FontWeight.ExtraBold
                     ),
-                    color = PrimaryGreen,
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                 )
             }
@@ -824,7 +824,7 @@ private fun CouponCard(
             Text(
                 text = coupon.title,
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                color = PrimaryText,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -833,7 +833,7 @@ private fun CouponCard(
                 Text(
                     text = it,
                     style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                    color = SecondaryText
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -848,7 +848,7 @@ private fun CouponCard(
                 // Dashed code box
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = Background
+                    color = MaterialTheme.colorScheme.surfaceVariant
                 ) {
                     Text(
                         text = coupon.code,
@@ -856,9 +856,9 @@ private fun CouponCard(
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp
                         ),
-                        color = PrimaryText,
+                        color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier
-                            .border(1.dp, Border, RoundedCornerShape(8.dp))
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
                             .padding(horizontal = 8.dp, vertical = 5.dp)
                     )
                 }
@@ -866,7 +866,7 @@ private fun CouponCard(
                 // Copy button
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = if (copied) PrimaryGreen else PrimaryGreen.copy(alpha = 0.12f),
+                    color = if (copied) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
                     modifier = Modifier.clickable {
                         onCopyCode()
                         copied = true
@@ -878,7 +878,7 @@ private fun CouponCard(
                             fontWeight = FontWeight.Bold,
                             fontSize = 11.sp
                         ),
-                        color = if (copied) Color.White else PrimaryGreen,
+                        color = if (copied) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                     )
                 }
@@ -907,7 +907,7 @@ private fun WhyChooseSheoMart() {
         Text(
             text = "Why Choose SheoMart?",
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-            color = PrimaryText
+            color = MaterialTheme.colorScheme.onBackground
         )
         Spacer(modifier = Modifier.height(14.dp))
         Row(
@@ -919,8 +919,8 @@ private fun WhyChooseSheoMart() {
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(16.dp))
-                        .background(Surface)
-                        .border(1.dp, Border, RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
                         .padding(10.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -932,14 +932,14 @@ private fun WhyChooseSheoMart() {
                             fontWeight = FontWeight.Bold,
                             fontSize = 10.sp
                         ),
-                        color = PrimaryText,
+                        color = MaterialTheme.colorScheme.onSurface,
                         textAlign = TextAlign.Center,
                         maxLines = 2
                     )
                     Text(
                         text = subtitle,
                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                        color = SecondaryText,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis

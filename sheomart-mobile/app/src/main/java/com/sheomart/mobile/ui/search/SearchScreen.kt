@@ -71,7 +71,7 @@ fun SearchScreen(
 
     Scaffold(
         topBar = {
-            Column(modifier = Modifier.background(Surface)) {
+            Column(modifier = Modifier.background(MaterialTheme.colorScheme.surface)) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -83,7 +83,7 @@ fun SearchScreen(
                         onClick = onBack,
                         modifier = Modifier.size(40.dp)
                     ) {
-                        Text("←", fontSize = 22.sp, color = PrimaryText, fontWeight = FontWeight.Bold)
+                        Text("←", fontSize = 22.sp, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
                     }
 
                     TextField(
@@ -92,7 +92,7 @@ fun SearchScreen(
                         placeholder = {
                             Text(
                                 "Search grocery, fresh food, stores...",
-                                color = SecondaryText,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 14.sp
                             )
                         },
@@ -110,7 +110,7 @@ fun SearchScreen(
                                         onClick = { viewModel.clearQuery() },
                                         modifier = Modifier.size(32.dp)
                                     ) {
-                                        Text("✕", fontSize = 14.sp, color = SecondaryText)
+                                        Text("✕", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                 }
                                 Box(
@@ -118,7 +118,7 @@ fun SearchScreen(
                                         .padding(end = 8.dp)
                                         .size(32.dp)
                                         .clip(CircleShape)
-                                        .background(Background),
+                                        .background(MaterialTheme.colorScheme.surfaceVariant),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text("🎙️", fontSize = 14.sp)
@@ -126,9 +126,11 @@ fun SearchScreen(
                             }
                         },
                         colors = TextFieldDefaults.colors(
-                            focusedContainerColor = Background,
-                            unfocusedContainerColor = Background,
-                            disabledContainerColor = Background,
+                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
                             focusedIndicatorColor = Color.Transparent,
                             unfocusedIndicatorColor = Color.Transparent
                         ),
@@ -173,10 +175,10 @@ fun SearchScreen(
                                 Box(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(20.dp))
-                                        .background(if (isSelected) PrimaryGreen else Surface)
+                                        .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
                                         .border(
                                             width = 1.dp,
-                                            color = if (isSelected) PrimaryGreen else Border,
+                                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
                                             shape = RoundedCornerShape(20.dp)
                                         )
                                         .clickable { viewModel.onSortChange(order) }
@@ -187,17 +189,17 @@ fun SearchScreen(
                                         style = MaterialTheme.typography.labelSmall.copy(
                                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                                         ),
-                                        color = if (isSelected) Color.White else PrimaryText
+                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
                                     )
                                 }
                             }
                         }
                     }
                 }
-                Divider(color = Border, thickness = 0.5.dp)
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
             }
         },
-        containerColor = Background
+        containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         Box(
             modifier = Modifier
@@ -636,8 +638,8 @@ private fun StoreResultCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Surface)
-            .border(1.dp, Border, RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -652,7 +654,7 @@ private fun StoreResultCard(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(CircleShape)
-                    .background(Background),
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
                 Text("🏪", fontSize = 20.sp)
@@ -661,7 +663,7 @@ private fun StoreResultCard(
                 Text(
                     text = store.storeName,
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                    color = PrimaryText,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -680,7 +682,7 @@ private fun StoreResultCard(
                         Text(
                             text = "• ⚡ Fast Delivery",
                             style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                            color = PrimaryGreen
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -689,7 +691,7 @@ private fun StoreResultCard(
         Text(
             text = "Visit →",
             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = PrimaryGreen
+            color = MaterialTheme.colorScheme.primary
         )
     }
 }
@@ -701,8 +703,8 @@ private fun StoreChipItem(
 ) {
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = Surface,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Border),
+        color = MaterialTheme.colorScheme.surface,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier.clickable(onClick = onClick)
     ) {
         Row(
@@ -715,7 +717,7 @@ private fun StoreChipItem(
                 Text(
                     text = store.storeName,
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                    color = PrimaryText
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 if (store.rating != null) {
                     Text(
@@ -738,8 +740,8 @@ private fun ProductResultCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Surface)
-            .border(1.dp, Border, RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -751,7 +753,7 @@ private fun ProductResultCard(
             modifier = Modifier
                 .size(64.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(Background),
+                .background(MaterialTheme.colorScheme.surfaceVariant),
             contentScale = ContentScale.Crop,
             fallbackText = product.name
         )
@@ -760,7 +762,7 @@ private fun ProductResultCard(
             Text(
                 text = product.name,
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                color = PrimaryText,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -768,7 +770,7 @@ private fun ProductResultCard(
                 Text(
                     text = product.categoryName,
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                    color = SecondaryText
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             if (product.discountPrice != null) {
@@ -776,19 +778,19 @@ private fun ProductResultCard(
                 Text(
                     text = "₹${product.discountPrice.toInt()}",
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold),
-                    color = PrimaryGreen
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
         }
 
         Surface(
             shape = RoundedCornerShape(8.dp),
-            color = PrimaryGreen.copy(alpha = 0.12f)
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
         ) {
             Text(
                 text = "View",
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                color = PrimaryGreen,
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
             )
         }
@@ -858,14 +860,14 @@ private fun SearchEmptyView(
                 listOf("Rice", "Milk", "Ghee", "Oil").forEach { term ->
                     Surface(
                         shape = RoundedCornerShape(16.dp),
-                        color = Surface,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Border),
+                        color = MaterialTheme.colorScheme.surface,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                         modifier = Modifier.clickable { onSuggestionClick(term) }
                     ) {
                         Text(
                             text = term,
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
-                            color = PrimaryGreen,
+                            color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                         )
                     }
@@ -904,12 +906,12 @@ private fun FilterBottomSheetContent(
             Text(
                 text = "Filter Results",
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                color = PrimaryText
+                color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = "Reset all",
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                color = SecondaryText,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.clickable(onClick = onClear)
             )
         }
@@ -923,12 +925,12 @@ private fun FilterBottomSheetContent(
                 Text(
                     text = "Price Range",
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                    color = PrimaryText
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "₹${pendingFilter.priceRange.start.toInt()} - ₹${pendingFilter.priceRange.endInclusive.toInt()}",
                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-                    color = PrimaryGreen
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
             RangeSlider(
@@ -937,9 +939,9 @@ private fun FilterBottomSheetContent(
                 valueRange = 0f..2000f,
                 steps = 19,
                 colors = SliderDefaults.colors(
-                    thumbColor = PrimaryGreen,
-                    activeTrackColor = PrimaryGreen,
-                    inactiveTrackColor = Border
+                    thumbColor = MaterialTheme.colorScheme.primary,
+                    activeTrackColor = MaterialTheme.colorScheme.primary,
+                    inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant
                 )
             )
         }
@@ -949,17 +951,17 @@ private fun FilterBottomSheetContent(
             Text(
                 text = "Minimum Rating",
                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                color = PrimaryText
+                color = MaterialTheme.colorScheme.onSurface
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(0f to "Any", 3.0f to "3★ +", 4.0f to "4★ +", 4.5f to "4.5★ +").forEach { (rating, label) ->
                     val isSelected = pendingFilter.minRating == rating
                     Surface(
                         shape = RoundedCornerShape(16.dp),
-                        color = if (isSelected) PrimaryGreen else Surface,
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
                         border = androidx.compose.foundation.BorderStroke(
                             width = 1.dp,
-                            color = if (isSelected) PrimaryGreen else Border
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
                         ),
                         modifier = Modifier
                             .weight(1f)
@@ -970,7 +972,7 @@ private fun FilterBottomSheetContent(
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                             ),
-                            color = if (isSelected) Color.White else PrimaryText,
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.padding(vertical = 10.dp)
                         )
@@ -991,12 +993,12 @@ private fun FilterBottomSheetContent(
                 Text(
                     text = "Discounted Items Only",
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = PrimaryText
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "Show only items with active festival or store offers",
                     style = MaterialTheme.typography.bodySmall,
-                    color = SecondaryText
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             Switch(
@@ -1004,7 +1006,7 @@ private fun FilterBottomSheetContent(
                 onCheckedChange = onDiscountOnlyChange,
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = Color.White,
-                    checkedTrackColor = PrimaryGreen
+                    checkedTrackColor = MaterialTheme.colorScheme.primary
                 )
             )
         }
@@ -1016,13 +1018,13 @@ private fun FilterBottomSheetContent(
                 .fillMaxWidth()
                 .height(50.dp),
             shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen)
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
         ) {
             Text(
                 text = "Apply Filters",
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onPrimary
                 )
             )
         }

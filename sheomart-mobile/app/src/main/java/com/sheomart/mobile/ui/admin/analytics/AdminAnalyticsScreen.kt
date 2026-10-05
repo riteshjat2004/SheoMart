@@ -47,7 +47,7 @@ fun AdminAnalyticsScreen(
                 }
             )
         },
-        containerColor = Background
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -68,7 +68,7 @@ fun AdminAnalyticsScreen(
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
                     ),
-                    color = SecondaryText
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -188,7 +188,7 @@ fun AdminAnalyticsScreen(
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.sp
                             ),
-                            color = SecondaryText
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
 
                         Spacer(modifier = Modifier.height(10.dp))
@@ -198,7 +198,7 @@ fun AdminAnalyticsScreen(
                         val totalOrdersCount = ordersBreakdown.sumOf { it.count }
                         BreakdownContainerCard(title = "Orders by Status", countText = "$totalOrdersCount orders") {
                             if (ordersBreakdown.isEmpty()) {
-                                Text("No order status records in this period.", style = MaterialTheme.typography.bodySmall, color = SecondaryText)
+                                Text("No order status records in this period.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             } else {
                                 ordersBreakdown.forEach { pt ->
                                     AdminBarBreakdownItem(
@@ -222,7 +222,7 @@ fun AdminAnalyticsScreen(
                         val totalStoresCount = storesBreakdown.sumOf { it.count }
                         BreakdownContainerCard(title = "Stores by Status", countText = "$totalStoresCount stores") {
                             if (storesBreakdown.isEmpty()) {
-                                Text("No store status records in this period.", style = MaterialTheme.typography.bodySmall, color = SecondaryText)
+                                Text("No store status records in this period.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             } else {
                                 storesBreakdown.forEach { pt ->
                                     AdminBarBreakdownItem(
@@ -247,7 +247,7 @@ fun AdminAnalyticsScreen(
                         val totalProductsCount = productsBreakdown.sumOf { it.count }
                         BreakdownContainerCard(title = "Products by Status", countText = "$totalProductsCount products") {
                             if (productsBreakdown.isEmpty()) {
-                                Text("No product status records in this period.", style = MaterialTheme.typography.bodySmall, color = SecondaryText)
+                                Text("No product status records in this period.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             } else {
                                 productsBreakdown.forEach { pt ->
                                     AdminBarBreakdownItem(
@@ -300,8 +300,8 @@ private fun BreakdownContainerCard(
             .fillMaxWidth()
             .shadow(2.dp, shape = RoundedCornerShape(20.dp), spotColor = Color(0x14000000))
             .clip(RoundedCornerShape(20.dp))
-            .background(Color.White)
-            .border(1.dp, Border, RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(20.dp))
             .padding(16.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -313,11 +313,11 @@ private fun BreakdownContainerCard(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                    color = PrimaryText
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = countText,
-                    style = MaterialTheme.typography.labelSmall.copy(color = SecondaryText, fontWeight = FontWeight.SemiBold)
+                    style = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
                 )
             }
 

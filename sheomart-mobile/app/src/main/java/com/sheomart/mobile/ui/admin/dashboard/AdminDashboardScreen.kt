@@ -43,6 +43,7 @@ fun AdminDashboardScreen(
     onNavigateAnalytics: () -> Unit,
     onNavigateSettings: () -> Unit,
     onLogout: () -> Unit,
+    onNavigateCustomerApp: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -58,7 +59,7 @@ fun AdminDashboardScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = Background,
+        containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         Column(
@@ -76,8 +77,8 @@ fun AdminDashboardScreen(
                     .padding(horizontal = 20.dp, vertical = 16.dp)
                     .shadow(2.dp, shape = RoundedCornerShape(24.dp), spotColor = Color(0x14000000))
                     .clip(RoundedCornerShape(24.dp))
-                    .background(Color.White)
-                    .border(1.dp, Border, RoundedCornerShape(24.dp))
+                    .background(MaterialTheme.colorScheme.surface)
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(24.dp))
                     .padding(20.dp)
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
@@ -96,7 +97,7 @@ fun AdminDashboardScreen(
                                 modifier = Modifier
                                     .size(56.dp)
                                     .clip(CircleShape)
-                                    .background(PrimaryGreen),
+                                    .background(MaterialTheme.colorScheme.primary),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
@@ -120,15 +121,15 @@ fun AdminDashboardScreen(
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 17.sp
                                         ),
-                                        color = PrimaryText,
+                                        color = MaterialTheme.colorScheme.onSurface,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
                                     Box(
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(8.dp))
-                                            .background(Color(0xFFECFDF5))
-                                            .border(1.dp, Color(0xFFA7F3D0), RoundedCornerShape(8.dp))
+                                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                                            .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
                                             .padding(horizontal = 6.dp, vertical = 2.dp)
                                     ) {
                                         Text(
@@ -137,7 +138,7 @@ fun AdminDashboardScreen(
                                                 fontSize = 9.sp,
                                                 fontWeight = FontWeight.Bold
                                             ),
-                                            color = Color(0xFF047857)
+                                            color = MaterialTheme.colorScheme.primary
                                         )
                                     }
                                 }
@@ -146,24 +147,38 @@ fun AdminDashboardScreen(
                                 Text(
                                     text = user?.email ?: "admin@sheomart.com",
                                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-                                    color = SecondaryText,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
 
-                        // Settings shortcut button
-                        Box(
-                            modifier = Modifier
-                                .size(42.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Surface)
-                                .border(1.dp, Border, RoundedCornerShape(12.dp))
-                                .clickable(onClick = onNavigateSettings),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(text = "⚙️", fontSize = 18.sp)
+                        // Action shortcut buttons: Storefront & Settings
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
+                                    .clickable(onClick = onNavigateCustomerApp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(text = "🛍️", fontSize = 18.sp)
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
+                                    .clickable(onClick = onNavigateSettings),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(text = "⚙️", fontSize = 18.sp)
+                            }
                         }
                     }
 
@@ -174,7 +189,7 @@ fun AdminDashboardScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Surface.copy(alpha = 0.6f))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -185,13 +200,13 @@ fun AdminDashboardScreen(
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium
                             ),
-                            color = PrimaryText
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "Control Center",
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = FontWeight.Bold,
-                                color = PrimaryGreen
+                                color = MaterialTheme.colorScheme.primary
                             )
                         )
                     }
@@ -529,8 +544,8 @@ private fun PendingStoreDashboardCard(
             .fillMaxWidth()
             .shadow(1.dp, shape = RoundedCornerShape(18.dp), spotColor = Color(0x14000000))
             .clip(RoundedCornerShape(18.dp))
-            .background(Color.White)
-            .border(1.dp, Border, RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(18.dp))
             .padding(16.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -543,20 +558,20 @@ private fun PendingStoreDashboardCard(
                     Text(
                         text = store.storeName,
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                        color = PrimaryText
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     if (store.ownerName != null) {
                         Text(
                             text = "Owner: ${store.ownerName}${if (!store.ownerMobile.isNullOrBlank()) " · 📱 ${store.ownerMobile}" else ""}",
                             style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-                            color = SecondaryText
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     if (store.city != null || store.address != null) {
                         Text(
                             text = "📍 ${store.address ?: store.city ?: "Sheopur"}",
                             style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
-                            color = SecondaryText
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -586,7 +601,7 @@ private fun PendingStoreDashboardCard(
             ) {
                 Button(
                     onClick = onApprove,
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.weight(1f).height(38.dp)
                 ) {

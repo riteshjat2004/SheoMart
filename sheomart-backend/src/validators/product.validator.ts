@@ -38,6 +38,43 @@ export const adminProductListQuerySchema = z.object({
 
 export type AdminProductListQuery = z.infer<typeof adminProductListQuerySchema>;
 
+const preprocessJson = (val: unknown) => {
+  if (typeof val === "string") {
+    const trimmed = val.trim();
+    if (!trimmed) return undefined;
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      return val;
+    }
+  }
+  return val;
+};
+
+export const productVariantSchema = z.object({
+  variantId: z.string().trim().optional(),
+  label: z.string().trim().min(1, "Variant label is required"),
+  unit: z.string().trim().min(1, "Unit is required"),
+  value: z.coerce.number().min(0, "Value cannot be negative"),
+  price: z.coerce.number().min(0, "Price cannot be negative"),
+  discountPrice: z.coerce.number().min(0).optional().default(0),
+  sku: z.string().trim().optional(),
+  stock: z.coerce.number().int().min(0).optional().default(0),
+  packQuantity: z.coerce.number().min(0.01).optional().default(1),
+});
+
+export type ProductVariantInput = z.infer<typeof productVariantSchema>;
+
+export const nutritionalInfoSchema = z.object({
+  servingSize: z.string().trim().optional(),
+  energy: z.string().trim().optional(),
+  protein: z.string().trim().optional(),
+  carbs: z.string().trim().optional(),
+  fats: z.string().trim().optional(),
+}).strict();
+
+export type NutritionalInfoInput = z.infer<typeof nutritionalInfoSchema>;
+
 export const createProductSchema = z.object({
   storeId: z.string().trim().min(1).optional(),
   name: z.string().trim().min(2, "Product name must be at least 2 characters").max(120),
@@ -47,6 +84,16 @@ export const createProductSchema = z.object({
   price: z.coerce.number().min(0, "Price cannot be negative"),
   discountPrice: z.coerce.number().min(0, "Discount price cannot be negative").optional().default(0),
   quantity: z.coerce.number().int().min(0, "Quantity cannot be negative").optional().default(0),
+  sellingType: z.enum(["PIECE", "WEIGHT", "VOLUME"]).optional().default("PIECE"),
+  baseUnit: z.string().trim().optional().default("piece"),
+  unitLabel: z.string().trim().optional().default("piece"),
+  minQuantity: z.coerce.number().min(0.01).optional().default(1),
+  stepQuantity: z.coerce.number().min(0.01).optional().default(1),
+  allowCustomQuantity: multipartBoolean.optional().default(false),
+  stockTrackingMode: z.enum(["SEPARATE", "SHARED"]).optional().default("SEPARATE"),
+  hasNutritionalInfo: multipartBoolean.optional().default(false),
+  nutritionalInfo: z.preprocess(preprocessJson, nutritionalInfoSchema.nullable().optional()),
+  variants: z.preprocess(preprocessJson, z.array(productVariantSchema)).optional().default([]),
   categoryId: z.string().trim().min(1, "Category is required"),
   images: z.array(z.string().trim().min(1)).optional().default([]),
   imageUrl: optionalImageUrl,
@@ -73,6 +120,16 @@ export const updateProductSchema = z.object({
   price: z.coerce.number().min(0, "Price cannot be negative").optional(),
   discountPrice: z.coerce.number().min(0, "Discount price cannot be negative").optional(),
   quantity: z.coerce.number().int().min(0, "Quantity cannot be negative").optional(),
+  sellingType: z.enum(["PIECE", "WEIGHT", "VOLUME"]).optional(),
+  baseUnit: z.string().trim().optional(),
+  unitLabel: z.string().trim().optional(),
+  minQuantity: z.coerce.number().min(0.01).optional(),
+  stepQuantity: z.coerce.number().min(0.01).optional(),
+  allowCustomQuantity: multipartBoolean.optional(),
+  stockTrackingMode: z.enum(["SEPARATE", "SHARED"]).optional(),
+  hasNutritionalInfo: multipartBoolean.optional(),
+  nutritionalInfo: z.preprocess(preprocessJson, nutritionalInfoSchema.nullable().optional()),
+  variants: z.preprocess(preprocessJson, z.array(productVariantSchema)).optional(),
   categoryId: z.string().trim().min(1, "Category is required").optional(),
   images: z.array(z.string().trim().min(1)).optional(),
   imageUrl: optionalImageUrl,
@@ -109,3 +166,13 @@ export const updateThumbnailSchema = z.object({
 }).strict();
 
 export type UpdateThumbnailInput = z.infer<typeof updateThumbnailSchema>;
+
+export const cloneProductsToStoreSchema = z.object({
+  targetStoreId: z.string().trim().min(1, "Target store ID is required"),
+  productIds: z.array(z.string().trim().min(1)).min(1, "At least one product must be selected"),
+  defaultStock: z.coerce.number().int().min(0).optional().default(0),
+  isPublished: z.boolean().optional().default(true),
+}).strict();
+
+export type CloneProductsToStoreInput = z.infer<typeof cloneProductsToStoreSchema>;
+

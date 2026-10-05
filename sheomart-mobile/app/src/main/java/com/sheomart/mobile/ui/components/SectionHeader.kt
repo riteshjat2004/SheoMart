@@ -39,7 +39,7 @@ fun SectionHeader(
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.2.sp
                     ),
-                    color = PrimaryGreen
+                    color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.height(2.dp))
             }
@@ -48,14 +48,14 @@ fun SectionHeader(
                 style = MaterialTheme.typography.titleLarge.copy(
                     fontWeight = FontWeight.Bold
                 ),
-                color = PrimaryText
+                color = MaterialTheme.colorScheme.onSurface
             )
             if (!subtitle.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = SecondaryText
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -64,7 +64,7 @@ fun SectionHeader(
             Text(
                 text = actionText,
                 style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-                color = PrimaryGreen,
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
                     .clickable(onClick = onActionClick)
                     .padding(start = 12.dp, bottom = 4.dp)

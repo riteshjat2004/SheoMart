@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.sp
 import com.sheomart.mobile.data.model.SellerOrderItem
 import com.sheomart.mobile.ui.components.SectionEmptyView
 import com.sheomart.mobile.ui.components.SectionErrorView
+import com.sheomart.mobile.ui.components.StatusBadge
 import com.sheomart.mobile.ui.state.UiState
 import com.sheomart.mobile.ui.theme.*
 
@@ -28,6 +29,8 @@ fun SellerOrdersScreen(
     viewModel: SellerOrdersViewModel,
     onBack: () -> Unit
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+
     val state by viewModel.ordersState.collectAsState()
     val selectedTab by viewModel.selectedTab.collectAsState()
     val actionMsg by viewModel.actionMessage.collectAsState()
@@ -45,16 +48,22 @@ fun SellerOrdersScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Customer Orders", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)) },
+                title = {
+                    Text(
+                        text = "Customer Orders",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = colorScheme.onSurface
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Text("←", fontSize = 20.sp, color = PrimaryGreen)
+                        Text("←", fontSize = 22.sp, color = colorScheme.primary, fontWeight = FontWeight.Bold)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = colorScheme.surface)
             )
         },
-        containerColor = Background
+        containerColor = colorScheme.background
     ) { padding ->
         Column(
             modifier = Modifier
@@ -63,23 +72,41 @@ fun SellerOrdersScreen(
         ) {
             TabRow(
                 selectedTabIndex = selectedTab,
-                containerColor = Color.White,
-                contentColor = PrimaryGreen
+                containerColor = colorScheme.surface,
+                contentColor = colorScheme.primary
             ) {
                 Tab(
                     selected = selectedTab == 0,
                     onClick = { viewModel.selectTab(0) },
-                    text = { Text("All", fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal) }
+                    text = {
+                        Text(
+                            text = "All",
+                            fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal,
+                            color = if (selectedTab == 0) colorScheme.primary else colorScheme.onSurfaceVariant
+                        )
+                    }
                 )
                 Tab(
                     selected = selectedTab == 1,
                     onClick = { viewModel.selectTab(1) },
-                    text = { Text("Pending / Prep", fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal) }
+                    text = {
+                        Text(
+                            text = "Pending / Prep",
+                            fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal,
+                            color = if (selectedTab == 1) colorScheme.primary else colorScheme.onSurfaceVariant
+                        )
+                    }
                 )
                 Tab(
                     selected = selectedTab == 2,
                     onClick = { viewModel.selectTab(2) },
-                    text = { Text("Completed", fontWeight = if (selectedTab == 2) FontWeight.Bold else FontWeight.Normal) }
+                    text = {
+                        Text(
+                            text = "Delivered",
+                            fontWeight = if (selectedTab == 2) FontWeight.Bold else FontWeight.Normal,
+                            color = if (selectedTab == 2) colorScheme.primary else colorScheme.onSurfaceVariant
+                        )
+                    }
                 )
             }
 
@@ -87,7 +114,7 @@ fun SellerOrdersScreen(
                 when (val res = state) {
                     is UiState.Loading -> {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = PrimaryGreen)
+                            CircularProgressIndicator(color = colorScheme.primary)
                         }
                     }
                     is UiState.Error -> {
@@ -143,7 +170,7 @@ fun SellerOrdersScreen(
                                 contentPadding = PaddingValues(16.dp),
                                 verticalArrangement = Arrangement.spacedBy(14.dp)
                             ) {
-                                items(filteredOrders) { order ->
+                                items(filteredOrders, key = { it.orderId }) { order ->
                                     SellerOrderCard(
                                         order = order,
                                         onUpdateStatus = { next -> viewModel.updateStatus(order.orderId, next) }
@@ -163,19 +190,14 @@ private fun SellerOrderCard(
     order: SellerOrderItem,
     onUpdateStatus: (String) -> Unit
 ) {
-    val (statusColor, statusBg) = when (order.status.lowercase()) {
-        "delivered" -> Color(0xFF059669) to Color(0xFFD1FAE5)
-        "cancelled" -> Color(0xFFDC2626) to Color(0xFFFEE2E2)
-        "dispatched", "out_for_delivery" -> Color(0xFF2563EB) to Color(0xFFDBEAFE)
-        else -> Color(0xFFD97706) to Color(0xFFFEF3C7)
-    }
+    val colorScheme = MaterialTheme.colorScheme
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color.White)
-            .border(1.dp, Border, RoundedCornerShape(16.dp))
+            .background(colorScheme.surface)
+            .border(1.dp, colorScheme.outlineVariant, RoundedCornerShape(16.dp))
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -188,30 +210,19 @@ private fun SellerOrderCard(
                 Text(
                     text = "Order #${order.orderId.takeLast(8).uppercase()}",
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                    color = PrimaryText
+                    color = colorScheme.onSurface
                 )
                 Text(
                     text = "Customer: ${order.customerName ?: "Shopper"}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = SecondaryText
+                    color = colorScheme.onSurfaceVariant
                 )
             }
 
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(statusBg)
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
-            ) {
-                Text(
-                    text = order.status.replace("_", " ").uppercase(),
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                    color = statusColor
-                )
-            }
+            StatusBadge(text = order.status)
         }
 
-        Divider(color = Border, thickness = 0.5.dp)
+        HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
 
         // Items preview
         order.items.forEach { item ->
@@ -223,17 +234,17 @@ private fun SellerOrderCard(
                 Text(
                     text = "${item.quantity}x ${item.name}",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = PrimaryText
+                    color = colorScheme.onSurface
                 )
                 Text(
                     text = "₹${(item.price * item.quantity).toInt()}",
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = PrimaryText
+                    color = colorScheme.onSurface
                 )
             }
         }
 
-        Divider(color = Border, thickness = 0.5.dp)
+        HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.5f), thickness = 0.5.dp)
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -243,7 +254,7 @@ private fun SellerOrderCard(
             Text(
                 text = "Total: ₹${order.totalAmount.toInt()}",
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = PrimaryGreen
+                color = colorScheme.primary
             )
 
             // Status action buttons
@@ -251,7 +262,7 @@ private fun SellerOrderCard(
                 "PENDING" -> {
                     Button(
                         onClick = { onUpdateStatus("ACCEPTED") },
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                        colors = ButtonDefaults.buttonColors(containerColor = colorScheme.primary),
                         shape = RoundedCornerShape(10.dp),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                     ) {
@@ -281,7 +292,7 @@ private fun SellerOrderCard(
                 "READY_FOR_DISPATCH" -> {
                     Button(
                         onClick = { onUpdateStatus("DELIVERED") },
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen),
+                        colors = ButtonDefaults.buttonColors(containerColor = colorScheme.primary),
                         shape = RoundedCornerShape(10.dp),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                     ) {
