@@ -56,6 +56,7 @@ export interface PosCatalogProduct {
   stepQuantity?: number;
   allowCustomQuantity?: boolean;
   variants?: import("@/types/marketplace").ProductVariant[];
+  stockTrackingMode?: "SEPARATE" | "SHARED";
   availableQuantity: number;
   lowStockThreshold: number;
   stockStatus: StockStatus;

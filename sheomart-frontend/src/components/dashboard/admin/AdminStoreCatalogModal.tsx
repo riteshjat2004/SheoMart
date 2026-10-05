@@ -18,9 +18,10 @@ import {
   AlertCircle,
   HelpCircle,
   ShieldCheck,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { fetchProducts } from "@/services/product";
+import { fetchProducts, fetchStoreExistingProducts } from "@/services/product";
 import { fetchCategories } from "@/services/category";
 import type { ProductItem, StoreItem } from "@/types/marketplace";
 
@@ -50,6 +51,7 @@ export function AdminStoreCatalogModal({
 }: AdminStoreCatalogModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [presenceFilter, setPresenceFilter] = useState<"all" | "available" | "existing">("all");
   const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
   const [defaultStock, setDefaultStock] = useState<number>(20);
   const [isPublished, setIsPublished] = useState<boolean>(true);
@@ -77,11 +79,69 @@ export function AdminStoreCatalogModal({
     staleTime: 5 * 60 * 1000,
   });
 
+  // Fetch target store's existing products to prevent duplicate additions
+  const {
+    data: existingStoreData,
+    isLoading: isLoadingExisting,
+  } = useQuery({
+    queryKey: ["admin-store-existing-products", targetStoreId],
+    queryFn: () => fetchStoreExistingProducts(targetStoreId),
+    enabled: open && Boolean(targetStoreId),
+    staleTime: 30 * 1000,
+  });
+
+  const existingProductIds = useMemo(() => {
+    return new Set(existingStoreData?.existingSourceProductIds || []);
+  }, [existingStoreData]);
+
+  const existingNames = useMemo(() => {
+    return new Set(existingStoreData?.existingNames || []);
+  }, [existingStoreData]);
+
+  const existingCleanSkus = useMemo(() => {
+    return new Set(existingStoreData?.existingCleanSkus || []);
+  }, [existingStoreData]);
+
+  // Check if a catalog product is already present in this store
+  const isProductAlreadyInStore = (product: ProductItem): boolean => {
+    if (product.storeId === targetStoreId) return true;
+    const pid = product.productId || product._id;
+    if (pid && existingProductIds.has(pid)) return true;
+    if (product.sourceProductId && existingProductIds.has(product.sourceProductId)) return true;
+    if (product.name && existingNames.has(product.name.trim().toLowerCase())) return true;
+    const cleanSku = product.sku?.replace(/-STR\w+(-[0-9]+)?$/i, "").trim().toUpperCase();
+    if (cleanSku && existingCleanSkus.has(cleanSku)) return true;
+    return false;
+  };
+
+  // Compute counts
+  const counts = useMemo(() => {
+    let availableCount = 0;
+    let inStoreCount = 0;
+    for (const p of allProducts) {
+      if (isProductAlreadyInStore(p)) {
+        inStoreCount++;
+      } else {
+        availableCount++;
+      }
+    }
+    return {
+      total: allProducts.length,
+      available: availableCount,
+      inStore: inStoreCount,
+    };
+  }, [allProducts, existingProductIds, existingNames, existingCleanSkus, targetStoreId]);
+
   // Filter catalog products
   const filteredProducts = useMemo(() => {
     return allProducts.filter((product) => {
-      // Exclude products that already belong to this store to avoid duplicate assignments
-      if (product.storeId === targetStoreId) {
+      const alreadyInStore = isProductAlreadyInStore(product);
+
+      // Presence filter
+      if (presenceFilter === "available" && alreadyInStore) {
+        return false;
+      }
+      if (presenceFilter === "existing" && !alreadyInStore) {
         return false;
       }
 
@@ -103,23 +163,36 @@ export function AdminStoreCatalogModal({
 
       return true;
     });
-  }, [allProducts, targetStoreId, searchQuery, selectedCategory]);
+  }, [
+    allProducts,
+    targetStoreId,
+    searchQuery,
+    selectedCategory,
+    presenceFilter,
+    existingProductIds,
+    existingNames,
+    existingCleanSkus,
+  ]);
+
+  const selectableFilteredProducts = useMemo(() => {
+    return filteredProducts.filter((p) => !isProductAlreadyInStore(p));
+  }, [filteredProducts, existingProductIds, existingNames, existingCleanSkus, targetStoreId]);
 
   const allFilteredSelected =
-    filteredProducts.length > 0 &&
-    filteredProducts.every((p) => p.productId && selectedProductIds.has(p.productId));
+    selectableFilteredProducts.length > 0 &&
+    selectableFilteredProducts.every((p) => p.productId && selectedProductIds.has(p.productId));
 
   const toggleSelectAllFiltered = () => {
     setSelectedProductIds((prev) => {
       const next = new Set(prev);
       if (allFilteredSelected) {
-        // Deselect filtered
-        filteredProducts.forEach((p) => {
+        // Deselect filtered selectable
+        selectableFilteredProducts.forEach((p) => {
           if (p.productId) next.delete(p.productId);
         });
       } else {
-        // Select all filtered
-        filteredProducts.forEach((p) => {
+        // Select all filtered selectable
+        selectableFilteredProducts.forEach((p) => {
           if (p.productId) next.add(p.productId);
         });
       }
@@ -127,21 +200,31 @@ export function AdminStoreCatalogModal({
     });
   };
 
-  const toggleProduct = (productId: string) => {
+  const toggleProduct = (product: ProductItem) => {
+    if (isProductAlreadyInStore(product)) return;
+    const pid = product.productId || product._id;
+    if (!pid) return;
+
     setSelectedProductIds((prev) => {
       const next = new Set(prev);
-      if (next.has(productId)) {
-        next.delete(productId);
+      if (next.has(pid)) {
+        next.delete(pid);
       } else {
-        next.add(productId);
+        next.add(pid);
       }
       return next;
     });
   };
 
   const handleImport = async () => {
-    if (selectedProductIds.size === 0) {
-      setErrorMsg("Please select at least one product to assign.");
+    // Filter out any IDs that might already be present in store
+    const validProductIds = Array.from(selectedProductIds).filter((pid) => {
+      const prod = allProducts.find((p) => p.productId === pid || p._id === pid);
+      return prod ? !isProductAlreadyInStore(prod) : false;
+    });
+
+    if (validProductIds.length === 0) {
+      setErrorMsg("Please select at least one product that is not already present in this store.");
       return;
     }
     if (!targetStoreId) {
@@ -153,11 +236,11 @@ export function AdminStoreCatalogModal({
       setErrorMsg(null);
       await onClone({
         targetStoreId,
-        productIds: Array.from(selectedProductIds),
+        productIds: validProductIds,
         defaultStock: Number(defaultStock) || 0,
         isPublished,
       });
-      onCloneSuccess(selectedProductIds.size);
+      onCloneSuccess(validProductIds.length);
       setSelectedProductIds(new Set());
       onClose();
     } catch (err: unknown) {
@@ -269,6 +352,48 @@ export function AdminStoreCatalogModal({
             </div>
           </div>
 
+          {/* Presence Filter Tabs */}
+          <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-stone-100 dark:border-stone-800/60">
+            <span className="text-xs font-medium text-stone-400">Filter:</span>
+            <div className="flex items-center gap-1.5 bg-stone-100/80 dark:bg-stone-800/80 p-0.5 rounded-xl text-xs">
+              <button
+                type="button"
+                onClick={() => setPresenceFilter("all")}
+                className={`rounded-lg px-2.5 py-1 font-semibold transition ${
+                  presenceFilter === "all"
+                    ? "bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-sm"
+                    : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
+                }`}
+              >
+                All ({counts.total})
+              </button>
+              <button
+                type="button"
+                onClick={() => setPresenceFilter("available")}
+                className={`flex items-center gap-1 rounded-lg px-2.5 py-1 font-semibold transition ${
+                  presenceFilter === "available"
+                    ? "bg-emerald-600 text-white shadow-sm"
+                    : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
+                }`}
+              >
+                <Sparkles className="h-3 w-3" />
+                Available to Stock ({counts.available})
+              </button>
+              <button
+                type="button"
+                onClick={() => setPresenceFilter("existing")}
+                className={`flex items-center gap-1 rounded-lg px-2.5 py-1 font-semibold transition ${
+                  presenceFilter === "existing"
+                    ? "bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 shadow-sm"
+                    : "text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
+                }`}
+              >
+                <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                Already in Store ({counts.inStore})
+              </button>
+            </div>
+          </div>
+
           {/* Configuration & Selection Row */}
           <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
             <div className="flex items-center gap-2">
@@ -277,14 +402,15 @@ export function AdminStoreCatalogModal({
                 variant="ghost"
                 size="sm"
                 onClick={toggleSelectAllFiltered}
-                className="h-8 text-xs font-medium text-stone-700 dark:text-stone-300"
+                disabled={selectableFilteredProducts.length === 0}
+                className="h-8 text-xs font-medium text-stone-700 dark:text-stone-300 disabled:opacity-40"
               >
                 {allFilteredSelected ? (
                   <CheckSquare className="mr-1.5 h-4 w-4 text-emerald-600" />
                 ) : (
                   <Square className="mr-1.5 h-4 w-4 text-stone-400" />
                 )}
-                {allFilteredSelected ? "Deselect All Filtered" : "Select All Filtered"}
+                {allFilteredSelected ? "Deselect Available" : "Select All Available"}
               </Button>
 
               {selectedProductIds.size > 0 && (
@@ -341,7 +467,7 @@ export function AdminStoreCatalogModal({
 
         {/* Product Catalog List */}
         <div className="flex-1 overflow-y-auto p-6">
-          {isLoadingProducts ? (
+          {isLoadingProducts || isLoadingExisting ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" />
               <p className="mt-3 text-sm text-stone-500">Loading SheoMart master catalog...</p>
@@ -357,35 +483,56 @@ export function AdminStoreCatalogModal({
               <Package className="h-10 w-10 text-stone-300 mb-2" />
               <p className="font-semibold text-stone-800 dark:text-stone-200">No products found</p>
               <p className="text-xs text-stone-400 mt-1">
-                Try adjusting your search query or category filter.
+                Try adjusting your search query, filter tabs, or category filter.
               </p>
             </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {filteredProducts.map((product) => {
                 const pid = product.productId || product._id || "";
+                const isAlready = isProductAlreadyInStore(product);
                 const isSelected = selectedProductIds.has(pid);
                 const imgSrc = product.image?.url || product.thumbnail || product.images?.[0] || "";
 
                 return (
                   <div
                     key={pid}
-                    onClick={() => toggleProduct(pid)}
-                    className={`group relative flex cursor-pointer gap-3 rounded-2xl border p-3.5 transition-all duration-200 ${
-                      isSelected
-                        ? "border-emerald-500 bg-emerald-50/30 shadow-md ring-2 ring-emerald-500/20 dark:border-emerald-500 dark:bg-emerald-950/20"
-                        : "border-stone-200 bg-white hover:border-emerald-300 hover:shadow-sm dark:border-stone-800 dark:bg-stone-800/60"
+                    onClick={() => {
+                      if (!isAlready) {
+                        toggleProduct(product);
+                      }
+                    }}
+                    title={
+                      isAlready
+                        ? `${product.name} is already present in this store and cannot be pushed again.`
+                        : undefined
+                    }
+                    className={`group relative flex gap-3 rounded-2xl border p-3.5 transition-all duration-200 ${
+                      isAlready
+                        ? "border-emerald-200/60 bg-emerald-50/20 dark:border-emerald-900/30 dark:bg-emerald-950/10 cursor-not-allowed opacity-80"
+                        : isSelected
+                        ? "cursor-pointer border-emerald-500 bg-emerald-50/30 shadow-md ring-2 ring-emerald-500/20 dark:border-emerald-500 dark:bg-emerald-950/20"
+                        : "cursor-pointer border-stone-200 bg-white hover:border-emerald-300 hover:shadow-sm dark:border-stone-800 dark:bg-stone-800/60"
                     }`}
                   >
-                    {/* Checkbox */}
+                    {/* Checkbox / Already In Store Indicator */}
                     <div className="pt-0.5 shrink-0">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => toggleProduct(pid)}
-                        className="h-4 w-4 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-                        aria-label={`Select ${product.name}`}
-                      />
+                      {isAlready ? (
+                        <div
+                          className="flex h-4 w-4 items-center justify-center rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400"
+                          title="Already present in store"
+                        >
+                          <Check className="h-3 w-3" />
+                        </div>
+                      ) : (
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleProduct(product)}
+                          className="h-4 w-4 rounded border-stone-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                          aria-label={`Select ${product.name}`}
+                        />
+                      )}
                     </div>
 
                     {/* Thumbnail */}
@@ -406,9 +553,23 @@ export function AdminStoreCatalogModal({
                     {/* Details */}
                     <div className="flex flex-1 flex-col justify-between min-w-0">
                       <div>
-                        <h4 className="line-clamp-1 text-sm font-semibold text-stone-900 dark:text-stone-100 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition">
-                          {product.name}
-                        </h4>
+                        <div className="flex items-start justify-between gap-1.5">
+                          <h4
+                            className={`line-clamp-1 text-sm font-semibold transition ${
+                              isAlready
+                                ? "text-stone-700 dark:text-stone-300"
+                                : "text-stone-900 dark:text-stone-100 group-hover:text-emerald-700 dark:group-hover:text-emerald-400"
+                            }`}
+                          >
+                            {product.name}
+                          </h4>
+                          {isAlready && (
+                            <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-300 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                              <Check className="h-2.5 w-2.5" />
+                              In Store
+                            </span>
+                          )}
+                        </div>
                         <div className="flex items-center gap-1.5 text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">
                           <span className="truncate">{product.brand || "SheoMart Basic"}</span>
                           {product.sellingType && (
@@ -453,7 +614,7 @@ export function AdminStoreCatalogModal({
           <div className="text-xs text-stone-500 dark:text-stone-400 flex items-center gap-1.5">
             <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
             <span>
-              Images will be linked without eating up additional Cloudinary storage. Store owner gets separate stock control.
+              Duplicate prevention active. Products already in {store.storeName || store.name || "this store"} are locked and cannot be pushed again.
             </span>
           </div>
 

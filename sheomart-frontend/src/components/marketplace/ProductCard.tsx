@@ -1,12 +1,12 @@
-"use client";
-
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Crown, Heart, ShieldCheck, Sparkles, Star, Store } from "lucide-react";
+import { Crown, Heart, ShieldCheck, Sparkles, Star, Store, Plus, Minus, Layers } from "lucide-react";
 
 import { useAuthStore } from "@/store/auth-store";
-import { useAddCartItem } from "@/hooks/use-cart";
+import { useCart, useUpdateCartItem, useRemoveCartItem } from "@/hooks/use-cart";
+import { useCartAction } from "@/hooks/use-cart-action";
 import { useWishlist, useAddWishlistItem, useRemoveWishlistItem } from "@/hooks/use-wishlist";
+import { ProductVariantModal } from "@/components/marketplace/ProductVariantModal";
 
 import type { ProductItem, StoreBadge } from "@/types/marketplace";
 
@@ -23,8 +23,12 @@ export function ProductCard({ product, storeBadge }: ProductCardProps) {
   const addWishlistMutation = useAddWishlistItem();
   const removeWishlistMutation = useRemoveWishlistItem();
 
-  const addCartMutation = useAddCartItem();
+  const cartQuery = useCart();
+  const updateCartItemMutation = useUpdateCartItem();
+  const removeCartItemMutation = useRemoveCartItem();
+  const { addItem, isPending: isAdding } = useCartAction();
 
+  const [isVariantModalOpen, setIsVariantModalOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const discountPercent = product.discount ?? (product.discountPrice && product.price ? Math.round(((product.price - product.discountPrice) / product.price) * 100) : 0);
   const displayPrice = product.discountPrice ?? product.price;
@@ -64,6 +68,13 @@ export function ProductCard({ product, storeBadge }: ProductCardProps) {
     }
   };
 
+  const hasMultipleVariants = Boolean(product.variants && product.variants.length > 1);
+  const cartItems = cartQuery.data?.cartItems || [];
+  const productCartItems = cartItems.filter(
+    (item) => item.product.productId === product.productId
+  );
+  const totalInCart = productCartItems.reduce((sum, item) => sum + item.quantity, 0);
+
   const handleAddToCart = () => {
     if (!product.productId) return;
 
@@ -72,31 +83,25 @@ export function ProductCard({ product, storeBadge }: ProductCardProps) {
       return;
     }
 
-    if (product.variants && product.variants.length > 1) {
-      openProduct();
+    if (hasMultipleVariants) {
+      setIsVariantModalOpen(true);
       return;
     }
 
     setMessage(null);
-
     const firstVariant = product.variants?.[0];
 
-    addCartMutation.mutate(
-      {
-        productId: product.productId,
-        quantity: 1,
-        variantId: firstVariant?.variantId,
-        variantLabel: firstVariant?.label,
+    addItem({
+      product,
+      variant: firstVariant,
+      quantity: 1,
+      onSuccess: () => {
+        setMessage("Added to cart");
       },
-      {
-        onSuccess: () => {
-          setMessage("Added to cart");
-        },
-        onError: (error) => {
-          setMessage(error instanceof Error ? error.message : "Unable to add item.");
-        },
-      }
-    );
+      onError: (error) => {
+        setMessage(error.message || "Unable to add item.");
+      },
+    });
   };
 
   const openProduct = () => {
@@ -255,25 +260,108 @@ export function ProductCard({ product, storeBadge }: ProductCardProps) {
 
         <div className="mt-auto pt-4">
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                handleAddToCart();
-              }}
-              disabled={addCartMutation.isPending || isOutOfStock}
-              className={`flex-1 rounded-full px-4 py-3 text-sm font-semibold transition-all duration-200 ${
-                isOutOfStock
-                  ? "cursor-not-allowed bg-stone-300 text-stone-500 dark:bg-stone-700 dark:text-stone-300"
-                  : isRoyal
-                  ? "bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-stone-950 font-bold shadow-md shadow-amber-500/25 hover:from-amber-300 hover:to-yellow-300 active:translate-y-[1px]"
-                  : isVerified
-                  ? "bg-emerald-600 text-white font-bold shadow-md shadow-emerald-600/25 hover:bg-emerald-500 active:translate-y-[1px]"
-                  : "bg-emerald-600 text-white font-semibold shadow-xs hover:bg-emerald-700 active:scale-[0.98]"
-              }`}
-            >
-              {isOutOfStock ? "Out of Stock" : product.variants && product.variants.length > 1 ? "Select Size" : "Add to Cart"}
-            </button>
+            {hasMultipleVariants ? (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleAddToCart();
+                }}
+                disabled={isOutOfStock}
+                className={`flex-1 flex items-center justify-center gap-1.5 rounded-full px-4 py-3 text-sm font-semibold transition-all duration-200 ${
+                  isOutOfStock
+                    ? "cursor-not-allowed bg-stone-300 text-stone-500 dark:bg-stone-700 dark:text-stone-300"
+                    : totalInCart > 0
+                    ? "bg-emerald-50 text-emerald-800 border-2 border-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-200 shadow-sm"
+                    : isRoyal
+                    ? "bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-stone-950 font-bold shadow-md shadow-amber-500/25 hover:from-amber-300 hover:to-yellow-300 active:translate-y-[1px]"
+                    : isVerified
+                    ? "bg-emerald-600 text-white font-bold shadow-md shadow-emerald-600/25 hover:bg-emerald-500 active:translate-y-[1px]"
+                    : "bg-emerald-600 text-white font-semibold shadow-xs hover:bg-emerald-700 active:scale-[0.98]"
+                }`}
+              >
+                {isOutOfStock ? (
+                  "Out of Stock"
+                ) : totalInCart > 0 ? (
+                  <>
+                    <span className="font-bold">{totalInCart} in Cart</span>
+                    <span className="text-xs opacity-75">• Options</span>
+                  </>
+                ) : (
+                  <>
+                    <Layers className="h-4 w-4" />
+                    <span>Select Size</span>
+                  </>
+                )}
+              </button>
+            ) : totalInCart > 0 ? (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="flex-1 flex items-center justify-between rounded-full border-2 border-emerald-600 bg-emerald-50 px-2 py-1.5 dark:bg-emerald-950/60 shadow-sm"
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    const singleItem = productCartItems[0];
+                    if (singleItem) {
+                      if (singleItem.quantity <= 1) {
+                        removeCartItemMutation.mutate(singleItem.cartItemId);
+                      } else {
+                        updateCartItemMutation.mutate({
+                          cartItemId: singleItem.cartItemId,
+                          quantity: singleItem.quantity - 1,
+                        });
+                      }
+                    }
+                  }}
+                  disabled={updateCartItemMutation.isPending || removeCartItemMutation.isPending}
+                  className="rounded-full p-1.5 text-emerald-800 hover:bg-emerald-100 dark:text-emerald-200 dark:hover:bg-emerald-900/60 transition"
+                  aria-label="Decrease quantity"
+                >
+                  <Minus className="h-4 w-4" />
+                </button>
+                <span className="text-sm font-bold text-emerald-900 dark:text-emerald-100">
+                  {totalInCart} in Cart
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const singleItem = productCartItems[0];
+                    if (singleItem) {
+                      updateCartItemMutation.mutate({
+                        cartItemId: singleItem.cartItemId,
+                        quantity: singleItem.quantity + 1,
+                      });
+                    }
+                  }}
+                  disabled={updateCartItemMutation.isPending}
+                  className="rounded-full p-1.5 text-emerald-800 hover:bg-emerald-100 dark:text-emerald-200 dark:hover:bg-emerald-900/60 transition"
+                  aria-label="Increase quantity"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleAddToCart();
+                }}
+                disabled={isAdding || isOutOfStock}
+                className={`flex-1 rounded-full px-4 py-3 text-sm font-semibold transition-all duration-200 ${
+                  isOutOfStock
+                    ? "cursor-not-allowed bg-stone-300 text-stone-500 dark:bg-stone-700 dark:text-stone-300"
+                    : isRoyal
+                    ? "bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-stone-950 font-bold shadow-md shadow-amber-500/25 hover:from-amber-300 hover:to-yellow-300 active:translate-y-[1px]"
+                    : isVerified
+                    ? "bg-emerald-600 text-white font-bold shadow-md shadow-emerald-600/25 hover:bg-emerald-500 active:translate-y-[1px]"
+                    : "bg-emerald-600 text-white font-semibold shadow-xs hover:bg-emerald-700 active:scale-[0.98]"
+                }`}
+              >
+                {isOutOfStock ? "Out of Stock" : "Add to Cart"}
+              </button>
+            )}
 
             <button
               type="button"
@@ -300,6 +388,12 @@ export function ProductCard({ product, storeBadge }: ProductCardProps) {
             </p>
           ) : null}
         </div>
+
+        <ProductVariantModal
+          product={product}
+          open={isVariantModalOpen}
+          onClose={() => setIsVariantModalOpen(false)}
+        />
       </div>
     </article>
   );

@@ -21,6 +21,7 @@ export interface AddCartItemPayload {
   quantity?: number;
   variantId?: string;
   variantLabel?: string;
+  clearPreviousCart?: boolean;
 }
 
 export interface AddCartItemResponse {

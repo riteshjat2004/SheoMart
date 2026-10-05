@@ -119,6 +119,11 @@ export interface IOrder extends Document {
   productSavingsShown: number;
   grandTotal: number;
   orderItems: IOrderItem[];
+  orderRating?: {
+    rating: number;
+    comment?: string;
+    ratedAt: Date;
+  };
   status: string;
   statusUpdatedAt?: Date;
   createdAt: Date;
@@ -372,6 +377,11 @@ const orderSchema = new Schema<IOrder>(
     statusUpdatedAt: {
       type: Date,
       default: null,
+    },
+    orderRating: {
+      rating: { type: Number, min: 1, max: 5 },
+      comment: { type: String, default: "", trim: true, maxlength: 1000 },
+      ratedAt: { type: Date },
     },
   },
   {

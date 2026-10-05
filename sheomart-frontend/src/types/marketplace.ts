@@ -39,6 +39,7 @@ export interface NutritionalInfo {
 export interface ProductItem {
   _id?: string;
   productId?: string;
+  sourceProductId?: string;
   storeId?: string;
   categoryId?: string;
   name: string;

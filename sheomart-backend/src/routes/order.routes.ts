@@ -15,6 +15,7 @@ import {
   updateDeliveryEta,
   updateSellerNotes,
   updateSellerOrderStatus,
+  rateOrderHandler,
 } from "../controllers/order.controller";
 
 const router = Router();
@@ -27,6 +28,7 @@ router.get("/", authorize(USER_ROLES.CUSTOMER), asyncHandler(getOrders));
 router.get("/store", authorize(USER_ROLES.STORE_OWNER), asyncHandler(getStoreOrders));
 router.patch("/bulk-status", authorize(USER_ROLES.STORE_OWNER), asyncHandler(bulkUpdateSellerOrderStatus));
 
+router.post("/:orderId/rate", authorize(USER_ROLES.CUSTOMER), asyncHandler(rateOrderHandler));
 router.patch("/:orderId/cancel", authorize(USER_ROLES.CUSTOMER), asyncHandler(cancelCustomerOrder));
 router.get("/:orderId", authorize(USER_ROLES.CUSTOMER, USER_ROLES.STORE_OWNER), asyncHandler(getOrder));
 router.patch(

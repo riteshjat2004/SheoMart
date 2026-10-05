@@ -28,6 +28,7 @@ import { PaymentSummaryCard } from "@/components/profile/PaymentSummaryCard";
 import { LiveDeliveryEtaCard } from "@/components/profile/LiveDeliveryEtaCard";
 import { PickupInfoCard } from "@/components/profile/PickupInfoCard";
 import { OrderStatusTimeline } from "@/components/profile/OrderStatusTimeline";
+import { StoreRatingCard } from "@/components/profile/StoreRatingCard";
 import { ErrorState } from "@/components/common/error-state";
 import { EmptyState } from "@/components/common/empty-state";
 import { LoadingSkeleton } from "@/components/dashboard/LoadingSkeleton";
@@ -69,6 +70,11 @@ export default function OrderDetailsPage() {
   const rawStatus = (order?.pickupStatus || order?.status || "ORDER_PLACED").toUpperCase();
   const isCancellable = rawStatus === "ORDER_PLACED" || rawStatus === "CONFIRMED";
   const isDelivery = order?.fulfillmentType === "delivery" || order?.deliveryMethod === "delivery";
+  const isCompleted =
+    rawStatus === "DELIVERED" ||
+    rawStatus === "PICKED_UP" ||
+    Boolean(order?.deliveredAt) ||
+    Boolean(order?.pickedUpAt);
 
   const handleCancelOrder = () => {
     if (!order?.orderId) return;
@@ -298,6 +304,9 @@ export default function OrderDetailsPage() {
 
           {/* Delivery ETA if applicable */}
           {isDelivery && <LiveDeliveryEtaCard estimatedDeliveryAt={order.estimatedDeliveryAt} />}
+
+          {/* Store Experience Rating */}
+          {isCompleted && <StoreRatingCard order={order} />}
 
           {/* Items breakdown */}
           <OrderItemsList

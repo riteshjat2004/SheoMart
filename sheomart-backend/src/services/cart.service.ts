@@ -2,6 +2,7 @@ import { AppError } from "../errors/AppError";
 import { CartItem } from "../models/cart.model";
 import { Inventory } from "../models/inventory.model";
 import { Product } from "../models/product.model";
+import { Store } from "../models/store.model";
 import { AddCartItemInput, UpdateCartItemInput } from "../validators/cart.validator";
 
 export class CartService {
@@ -157,10 +158,32 @@ export class CartService {
     if (existingCartItems.length) {
       const cartProducts = await Product.find({
         productId: { $in: existingCartItems.map((item) => item.productId) },
-      }).select("productId storeId").lean();
+      }).select("productId storeId storeName").lean();
       const storeIds = new Set(cartProducts.map((cartProduct) => cartProduct.storeId));
       if (storeIds.size > 0 && !storeIds.has(product.storeId)) {
-        throw new AppError("Cart can contain products from only one store", 409);
+        if (data.clearPreviousCart) {
+          await CartItem.deleteMany({ userId });
+        } else {
+          const previousStoreProduct = cartProducts.find((cp) => cp.storeId !== product.storeId);
+          let previousStoreName = previousStoreProduct?.storeName || "";
+          if (!previousStoreName && previousStoreProduct?.storeId) {
+            const prevStore = await Store.findOne({ storeId: previousStoreProduct.storeId }).select("storeName").lean();
+            previousStoreName = prevStore?.storeName || "";
+          }
+          if (!previousStoreName) previousStoreName = "another store";
+
+          let newStoreName = product.storeName || "";
+          if (!newStoreName && product.storeId) {
+            const currentStore = await Store.findOne({ storeId: product.storeId }).select("storeName").lean();
+            newStoreName = currentStore?.storeName || "";
+          }
+          if (!newStoreName) newStoreName = "the new store";
+
+          throw new AppError(
+            `Your cart already contains items from ${previousStoreName}. Do you want to clear your cart and start adding items from ${newStoreName}?`,
+            409
+          );
+        }
       }
     }
 
@@ -215,14 +238,36 @@ export class CartService {
       };
     }
 
-    const cartItem = await CartItem.create({
-      userId,
-      productId: data.productId,
-      variantId,
-      variantLabel,
-      storeId: data.storeId ?? product.storeId,
-      quantity,
-    });
+    let cartItem;
+    try {
+      cartItem = await CartItem.create({
+        userId,
+        productId: data.productId,
+        variantId,
+        variantLabel,
+        storeId: data.storeId ?? product.storeId,
+        quantity,
+      });
+    } catch (err: unknown) {
+      const mongoErr = err as { code?: number };
+      if (mongoErr.code === 11000) {
+        const item = await CartItem.findOne({
+          userId,
+          productId: data.productId,
+          variantId,
+        });
+        if (item) {
+          item.quantity += quantity;
+          await item.save();
+          return {
+            cartItem: item,
+            availability,
+            cart: await this.getCartForUser(userId),
+          };
+        }
+      }
+      throw err;
+    }
 
     return {
       cartItem,

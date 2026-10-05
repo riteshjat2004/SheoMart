@@ -23,6 +23,7 @@ export interface INutritionalInfo {
 
 export interface IProduct extends Document {
   productId: string;
+  sourceProductId?: string | null;
   storeId: string;
   storeName?: string;
   categoryId: string;
@@ -73,6 +74,12 @@ const productSchema = new Schema<IProduct>(
       default: () => uuidv4(),
       unique: true,
       immutable: true,
+    },
+
+    sourceProductId: {
+      type: String,
+      default: null,
+      index: true,
     },
 
     storeId: {

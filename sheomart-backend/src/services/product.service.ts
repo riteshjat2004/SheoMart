@@ -1064,6 +1064,38 @@ export class ProductService {
     return enriched[0];
   }
 
+  static async getStoreExistingProducts(storeId: string) {
+    const products = await Product.find({
+      storeId,
+      isDeleted: { $ne: true },
+    })
+      .select("productId name sku sourceProductId")
+      .lean();
+
+    const existingSourceProductIds: string[] = [];
+    const existingNames: string[] = [];
+    const existingCleanSkus: string[] = [];
+
+    for (const p of products) {
+      if (p.productId) existingSourceProductIds.push(p.productId);
+      if (p.sourceProductId) existingSourceProductIds.push(p.sourceProductId);
+      if (p.name) existingNames.push(p.name.trim().toLowerCase());
+      if (p.sku) {
+        const cleanSku = p.sku.replace(/-STR\w+(-[0-9]+)?$/i, "").trim().toUpperCase();
+        if (cleanSku) existingCleanSkus.push(cleanSku);
+      }
+    }
+
+    return {
+      storeId,
+      totalCount: products.length,
+      existingProducts: products,
+      existingSourceProductIds: Array.from(new Set(existingSourceProductIds)),
+      existingNames: Array.from(new Set(existingNames)),
+      existingCleanSkus: Array.from(new Set(existingCleanSkus)),
+    };
+  }
+
   static async cloneProductsToStore(data: CloneProductsToStoreInput, userId: string) {
     const targetStore = await Store.findOne({ storeId: data.targetStoreId });
     if (!targetStore) {
@@ -1079,10 +1111,63 @@ export class ProductService {
       throw new AppError("No valid products found to clone", 404);
     }
 
+    // Fetch all existing products for target store to prevent duplicate pushing
+    const existingStoreProducts = await Product.find({
+      storeId: targetStore.storeId,
+      isDeleted: { $ne: true },
+    })
+      .select("productId name sku sourceProductId")
+      .lean();
+
+    const existingSourceIds = new Set<string>();
+    const existingNames = new Set<string>();
+    const existingCleanSkus = new Set<string>();
+
+    for (const ep of existingStoreProducts) {
+      if (ep.productId) existingSourceIds.add(ep.productId);
+      if (ep.sourceProductId) existingSourceIds.add(ep.sourceProductId);
+      if (ep.name) existingNames.add(ep.name.trim().toLowerCase());
+      if (ep.sku) {
+        const clean = ep.sku.replace(/-STR\w+(-[0-9]+)?$/i, "").trim().toUpperCase();
+        if (clean) existingCleanSkus.add(clean);
+      }
+    }
+
+    const productsToClone = [];
+    const skippedProducts = [];
+
+    for (const source of sourceProducts) {
+      const sourceCleanSku = source.sku.replace(/-STR\w+(-[0-9]+)?$/i, "").trim().toUpperCase();
+      const isAlreadyInStore =
+        source.storeId === targetStore.storeId ||
+        existingSourceIds.has(source.productId) ||
+        (source.sourceProductId && existingSourceIds.has(source.sourceProductId)) ||
+        existingNames.has(source.name.trim().toLowerCase()) ||
+        (sourceCleanSku && existingCleanSkus.has(sourceCleanSku));
+
+      if (isAlreadyInStore) {
+        skippedProducts.push(source);
+      } else {
+        productsToClone.push(source);
+        // Track inside current batch as well to prevent intra-batch duplicates
+        if (source.productId) existingSourceIds.add(source.productId);
+        if (source.name) existingNames.add(source.name.trim().toLowerCase());
+        if (sourceCleanSku) existingCleanSkus.add(sourceCleanSku);
+      }
+    }
+
+    if (productsToClone.length === 0) {
+      const skippedNames = skippedProducts.map((p) => `"${p.name}"`).join(", ");
+      throw new AppError(
+        `Selected product(s) are already present in ${targetStore.storeName || "this store"}: ${skippedNames}. Duplicate products cannot be pushed.`,
+        400
+      );
+    }
+
     const clonedProducts = [];
     const storeSuffix = targetStore.storeId.slice(-4).toUpperCase();
 
-    for (const source of sourceProducts) {
+    for (const source of productsToClone) {
       // Generate unique SKU for target store
       const cleanSku = source.sku.replace(/-STR\w+$/, "");
       let candidateSku = `${cleanSku}-STR${storeSuffix}`;
@@ -1118,6 +1203,7 @@ export class ProductService {
       const cloned = await Product.create({
         storeId: targetStore.storeId,
         storeName: targetStore.storeName,
+        sourceProductId: source.sourceProductId || source.productId,
         categoryId: source.categoryId,
         name: source.name,
         slug: newSlug,
@@ -1159,6 +1245,8 @@ export class ProductService {
         storeName: targetStore.storeName,
       },
       clonedCount: clonedProducts.length,
+      skippedCount: skippedProducts.length,
+      skippedProducts: skippedProducts.map((p) => p.name),
       products: clonedProducts,
     };
   }

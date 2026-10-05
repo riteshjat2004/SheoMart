@@ -1,13 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { FileText, Receipt, ShoppingBag, Wallet } from "lucide-react";
+import { FileText, Receipt, Wallet } from "lucide-react";
 import { NewInvoiceWorkspace } from "@/components/dashboard/store/NewInvoiceWorkspace";
 import { InvoiceHistoryTable } from "@/components/dashboard/store/InvoiceHistoryTable";
-import { PickupOrdersQueue } from "@/components/dashboard/store/PickupOrdersQueue";
 import { DailyCashSummaryCard } from "@/components/dashboard/store/DailyCashSummaryCard";
 
-type BillingTabId = "new-invoice" | "pickup-orders" | "invoice-history" | "daily-cash";
+type BillingTabId = "new-invoice" | "invoice-history" | "daily-cash";
 
 const tabs: Array<{
   id: BillingTabId;
@@ -18,11 +17,6 @@ const tabs: Array<{
     id: "new-invoice",
     label: "POS Terminal (New Bill)",
     icon: Receipt,
-  },
-  {
-    id: "pickup-orders",
-    label: "Pickup Orders Queue",
-    icon: ShoppingBag,
   },
   {
     id: "invoice-history",
@@ -70,7 +64,6 @@ export function BillingTabs() {
       </div>
 
       {activeTab === "new-invoice" && <NewInvoiceWorkspace />}
-      {activeTab === "pickup-orders" && <PickupOrdersQueue />}
       {activeTab === "invoice-history" && <InvoiceHistoryTable />}
       {activeTab === "daily-cash" && <DailyCashSummaryCard />}
     </div>

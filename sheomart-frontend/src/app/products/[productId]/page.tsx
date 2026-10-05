@@ -17,6 +17,7 @@ import {
   ShoppingBag,
   Plus,
   Minus,
+  Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/layout/container";
@@ -32,9 +33,11 @@ import { useProduct } from "@/hooks/use-product";
 import { useProducts } from "@/hooks/use-products";
 import { useStore } from "@/hooks/use-store";
 import { useCategories } from "@/hooks/use-categories";
-import { useAddCartItem } from "@/hooks/use-cart";
+import { useCart, useAddCartItem, useUpdateCartItem, useRemoveCartItem } from "@/hooks/use-cart";
+import { useCartAction } from "@/hooks/use-cart-action";
 import { useAddWishlistItem, useRemoveWishlistItem, useWishlist } from "@/hooks/use-wishlist";
 import { addRecentlyViewedProduct } from "@/lib/recently-viewed";
+import type { ProductVariant } from "@/types/marketplace";
 
 export function ProductDetailContent({ productId, storeId }: { productId?: string; storeId?: string }) {
   const router = useRouter();
@@ -42,6 +45,10 @@ export function ProductDetailContent({ productId, storeId }: { productId?: strin
   const productsQuery = useProducts();
   const categoriesQuery = useCategories();
   const wishlistQuery = useWishlist();
+  const cartQuery = useCart();
+  const updateCartItemMutation = useUpdateCartItem();
+  const removeCartItemMutation = useRemoveCartItem();
+  const { addItem, isPending: isAdding } = useCartAction();
   const addCartItemMutation = useAddCartItem();
   const addWishlistItemMutation = useAddWishlistItem();
   const removeWishlistItemMutation = useRemoveWishlistItem();
@@ -149,6 +156,34 @@ export function ProductDetailContent({ productId, storeId }: { productId?: strin
     product?.category ??
     "Category unavailable";
 
+  // Cart items for this product
+  const cartItems = cartQuery.data?.cartItems || [];
+  const productCartItems = useMemo(() => {
+    if (!product?.productId) return [];
+    return cartItems.filter((item) => item.product.productId === product.productId);
+  }, [cartItems, product?.productId]);
+
+  const totalInCartForProduct = useMemo(
+    () => productCartItems.reduce((sum, item) => sum + item.quantity, 0),
+    [productCartItems]
+  );
+
+  const totalCartPriceForProduct = useMemo(
+    () =>
+      productCartItems.reduce(
+        (sum, item) =>
+          sum +
+          (item.unitDiscountPrice ??
+            item.unitPrice ??
+            item.product?.discountPrice ??
+            item.product?.price ??
+            0) *
+            item.quantity,
+        0
+      ),
+    [productCartItems]
+  );
+
   const handleAddToCart = () => {
     if (!product?.productId) return;
     if (!isAuthenticated) {
@@ -157,25 +192,51 @@ export function ProductDetailContent({ productId, storeId }: { productId?: strin
     }
 
     setMessage(null);
-    addCartItemMutation.mutate(
-      {
-        productId: product.productId,
-        storeId: selectedStoreId ?? undefined,
-        quantity,
-        variantId: selectedVariant?.variantId,
-        variantLabel: selectedVariant?.label,
+    addItem({
+      product: { ...product, storeId: selectedStoreId ?? product.storeId },
+      variant: selectedVariant ?? undefined,
+      quantity,
+      onSuccess: () => {
+        setMessage(
+          `Added ${quantity} item(s) ${selectedVariant ? `(${selectedVariant.label}) ` : ""}to your cart.`
+        );
       },
-      {
-        onSuccess: () => {
-          setMessage(
-            `Added ${quantity} item(s) ${selectedVariant ? `(${selectedVariant.label}) ` : ""}to your cart.`
-          );
-        },
-        onError: (error) => {
-          setMessage(error instanceof Error ? error.message : "Unable to add item to cart.");
-        },
-      }
-    );
+      onError: (error) => {
+        setMessage(error.message || "Unable to add item to cart.");
+      },
+    });
+  };
+
+  const handleAddVariant = (variant: ProductVariant, qtyToAdd = 1) => {
+    if (!product?.productId) return;
+    if (!isAuthenticated) {
+      router.push("/login");
+      return;
+    }
+
+    setMessage(null);
+    addItem({
+      product: { ...product, storeId: selectedStoreId ?? product.storeId },
+      variant,
+      quantity: qtyToAdd,
+      onSuccess: () => {
+        setMessage(`Added ${variant.label} to your cart.`);
+      },
+      onError: (error) => {
+        setMessage(error.message || "Unable to add variant to cart.");
+      },
+    });
+  };
+
+  const handleUpdateCartItemQty = (cartItemId: string, newQty: number) => {
+    setMessage(null);
+    if (newQty <= 0) {
+      removeCartItemMutation.mutate(cartItemId, {
+        onSuccess: () => setMessage("Item removed from cart."),
+      });
+    } else {
+      updateCartItemMutation.mutate({ cartItemId, quantity: newQty });
+    }
   };
 
   const handleToggleWishlist = () => {
@@ -332,18 +393,25 @@ export function ProductDetailContent({ productId, storeId }: { productId?: strin
 
                     {/* Portion / Variant Selector */}
                     {product.variants && product.variants.length > 0 && (
-                      <div className="space-y-2 rounded-2xl border border-stone-200/80 bg-stone-50/60 p-4 dark:border-stone-800 dark:bg-stone-900/40">
+                      <div className="space-y-3 rounded-2xl border border-stone-200/80 bg-stone-50/60 p-4 dark:border-stone-800 dark:bg-stone-900/40">
                         <div className="flex items-center justify-between">
-                          <label className="text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300">
-                            Select Pack / Portion Size
-                          </label>
-                          {selectedVariant && (
-                            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                              Selected: {selectedVariant.label}
+                          <div>
+                            <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-stone-800 dark:text-stone-200">
+                              <Layers className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                              Available Packs &amp; Portions
+                            </label>
+                            <p className="text-[11px] text-stone-500">
+                              Add any mix of pack sizes simultaneously to your cart
+                            </p>
+                          </div>
+                          {totalInCartForProduct > 0 && (
+                            <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300">
+                              {totalInCartForProduct} in Cart
                             </span>
                           )}
                         </div>
-                        <div className="flex flex-wrap gap-2.5 pt-1">
+
+                        <div className="grid gap-2.5 pt-1">
                           {product.variants.map((variant) => {
                             const isSelected = selectedVariantId === variant.variantId;
                             const vPrice =
@@ -352,28 +420,92 @@ export function ProductDetailContent({ productId, storeId }: { productId?: strin
                               variant.discountPrice < variant.price
                                 ? variant.discountPrice
                                 : variant.price;
+                            const hasVariantDiscount =
+                              variant.discountPrice &&
+                              variant.discountPrice > 0 &&
+                              variant.discountPrice < variant.price;
+                            const vDiscountPercent = hasVariantDiscount
+                              ? Math.round(((variant.price - variant.discountPrice!) / variant.price) * 100)
+                              : 0;
+
+                            const cartItem = productCartItems.find(
+                              (item) => item.variantId === variant.variantId
+                            );
+                            const inCartQty = cartItem ? cartItem.quantity : 0;
+
                             return (
-                              <button
+                              <div
                                 key={variant.variantId}
-                                type="button"
                                 onClick={() => setSelectedVariantId(variant.variantId)}
-                                className={`flex items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-semibold transition ${
+                                className={`flex items-center justify-between rounded-xl border p-3 transition cursor-pointer ${
                                   isSelected
-                                    ? "border-emerald-600 bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-600/20"
-                                    : "border-stone-200 bg-white text-stone-700 hover:border-emerald-500/50 hover:bg-emerald-50/30 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-200"
+                                    ? "border-emerald-600 bg-white shadow-xs ring-1 ring-emerald-600/30 dark:border-emerald-500 dark:bg-stone-900"
+                                    : "border-stone-200 bg-white hover:border-emerald-300 dark:border-stone-800 dark:bg-stone-900/60"
                                 }`}
                               >
-                                <span>{variant.label}</span>
-                                <span
-                                  className={`text-[11px] font-bold ${
-                                    isSelected
-                                      ? "text-emerald-100"
-                                      : "text-emerald-600 dark:text-emerald-400"
-                                  }`}
-                                >
-                                  ₹{vPrice}
-                                </span>
-                              </button>
+                                <div className="flex-1 min-w-0 pr-3">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-bold text-stone-900 dark:text-stone-100">
+                                      {variant.label}
+                                    </span>
+                                    {hasVariantDiscount && (
+                                      <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                                        {vDiscountPercent}% OFF
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-baseline gap-2 mt-0.5">
+                                    <span className="text-sm font-extrabold text-stone-900 dark:text-stone-50">
+                                      ₹{vPrice}
+                                    </span>
+                                    {hasVariantDiscount && (
+                                      <span className="text-xs text-stone-400 line-through">
+                                        ₹{variant.price}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Direct Cart Controller for this Variant */}
+                                <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                                  {inCartQty > 0 ? (
+                                    <div className="flex items-center rounded-full border-2 border-emerald-600 bg-emerald-50 px-1.5 py-0.5 shadow-sm dark:bg-emerald-950/60">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleUpdateCartItemQty(cartItem!.cartItemId, inCartQty - 1)}
+                                        disabled={updateCartItemMutation.isPending || removeCartItemMutation.isPending}
+                                        className="rounded-full p-1 text-emerald-800 hover:bg-emerald-100 dark:text-emerald-200 dark:hover:bg-emerald-900/60 transition"
+                                        aria-label="Decrease quantity"
+                                      >
+                                        <Minus className="h-3.5 w-3.5" />
+                                      </button>
+                                      <span className="min-w-6 text-center text-xs font-bold text-emerald-900 dark:text-emerald-100 px-1">
+                                        {inCartQty}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleUpdateCartItemQty(cartItem!.cartItemId, inCartQty + 1)}
+                                        disabled={updateCartItemMutation.isPending}
+                                        className="rounded-full p-1 text-emerald-800 hover:bg-emerald-100 dark:text-emerald-200 dark:hover:bg-emerald-900/60 transition"
+                                        aria-label="Increase quantity"
+                                      >
+                                        <Plus className="h-3.5 w-3.5" />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleAddVariant(variant, 1)}
+                                      disabled={isAdding || isOutOfStock}
+                                      className="rounded-full border-emerald-600 text-xs font-bold text-emerald-700 hover:bg-emerald-600 hover:text-white dark:border-emerald-500 dark:text-emerald-300 dark:hover:bg-emerald-600 h-8 px-3.5"
+                                    >
+                                      <Plus className="mr-1 h-3.5 w-3.5" /> Add
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
                             );
                           })}
                         </div>
@@ -493,55 +625,119 @@ export function ProductDetailContent({ productId, storeId }: { productId?: strin
 
                   {/* Quantity & Action Buttons */}
                   <div className="space-y-3 pt-4 border-t border-stone-100 dark:border-stone-800">
-                    <div className="flex items-center gap-4">
-                      {/* Quantity Counter */}
-                      <div className="flex items-center rounded-full border border-stone-200 bg-stone-50 p-1 dark:border-stone-700 dark:bg-stone-950">
+                    {totalInCartForProduct > 0 ? (
+                      <div className="flex flex-col gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/40">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                            <span className="font-bold text-stone-900 dark:text-stone-50">
+                              {totalInCartForProduct} item(s) in your cart
+                            </span>
+                          </div>
+                          <span className="text-base font-extrabold text-stone-900 dark:text-stone-50">
+                            Total: ₹{totalCartPriceForProduct}
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2 text-xs text-stone-600 dark:text-stone-300">
+                          {productCartItems.map((item) => {
+                            const unitPrice =
+                              item.unitDiscountPrice ??
+                              item.unitPrice ??
+                              item.product?.discountPrice ??
+                              item.product?.price ??
+                              0;
+                            return (
+                              <span
+                                key={item.cartItemId}
+                                className="rounded-full bg-white px-2.5 py-1 font-medium shadow-2xs dark:bg-stone-800"
+                              >
+                                {item.quantity} × {item.variantLabel || item.product.unit || "Pack"} (₹{unitPrice * item.quantity})
+                              </span>
+                            );
+                          })}
+                        </div>
+
+                        <div className="flex items-center gap-3 pt-1">
+                          <Button
+                            asChild
+                            className="flex-1 rounded-full bg-emerald-600 py-6 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-700"
+                          >
+                            <Link href="/cart">
+                              <ShoppingBag className="mr-2 h-4 w-4" /> Go to Cart • ₹{totalCartPriceForProduct}
+                            </Link>
+                          </Button>
+
+                          {/* Wishlist button */}
+                          <button
+                            type="button"
+                            onClick={handleToggleWishlist}
+                            disabled={
+                              addWishlistItemMutation.isPending || removeWishlistItemMutation.isPending
+                            }
+                            className={`flex h-12 w-12 items-center justify-center rounded-full border transition ${
+                              isInWishlist
+                                ? "border-red-200 bg-red-50 text-red-500 shadow-sm dark:border-red-900/60 dark:bg-red-950/40"
+                                : "border-stone-200 bg-stone-50 text-stone-600 hover:text-emerald-600 dark:border-stone-700 dark:bg-stone-950"
+                            }`}
+                          >
+                            <Heart className={`h-5 w-5 ${isInWishlist ? "fill-current" : ""}`} />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-4">
+                        {/* Quantity Counter */}
+                        <div className="flex items-center rounded-full border border-stone-200 bg-stone-50 p-1 dark:border-stone-700 dark:bg-stone-950">
+                          <button
+                            type="button"
+                            onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                            className="rounded-full p-2 text-stone-600 hover:bg-white hover:text-stone-900 dark:text-stone-300 dark:hover:bg-stone-800"
+                          >
+                            <Minus className="h-4 w-4" />
+                          </button>
+                          <span className="w-8 text-center text-sm font-bold text-stone-900 dark:text-stone-50">
+                            {quantity}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setQuantity((q) => Math.min(product.quantity ?? 10, q + 1))}
+                            disabled={(product.quantity ?? 0) <= quantity}
+                            className="rounded-full p-2 text-stone-600 hover:bg-white hover:text-stone-900 dark:text-stone-300 dark:hover:bg-stone-800"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        </div>
+
+                        {/* Add to Cart button */}
+                        <Button
+                          onClick={handleAddToCart}
+                          disabled={isOutOfStock || isAdding}
+                          className="flex-1 rounded-full bg-emerald-600 py-6 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-700"
+                        >
+                          <ShoppingBag className="mr-2 h-4 w-4" />
+                          {isOutOfStock
+                            ? "Out of Stock"
+                            : `Add ${selectedVariant ? `(${selectedVariant.label})` : ""} to Cart • ₹${displayPrice * quantity}`}
+                        </Button>
+
+                        {/* Wishlist button */}
                         <button
                           type="button"
-                          onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                          className="rounded-full p-2 text-stone-600 hover:bg-white hover:text-stone-900 dark:text-stone-300 dark:hover:bg-stone-800"
+                          onClick={handleToggleWishlist}
+                          disabled={
+                            addWishlistItemMutation.isPending || removeWishlistItemMutation.isPending
+                          }
+                          className={`flex h-12 w-12 items-center justify-center rounded-full border transition ${
+                            isInWishlist
+                              ? "border-red-200 bg-red-50 text-red-500 shadow-sm dark:border-red-900/60 dark:bg-red-950/40"
+                              : "border-stone-200 bg-stone-50 text-stone-600 hover:text-emerald-600 dark:border-stone-700 dark:bg-stone-950"
+                          }`}
                         >
-                          <Minus className="h-4 w-4" />
-                        </button>
-                        <span className="w-8 text-center text-sm font-bold text-stone-900 dark:text-stone-50">
-                          {quantity}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setQuantity((q) => Math.min(product.quantity ?? 10, q + 1))}
-                          disabled={(product.quantity ?? 0) <= quantity}
-                          className="rounded-full p-2 text-stone-600 hover:bg-white hover:text-stone-900 dark:text-stone-300 dark:hover:bg-stone-800"
-                        >
-                          <Plus className="h-4 w-4" />
+                          <Heart className={`h-5 w-5 ${isInWishlist ? "fill-current" : ""}`} />
                         </button>
                       </div>
-
-                      {/* Add to Cart button */}
-                      <Button
-                        onClick={handleAddToCart}
-                        disabled={isOutOfStock || addCartItemMutation.isPending}
-                        className="flex-1 rounded-full bg-emerald-600 py-6 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 hover:bg-emerald-700"
-                      >
-                        <ShoppingBag className="mr-2 h-4 w-4" />
-                        {isOutOfStock ? "Out of Stock" : `Add to Cart • ₹${displayPrice * quantity}`}
-                      </Button>
-
-                      {/* Wishlist button */}
-                      <button
-                        type="button"
-                        onClick={handleToggleWishlist}
-                        disabled={
-                          addWishlistItemMutation.isPending || removeWishlistItemMutation.isPending
-                        }
-                        className={`flex h-12 w-12 items-center justify-center rounded-full border transition ${
-                          isInWishlist
-                            ? "border-red-200 bg-red-50 text-red-500 shadow-sm dark:border-red-900/60 dark:bg-red-950/40"
-                            : "border-stone-200 bg-stone-50 text-stone-600 hover:text-emerald-600 dark:border-stone-700 dark:bg-stone-950"
-                        }`}
-                      >
-                        <Heart className={`h-5 w-5 ${isInWishlist ? "fill-current" : ""}`} />
-                      </button>
-                    </div>
+                    )}
 
                     {message && (
                       <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">

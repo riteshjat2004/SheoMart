@@ -127,6 +127,7 @@ export const createOfflineInvoice = async (
         let productDiscount =
           product.discountPrice > 0 ? Math.max(0, product.price - product.discountPrice) : 0;
         let variantLabel = item.variantLabel || "";
+        let variantSku = product.sku;
 
         if (item.variantId && product.variants?.length) {
           const v = product.variants.find((variant) => variant.variantId === item.variantId);
@@ -135,6 +136,11 @@ export const createOfflineInvoice = async (
             productDiscount =
               v.discountPrice && v.discountPrice > 0 ? Math.max(0, v.price - v.discountPrice) : 0;
             variantLabel = v.label;
+            if (v.sku) variantSku = v.sku;
+
+            if (product.stockTrackingMode === "SEPARATE" && typeof v.stock === "number" && v.stock < item.quantity) {
+              throw new AppError(`Insufficient stock for ${product.name} (${v.label}). Available: ${v.stock}`, 400);
+            }
           }
         }
 
@@ -150,7 +156,7 @@ export const createOfflineInvoice = async (
           variantId: item.variantId || "",
           variantLabel,
           productNameSnapshot: variantLabel ? `${product.name} (${variantLabel})` : product.name,
-          skuSnapshot: product.sku,
+          skuSnapshot: variantSku || product.sku,
           categorySnapshot: product.categoryId,
           priceSnapshot: baseUnitPrice,
           discountSnapshot: discountPerUnit,
@@ -247,6 +253,36 @@ export const createOfflineInvoice = async (
           ],
           { session }
         );
+
+        // Synchronize Product model quantity and variant stocks
+        const product = productMap.get(productId);
+        if (product) {
+          const productItemsForThisProduct = data.items.filter((it) => it.productId === productId);
+
+          if (product.stockTrackingMode === "SEPARATE" && product.variants?.length) {
+            for (const it of productItemsForThisProduct) {
+              if (it.variantId) {
+                await Product.findOneAndUpdate(
+                  {
+                    productId,
+                    storeId: store.storeId,
+                    "variants.variantId": it.variantId,
+                  },
+                  {
+                    $inc: { "variants.$.stock": -it.quantity },
+                  },
+                  { session }
+                );
+              }
+            }
+          }
+
+          await Product.findOneAndUpdate(
+            { productId, storeId: store.storeId },
+            { $set: { quantity: updatedInventory.availableQuantity, updatedBy: createdBy } },
+            { session }
+          );
+        }
       }
 
       invoiceSummary = {
@@ -1442,7 +1478,9 @@ export const getPosCatalog = async (ownerId: string) => {
     isActive: true,
     isDeleted: { $ne: true },
   })
-    .select("productId name sku brand price discountPrice quantity thumbnail images categoryId")
+    .select(
+      "productId name sku brand price discountPrice quantity sellingType baseUnit unitLabel minQuantity stepQuantity allowCustomQuantity stockTrackingMode variants thumbnail images categoryId"
+    )
     .lean();
 
   const productIds = products.map((p) => p.productId);
@@ -1525,6 +1563,7 @@ export const getPosCatalog = async (ownerId: string) => {
       stepQuantity: product.stepQuantity || 1,
       allowCustomQuantity: product.allowCustomQuantity || false,
       variants: product.variants || [],
+      stockTrackingMode: product.stockTrackingMode || "SEPARATE",
       availableQuantity,
       lowStockThreshold,
       stockStatus,

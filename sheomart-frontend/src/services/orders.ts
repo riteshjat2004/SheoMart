@@ -62,6 +62,11 @@ export interface OrderRecord {
   pickupHours?: string;
   store?: { storeName?: string; phone?: string; address?: string } | null;
   orderItems?: OrderItemSummary[];
+  orderRating?: {
+    rating: number;
+    comment?: string;
+    ratedAt?: string;
+  };
 }
 
 export interface OrderListResponse {
@@ -102,6 +107,14 @@ export async function createDraftOrder(payload: {
 
 export async function cancelCustomerOrder(orderId: string, reason?: string) {
   const response = await api.patch<ApiResponse<{ order: OrderRecord }>>(`/api/v1/orders/${orderId}/cancel`, { reason });
+  return response.data.data?.order;
+}
+
+export async function rateOrder(orderId: string, rating: number, comment?: string) {
+  const response = await api.post<ApiResponse<{ order: OrderRecord }>>(`/api/v1/orders/${orderId}/rate`, {
+    rating,
+    comment,
+  });
   return response.data.data?.order;
 }
 

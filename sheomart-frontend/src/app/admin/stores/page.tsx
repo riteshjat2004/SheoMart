@@ -347,10 +347,15 @@ export default function AdminStoresPage() {
       queryClient.invalidateQueries({ queryKey: ["stores", "admin"] });
       queryClient.invalidateQueries({ queryKey: ["admin-products"] });
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      const storeId = catalogTargetStore?.storeId || catalogTargetStore?._id;
+      if (storeId) {
+        queryClient.invalidateQueries({ queryKey: ["admin-store-existing-products", storeId] });
+      }
       const storeName = catalogTargetStore?.storeName || catalogTargetStore?.name || "the store";
+      const skippedNote = data.skippedCount && data.skippedCount > 0 ? ` (${data.skippedCount} already in store and skipped)` : "";
       setToast({
         type: "success",
-        message: `Successfully assigned ${data.clonedCount} products to ${storeName}. Stock and pricing can now be managed by the store.`,
+        message: `Successfully assigned ${data.clonedCount} products to ${storeName}${skippedNote}. Stock and pricing can now be managed by the store.`,
       });
       setCatalogTargetStore(null);
     },

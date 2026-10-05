@@ -58,3 +58,14 @@ const cartSchema = new Schema<ICartItem>(
 cartSchema.index({ userId: 1, productId: 1, variantId: 1 }, { unique: true });
 
 export const CartItem = model<ICartItem>("CartItem", cartSchema);
+
+export const ensureCartIndexes = async () => {
+  try {
+    const indexes = await CartItem.collection.getIndexes();
+    if (indexes["userId_1_productId_1"]) {
+      await CartItem.collection.dropIndex("userId_1_productId_1");
+    }
+  } catch {
+    // ignore
+  }
+};

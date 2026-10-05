@@ -297,6 +297,22 @@ export const updateProductFeaturedPriority = async (
   );
 };
 
+export const getStoreExistingProducts = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const storeId = Array.isArray(req.params.storeId) ? req.params.storeId[0] : req.params.storeId;
+  if (!storeId) {
+    throw new AppError("Store ID is required", 400);
+  }
+
+  const result = await ProductService.getStoreExistingProducts(storeId);
+
+  res.status(200).json(
+    new ApiResponse(true, "Store existing products fetched successfully", result)
+  );
+};
+
 export const cloneProductsToStore = async (
   req: AuthRequest,
   res: Response
@@ -314,7 +330,12 @@ export const cloneProductsToStore = async (
     req.user?.userId as string
   );
 
+  const skippedMsg = response.skippedCount > 0 ? ` (${response.skippedCount} already in store and skipped)` : "";
   res.status(201).json(
-    new ApiResponse(true, `Successfully added ${response.clonedCount} products to store`, response)
+    new ApiResponse(
+      true,
+      `Successfully added ${response.clonedCount} product(s) to store${skippedMsg}`,
+      response
+    )
   );
 };

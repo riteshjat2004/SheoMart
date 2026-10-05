@@ -28,7 +28,7 @@ export default function BillingPage() {
 
   const totalInvoicesToday = invoices.length;
   const offlineRevenueToday = invoices.reduce((sum: number, inv: { grandTotal?: number }) => sum + (inv.grandTotal || 0), 0);
-  const pendingPickupCount = kpis?.pendingOrders ?? 0;
+  const avgTicketValue = totalInvoicesToday > 0 ? Math.round(offlineRevenueToday / totalInvoicesToday) : 0;
   const cashCollected = Math.round(offlineRevenueToday * 0.65); // Estimated split or actual
 
   const summaryCards = [
@@ -49,10 +49,10 @@ export default function BillingPage() {
       bgColor: "bg-blue-50 dark:bg-blue-950/50",
     },
     {
-      title: "Pickup Orders Pending",
-      value: pendingPickupCount.toString(),
-      subtitle: "Pay-at-shop awaiting pickup",
-      icon: Clock3,
+      title: "Avg. Ticket Value",
+      value: money(avgTicketValue),
+      subtitle: "Average value per bill",
+      icon: ShoppingBag,
       color: "text-amber-600 dark:text-amber-400",
       bgColor: "bg-amber-50 dark:bg-amber-950/50",
     },
@@ -89,7 +89,7 @@ export default function BillingPage() {
       <PageHeader
         category="BILLING"
         title="Store Billing & POS Terminal"
-        description="Quick walk-in retail billing, barcode lookup, invoice generation, and counter pickup queue management."
+        description="Quick walk-in retail billing, barcode lookup, invoice generation, and cash register reconciliation."
       />
 
       {/* 6 Production Summary KPI Cards */}

@@ -17,6 +17,7 @@ import {
   Printer,
   ChevronRight,
   AlertTriangle,
+  Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/dashboard/ConfirmDialog";
@@ -28,6 +29,7 @@ import { SectionHeading } from "@/components/marketplace/SectionHeading";
 import { ErrorState } from "@/components/common/error-state";
 import { EmptyState } from "@/components/common/empty-state";
 import { OrderStatusTimeline } from "@/components/profile/OrderStatusTimeline";
+import { StoreRatingModal } from "@/components/profile/StoreRatingModal";
 import { useOrders, useCancelCustomerOrder } from "@/hooks/use-orders";
 import { useAddCartItem } from "@/hooks/use-cart";
 import type { OrderRecord } from "@/services/orders";
@@ -79,6 +81,7 @@ export default function OrdersPage() {
   const [search, setSearch] = useState("");
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [pendingCancelOrderId, setPendingCancelOrderId] = useState<string | null>(null);
+  const [ratingOrder, setRatingOrder] = useState<OrderRecord | null>(null);
 
   const orders = (Array.isArray(ordersQuery.data) ? ordersQuery.data : []) as LiveOrder[];
 
@@ -264,6 +267,11 @@ export default function OrdersPage() {
                 const isCancellable = rawStatus === "ORDER_PLACED" || rawStatus === "CONFIRMED";
                 const isDelivery =
                   order.fulfillmentType === "delivery" || order.deliveryMethod === "delivery";
+                const isCompleted =
+                  rawStatus === "DELIVERED" ||
+                  rawStatus === "PICKED_UP" ||
+                  Boolean(order.deliveredAt) ||
+                  Boolean(order.pickedUpAt);
 
                 return (
                   <article
@@ -386,6 +394,27 @@ export default function OrdersPage() {
                           <Printer className="h-3.5 w-3.5" />
                           Invoice
                         </button>
+
+                        {/* Store Rating for completed orders */}
+                        {isCompleted && (
+                          order.orderRating?.rating ? (
+                            <span className="inline-flex items-center gap-1 rounded-lg border border-amber-200/80 bg-amber-50/80 px-2.5 py-1 text-xs font-bold text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300">
+                              <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                              {order.orderRating.rating}★ Rated
+                            </span>
+                          ) : (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setRatingOrder(order)}
+                              className="border-amber-200 text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-900/60 dark:text-amber-300 dark:hover:bg-amber-950/40"
+                            >
+                              <Star className="mr-1.5 h-3.5 w-3.5 fill-amber-400 text-amber-500" />
+                              Rate Store
+                            </Button>
+                          )
+                        )}
                       </div>
 
                       <Button
@@ -433,6 +462,11 @@ export default function OrdersPage() {
         isConfirming={cancelOrderMutation.isPending}
         onClose={() => setPendingCancelOrderId(null)}
         onConfirm={confirmCancelOrder}
+      />
+      <StoreRatingModal
+        order={ratingOrder}
+        isOpen={Boolean(ratingOrder)}
+        onClose={() => setRatingOrder(null)}
       />
     </PageWrapper>
   );

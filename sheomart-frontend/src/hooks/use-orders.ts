@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { cancelCustomerOrder, fetchOrders } from "@/services/orders";
+import { cancelCustomerOrder, fetchOrders, rateOrder } from "@/services/orders";
 import type { OrderRecord } from "@/services/orders";
 
 export function useOrders() {
@@ -19,6 +19,17 @@ export function useCancelCustomerOrder() {
   return useMutation({
     mutationFn: ({ orderId, reason }: { orderId: string; reason?: string }) =>
       cancelCustomerOrder(orderId, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["customer-orders"] });
+    },
+  });
+}
+
+export function useRateOrder() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ orderId, rating, comment }: { orderId: string; rating: number; comment?: string }) =>
+      rateOrder(orderId, rating, comment),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["customer-orders"] });
     },

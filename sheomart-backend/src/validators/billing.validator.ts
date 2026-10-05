@@ -16,17 +16,18 @@ export const paymentStatusSchema = z.enum([
 
 export const createOfflineInvoiceItemSchema = z.object({
   productId: z.string().trim().min(1, "Product ID is required"),
-  variantId: z.string().trim().optional(),
-  variantLabel: z.string().trim().optional(),
+  variantId: z.string().trim().nullable().optional(),
+  variantLabel: z.string().trim().nullable().optional(),
   quantity: z.number().positive("Quantity must be greater than 0"),
-  discount: z.number().min(0, "Discount must be 0 or greater").optional(),
+  discount: z.number().min(0, "Discount must be 0 or greater").optional().default(0),
+  unitPrice: z.number().min(0).optional(),
 });
 
 export const createOfflineInvoiceSchema = z.object({
   customerId: z
     .string()
     .trim()
-    .regex(objectIdRegex, "Customer ID must be a valid Mongo ObjectId")
+    .min(1, "Customer ID cannot be empty")
     .optional()
     .nullable(),
   walkInCustomerName: z.string().trim().min(1, "Walk-in customer name is required").optional(),

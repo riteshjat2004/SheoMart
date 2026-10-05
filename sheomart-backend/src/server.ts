@@ -2,6 +2,7 @@ import http from "http";
 import app from "./app";
 import { env } from "./config/env";
 import { connectDB } from "./config/database";
+import { ensureCartIndexes } from "./models/cart.model";
 import { logger } from "./utils/logger";
 import { verifyEmailTransport } from "./services/mail.service";
 import { SellerPasswordResetService } from "./services/seller-password-reset.service";
@@ -10,6 +11,7 @@ import { initSocketServer } from "./sockets/support.socket";
 const startServer = async () => {
   logger.info(`Trust proxy enabled: ${String(app.get("trust proxy"))}`);
   await connectDB();
+  await ensureCartIndexes();
   if (env.NODE_ENV === "production") {
     logger.info("Skipping SMTP startup verification in production.");
   } else {

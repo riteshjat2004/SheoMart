@@ -76,29 +76,33 @@ function escapeRegex(value: string) {
 }
 
 export class ReviewService {
-  static async recalculateRatings(productId: string, storeId?: string) {
-    const product = await Product.findOne({ productId });
-    if (!product) return;
+  static async recalculateRatings(productId?: string, storeId?: string) {
+    let effectiveStoreId = storeId;
 
-    const effectiveStoreId = storeId || product.storeId;
+    // 1. Recalculate Product Rating (only if productId provided and non-empty)
+    if (productId && productId.trim() !== "") {
+      const product = await Product.findOne({ productId });
+      if (product) {
+        effectiveStoreId = effectiveStoreId || product.storeId;
 
-    // 1. Recalculate Product Rating (only approved, non-deleted, visible reviews)
-    const productReviews = await Review.find({
-      productId,
-      status: REVIEW_STATUS.APPROVED,
-      isDeleted: false,
-      isVisible: true,
-    });
+        const productReviews = await Review.find({
+          productId,
+          status: REVIEW_STATUS.APPROVED,
+          isDeleted: false,
+          isVisible: true,
+        });
 
-    const totalProductReviews = productReviews.length;
-    const avgProductRating =
-      totalProductReviews > 0
-        ? Number((productReviews.reduce((sum, r) => sum + r.rating, 0) / totalProductReviews).toFixed(1))
-        : 0;
+        const totalProductReviews = productReviews.length;
+        const avgProductRating =
+          totalProductReviews > 0
+            ? Number((productReviews.reduce((sum, r) => sum + r.rating, 0) / totalProductReviews).toFixed(1))
+            : 0;
 
-    product.rating = avgProductRating;
-    product.totalReviews = totalProductReviews;
-    await product.save();
+        product.rating = avgProductRating;
+        product.totalReviews = totalProductReviews;
+        await product.save();
+      }
+    }
 
     // 2. Recalculate Store Rating
     if (effectiveStoreId) {
@@ -125,6 +129,64 @@ export class ReviewService {
         await store.save();
       }
     }
+  }
+
+  static async rateStoreOrder(
+    userId: string,
+    orderId: string,
+    data: { rating: number; comment?: string }
+  ) {
+    const order = await Order.findOne({ orderId, userId });
+    if (!order) {
+      throw new AppError("Order not found", 404);
+    }
+
+    const rawStatus = (order.pickupStatus || order.status || "").toUpperCase();
+    const isCompleted =
+      rawStatus === ORDER_STATUS.DELIVERED ||
+      rawStatus === "PICKED_UP" ||
+      Boolean(order.deliveredAt) ||
+      Boolean(order.pickedUpAt);
+
+    if (!isCompleted) {
+      throw new AppError("You can only rate an order after it has been delivered or picked up", 400);
+    }
+
+    if (order.orderRating?.rating) {
+      throw new AppError("You have already rated this order", 409);
+    }
+
+    const rating = Math.min(5, Math.max(1, Math.round(Number(data.rating))));
+    const comment = (data.comment || "").trim();
+
+    order.orderRating = {
+      rating,
+      comment,
+      ratedAt: new Date(),
+    };
+    await order.save();
+
+    await Review.create({
+      storeId: order.storeId,
+      orderId: order.orderId,
+      productId: "",
+      userId,
+      rating,
+      comment,
+      title: "Store Experience",
+      isVerifiedPurchase: true,
+      isVisible: true,
+      isDeleted: false,
+      status: REVIEW_STATUS.APPROVED,
+    });
+
+    await this.recalculateRatings("", order.storeId);
+
+    return {
+      orderId: order.orderId,
+      orderRating: order.orderRating,
+      message: "Thank you for rating your store experience!",
+    };
   }
 
   static async listAdminReviews(filters: AdminReviewListQuery) {

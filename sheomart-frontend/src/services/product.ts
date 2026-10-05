@@ -92,7 +92,33 @@ export interface CloneProductsToStorePayload {
 
 export interface CloneProductsToStoreResult {
   clonedCount: number;
-  clonedProducts: ProductItem[];
+  skippedCount?: number;
+  skippedProducts?: string[];
+  products?: ProductItem[];
+}
+
+export interface StoreExistingProductsResponse {
+  storeId: string;
+  totalCount: number;
+  existingProducts: Array<{
+    productId: string;
+    name: string;
+    sku: string;
+    sourceProductId?: string | null;
+  }>;
+  existingSourceProductIds: string[];
+  existingNames: string[];
+  existingCleanSkus: string[];
+}
+
+export async function fetchStoreExistingProducts(storeId: string): Promise<StoreExistingProductsResponse> {
+  const response = await api.get<ApiResponse<StoreExistingProductsResponse>>(
+    `/api/v1/products/admin/store/${storeId}/existing-products`
+  );
+  if (!response.data.data) {
+    throw new Error(response.data.message || "Failed to fetch existing products for store");
+  }
+  return response.data.data;
 }
 
 export async function cloneProductsToStore(payload: CloneProductsToStorePayload): Promise<CloneProductsToStoreResult> {

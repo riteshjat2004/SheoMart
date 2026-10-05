@@ -15,6 +15,7 @@ export type ReviewStatus = (typeof REVIEW_STATUS)[keyof typeof REVIEW_STATUS];
 export interface IReview extends Document {
   reviewId: string;
   productId: string;
+  orderId?: string;
   storeId: string;
   userId: string;
   rating: number;
@@ -52,7 +53,13 @@ const reviewSchema = new Schema<IReview>(
 
     productId: {
       type: String,
-      required: true,
+      default: "",
+      index: true,
+    },
+
+    orderId: {
+      type: String,
+      default: "",
       index: true,
     },
 
@@ -167,7 +174,14 @@ const reviewSchema = new Schema<IReview>(
   }
 );
 
-reviewSchema.index({ productId: 1, userId: 1 }, { unique: true });
+reviewSchema.index(
+  { productId: 1, userId: 1 },
+  { unique: true, partialFilterExpression: { productId: { $gt: "" } } }
+);
+reviewSchema.index(
+  { orderId: 1 },
+  { unique: true, partialFilterExpression: { orderId: { $gt: "" } } }
+);
 reviewSchema.index({ productId: 1, rating: 1 });
 reviewSchema.index({ userId: 1, rating: 1 });
 reviewSchema.index({ storeId: 1, status: 1 });

@@ -87,14 +87,36 @@ export function NewInvoiceWorkspace() {
     return products.filter((p) => {
       if (activeCategoryId && p.categoryId !== activeCategoryId) return false;
       if (!q) return true;
-      return `${p.name} ${p.sku} ${p.brand}`.toLowerCase().includes(q);
+      const baseMatch = `${p.name} ${p.sku} ${p.brand} ${p.categoryName || ""}`.toLowerCase().includes(q);
+      if (baseMatch) return true;
+      return (p.variants || []).some(
+        (v) =>
+          v.label?.toLowerCase().includes(q) ||
+          (v.sku && v.sku.toLowerCase().includes(q))
+      );
     });
   }, [catalog, debouncedSearch, activeCategoryId]);
+
+  // ── In-cart count helper ────────────────────────────────────────────────
+  const getCartCount = useCallback(
+    (productId: string, variantId?: string) => {
+      const item = cartItems.find(
+        (i) => i.productId === productId && (i.variantId || "") === (variantId || "")
+      );
+      return item ? item.quantity : 0;
+    },
+    [cartItems]
+  );
 
   // ── Cart helpers ────────────────────────────────────────────────────────
   const addToBill = useCallback(
     (product: PosCatalogProduct, variant?: import("@/types/marketplace").ProductVariant) => {
-      if (!product.productId || product.availableQuantity < 1) return;
+      const availableStock =
+        variant && product.stockTrackingMode === "SEPARATE" && typeof variant.stock === "number"
+          ? variant.stock
+          : product.availableQuantity;
+
+      if (!product.productId || availableStock < 1) return;
 
       const price = variant
         ? variant.discountPrice && variant.discountPrice > 0
@@ -111,7 +133,7 @@ export function NewInvoiceWorkspace() {
           (i) => `${i.productId}_${i.variantId || ""}` === cartKey
         );
         if (existing) {
-          if (existing.quantity >= product.availableQuantity) return current;
+          if (existing.quantity >= availableStock) return current;
           return current.map((i) =>
             `${i.productId}_${i.variantId || ""}` === cartKey
               ? {
@@ -132,7 +154,7 @@ export function NewInvoiceWorkspace() {
             sku: variant?.sku || product.sku,
             image: product.thumbnail,
             price,
-            availableQuantity: product.availableQuantity,
+            availableQuantity: availableStock,
             quantity: 1,
             lineTotal: price,
           },
@@ -160,6 +182,50 @@ export function NewInvoiceWorkspace() {
       current.filter((i) => `${i.productId}_${i.variantId || ""}` !== cartKey)
     );
   }, []);
+
+  // ── Barcode scanning / rapid search Enter ──────────────────────────────
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const rawQuery = search.trim();
+      if (!rawQuery) return;
+      const q = rawQuery.toLowerCase();
+
+      // 1. Exact match on variant SKU / barcode
+      for (const prod of catalog?.products ?? []) {
+        const matchingVariant = (prod.variants || []).find(
+          (v) => v.sku && v.sku.toLowerCase() === q
+        );
+        if (matchingVariant) {
+          addToBill(prod, matchingVariant);
+          setSearch("");
+          return;
+        }
+      }
+
+      // 2. Exact match on product SKU
+      const exactSkuProduct = (catalog?.products ?? []).find(
+        (p) => p.sku && p.sku.toLowerCase() === q
+      );
+      if (exactSkuProduct) {
+        addToBill(exactSkuProduct);
+        setSearch("");
+        return;
+      }
+
+      // 3. If filtered list has exactly 1 product, add it
+      if (filteredProducts.length === 1) {
+        const prod = filteredProducts[0];
+        const matchingVariant = (prod.variants || []).find(
+          (v) =>
+            (v.sku && v.sku.toLowerCase() === q) ||
+            (v.label && v.label.toLowerCase().includes(q))
+        );
+        addToBill(prod, matchingVariant);
+        setSearch("");
+      }
+    }
+  };
 
   // ── Totals ──────────────────────────────────────────────────────────────
   const itemCount = cartItems.reduce((t, i) => t + i.quantity, 0);
@@ -214,7 +280,11 @@ export function NewInvoiceWorkspace() {
             walkInCustomerPhone: mobileNumber || undefined,
           }
         : selectedCustomerId
-          ? { customerId: selectedCustomerId }
+          ? {
+              customerId: selectedCustomerId,
+              walkInCustomerName: customerName.trim() || selectedCustomer?.name || undefined,
+              walkInCustomerPhone: mobileNumber || selectedCustomer?.mobile || selectedCustomer?.phone || undefined,
+            }
           : {}),
       paymentMethod: paymentMethod as "CASH" | "UPI" | "CREDIT",
       amountPaid: Math.min(normalizedAmountPaid, grandTotal),
@@ -359,10 +429,12 @@ export function NewInvoiceWorkspace() {
             <label className="relative flex-1">
               <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-stone-400" />
               <input
+                id="pos-search-input"
                 type="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by product, SKU, or brand"
+                onKeyDown={handleSearchKeyDown}
+                placeholder="Search by product, pack, SKU, or scan barcode..."
                 className="h-11 w-full rounded-lg border border-stone-200 bg-white pl-9 pr-3 text-sm text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-stone-700 dark:bg-stone-950 dark:text-stone-50"
               />
             </label>
@@ -370,10 +442,15 @@ export function NewInvoiceWorkspace() {
               type="button"
               variant="outline"
               size="icon"
-              disabled
+              onClick={() => {
+                const el = document.getElementById("pos-search-input") as HTMLInputElement | null;
+                el?.focus();
+                el?.select();
+              }}
               aria-label="Scan barcode"
+              title="Focus search for barcode scanning"
             >
-              <Barcode className="h-4 w-4" />
+              <Barcode className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
             </Button>
             <Button
               type="button"
@@ -499,43 +576,90 @@ export function NewInvoiceWorkspace() {
 
                         {/* Variant Quick Buttons if available */}
                         {product.variants && product.variants.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-1.5">
+                          <div className="mt-2.5 flex flex-wrap gap-1.5">
                             {product.variants.map((v) => {
-                              const vPrice = v.discountPrice && v.discountPrice > 0 ? v.discountPrice : v.price;
+                              const vPrice =
+                                v.discountPrice && v.discountPrice > 0 ? v.discountPrice : v.price;
+                              const vStock =
+                                product.stockTrackingMode === "SEPARATE" && typeof v.stock === "number"
+                                  ? v.stock
+                                  : product.availableQuantity;
+                              const isVOutOfStock = vStock <= 0;
+                              const vInBill = getCartCount(product.productId, v.variantId);
+                              const isVMaxedOut = vInBill >= vStock;
+
                               return (
                                 <button
                                   key={v.variantId}
                                   type="button"
                                   onClick={() => addToBill(product, v)}
-                                  disabled={isOutOfStock}
-                                  className="inline-flex items-center gap-1 rounded-md border border-stone-200 bg-white px-2 py-1 text-[11px] font-semibold text-stone-700 hover:border-emerald-500 hover:text-emerald-700 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300"
+                                  disabled={isVOutOfStock || isVMaxedOut}
+                                  className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-semibold transition ${
+                                    vInBill > 0
+                                      ? "border-emerald-500 bg-emerald-50 text-emerald-900 shadow-2xs dark:border-emerald-500/60 dark:bg-emerald-950/60 dark:text-emerald-200"
+                                      : isVOutOfStock
+                                      ? "cursor-not-allowed border-dashed border-stone-300 bg-stone-100 text-stone-400 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-600"
+                                      : "border-stone-200 bg-white text-stone-700 hover:border-emerald-500 hover:text-emerald-700 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300"
+                                  }`}
+                                  title={
+                                    isVOutOfStock
+                                      ? "Out of stock"
+                                      : v.sku
+                                      ? `SKU: ${v.sku} · Available: ${vStock}`
+                                      : `Available: ${vStock}`
+                                  }
                                 >
                                   <span>{v.label}</span>
-                                  <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{vPrice}</span>
+                                  <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                                    ₹{vPrice}
+                                  </span>
+                                  {vInBill > 0 && (
+                                    <span className="rounded-full bg-emerald-600 px-1.5 py-0.2 text-[10px] font-bold text-white">
+                                      {vInBill}
+                                    </span>
+                                  )}
+                                  {isVOutOfStock && (
+                                    <span className="text-[10px] font-normal text-red-500">(Out)</span>
+                                  )}
                                 </button>
                               );
                             })}
                           </div>
                         )}
 
-                        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                          <div className="text-sm">
-                            <span className="font-semibold text-stone-900 dark:text-stone-50">
-                              ₹{sellingPrice}
-                            </span>
-                            <span className="ml-2 text-stone-500 dark:text-stone-400">
-                              {product.availableQuantity} available
-                            </span>
-                          </div>
-                          <Button
-                            type="button"
-                            size="sm"
-                            onClick={() => addToBill(product)}
-                            disabled={isOutOfStock}
-                          >
-                            {product.variants && product.variants.length > 0 ? "Add Base" : "Add to Bill"}
-                          </Button>
-                        </div>
+                        {(() => {
+                          const baseInBill = getCartCount(product.productId);
+                          const isBaseMaxedOut = baseInBill >= product.availableQuantity;
+
+                          return (
+                            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                              <div className="text-sm">
+                                <span className="font-semibold text-stone-900 dark:text-stone-50">
+                                  ₹{sellingPrice}
+                                </span>
+                                <span className="ml-2 text-stone-500 dark:text-stone-400">
+                                  {product.availableQuantity} available
+                                </span>
+                              </div>
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => addToBill(product)}
+                                disabled={isOutOfStock || isBaseMaxedOut}
+                                variant={baseInBill > 0 ? "secondary" : "default"}
+                                className={
+                                  baseInBill > 0
+                                    ? "border border-emerald-500 bg-emerald-50 font-semibold text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-200"
+                                    : ""
+                                }
+                              >
+                                {product.variants && product.variants.length > 0
+                                  ? `Add Base${baseInBill > 0 ? ` (${baseInBill})` : ""}`
+                                  : `Add to Bill${baseInBill > 0 ? ` (${baseInBill})` : ""}`}
+                              </Button>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   );

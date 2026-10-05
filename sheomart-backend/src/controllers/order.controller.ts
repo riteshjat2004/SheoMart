@@ -3,6 +3,7 @@ import { AppError } from "../errors/AppError";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { ApiResponse } from "../utils/apiResponse";
 import { OrderService } from "../services/order.service";
+import { ReviewService } from "../services/review.service";
 import {
   checkoutQuoteSchema,
   createOrderSchema,
@@ -131,4 +132,20 @@ export const updateSellerNotes = async (req: AuthRequest, res: Response): Promis
 
   const order = await OrderService.updateSellerNotes(req.user!.userId, orderId, sellerNotes);
   res.status(200).json(new ApiResponse(true, "Seller notes updated successfully", { order }));
+};
+
+export const rateOrderHandler = async (req: AuthRequest, res: Response): Promise<void> => {
+  const orderId = Array.isArray(req.params.orderId) ? req.params.orderId[0] : req.params.orderId;
+  const ratingSchema = z.object({
+    rating: z.coerce.number().int().min(1, "Rating must be between 1 and 5").max(5, "Rating must be between 1 and 5"),
+    comment: z.string().trim().max(1000, "Review cannot exceed 1000 characters").optional(),
+  });
+
+  const parsed = ratingSchema.safeParse(req.body);
+  if (!parsed.success) {
+    throw new AppError(parsed.error.issues[0]?.message || "Invalid rating input", 400);
+  }
+
+  const result = await ReviewService.rateStoreOrder(req.user!.userId, orderId, parsed.data);
+  res.status(200).json(new ApiResponse(true, result.message, result));
 };
