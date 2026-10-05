@@ -132,5 +132,43 @@ export async function cloneProductsToStore(payload: CloneProductsToStorePayload)
   return response.data.data;
 }
 
+export interface MasterCatalogProduct extends ProductItem {
+  isAlreadyInStore?: boolean;
+  totalStoreCopies?: number;
+}
+
+export interface MasterCatalogResponse {
+  products: MasterCatalogProduct[];
+  totalCount: number;
+  availableCount: number;
+  inStoreCount: number;
+}
+
+export async function fetchMasterCatalog(params?: {
+  targetStoreId?: string;
+  search?: string;
+  categoryId?: string;
+}): Promise<MasterCatalogResponse> {
+  const response = await api.get<ApiResponse<MasterCatalogResponse>>(
+    "/api/v1/products/admin/master-catalog",
+    {
+      params: {
+        targetStoreId: params?.targetStoreId || undefined,
+        search: params?.search?.trim() || undefined,
+        categoryId: params?.categoryId && params.categoryId !== "all" ? params.categoryId : undefined,
+      },
+    }
+  );
+  return (
+    response.data.data ?? {
+      products: [],
+      totalCount: 0,
+      availableCount: 0,
+      inStoreCount: 0,
+    }
+  );
+}
+
+
 
 

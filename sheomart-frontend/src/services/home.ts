@@ -15,8 +15,8 @@ export interface HeroShowcaseItem {
 }
 
 export interface HomeLocationParams {
-  pincode?: string;
-  city?: string;
+  pincode?: string | null;
+  city?: string | null;
 }
 
 export async function fetchHeroCarousel(params?: HomeLocationParams): Promise<HeroShowcaseItem[]> {
@@ -38,3 +38,49 @@ export async function fetchTrendingProducts(params?: HomeLocationParams): Promis
   });
   return Array.isArray(response.data.data?.products) ? response.data.data.products : [];
 }
+
+export interface MarketplaceStats {
+  approvedStores: number;
+  totalProducts: number;
+  happyCustomers: number;
+  deliverySuccessRate: number;
+  totalOrders: number;
+}
+
+export interface FeaturedReviewItem {
+  reviewId: string;
+  name: string;
+  avatarText: string;
+  rating: number;
+  review: string;
+  location: string;
+  storeName: string;
+  storeCity: string;
+  storePincode: string;
+  orderedItem: string;
+  date: string;
+}
+
+export async function fetchMarketplaceStats(): Promise<MarketplaceStats> {
+  const response = await api.get<{ data?: MarketplaceStats }>("/api/home/stats");
+  return (
+    response.data.data ?? {
+      approvedStores: 0,
+      totalProducts: 0,
+      happyCustomers: 0,
+      deliverySuccessRate: 99.4,
+      totalOrders: 0,
+    }
+  );
+}
+
+export async function fetchFeaturedReviews(params?: HomeLocationParams): Promise<FeaturedReviewItem[]> {
+  const response = await api.get<{ data?: { reviews?: FeaturedReviewItem[] } }>("/api/home/reviews", {
+    params: {
+      pincode: params?.pincode?.trim() || undefined,
+      city: params?.city?.trim() || undefined,
+    },
+  });
+  return Array.isArray(response.data.data?.reviews) ? response.data.data.reviews : [];
+}
+

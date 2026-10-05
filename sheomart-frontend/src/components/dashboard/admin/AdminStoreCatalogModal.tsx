@@ -21,7 +21,7 @@ import {
   Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { fetchProducts, fetchStoreExistingProducts } from "@/services/product";
+import { fetchMasterCatalog, fetchStoreExistingProducts, type MasterCatalogProduct } from "@/services/product";
 import { fetchCategories } from "@/services/category";
 import type { ProductItem, StoreItem } from "@/types/marketplace";
 
@@ -59,17 +59,24 @@ export function AdminStoreCatalogModal({
 
   const targetStoreId = store?.storeId || store?._id || "";
 
-  // Fetch all master catalog products
+  // Fetch deduplicated universal master catalog
   const {
-    data: allProducts = [],
+    data: masterCatalogData,
     isLoading: isLoadingProducts,
     isError: isProductsError,
   } = useQuery({
-    queryKey: ["admin-master-catalog-products"],
-    queryFn: fetchProducts,
-    enabled: open,
-    staleTime: 60 * 1000,
+    queryKey: ["admin-master-catalog", targetStoreId, searchQuery, selectedCategory],
+    queryFn: () =>
+      fetchMasterCatalog({
+        targetStoreId,
+        search: searchQuery,
+        categoryId: selectedCategory,
+      }),
+    enabled: open && Boolean(targetStoreId),
+    staleTime: 30 * 1000,
   });
+
+  const allProducts: MasterCatalogProduct[] = masterCatalogData?.products || [];
 
   // Fetch categories for filtering
   const { data: categories = [] } = useQuery({
@@ -103,7 +110,10 @@ export function AdminStoreCatalogModal({
   }, [existingStoreData]);
 
   // Check if a catalog product is already present in this store
-  const isProductAlreadyInStore = (product: ProductItem): boolean => {
+  const isProductAlreadyInStore = (product: MasterCatalogProduct | ProductItem): boolean => {
+    if ("isAlreadyInStore" in product && product.isAlreadyInStore !== undefined) {
+      return Boolean(product.isAlreadyInStore);
+    }
     if (product.storeId === targetStoreId) return true;
     const pid = product.productId || product._id;
     if (pid && existingProductIds.has(pid)) return true;
@@ -116,6 +126,13 @@ export function AdminStoreCatalogModal({
 
   // Compute counts
   const counts = useMemo(() => {
+    if (masterCatalogData) {
+      return {
+        total: masterCatalogData.totalCount,
+        available: masterCatalogData.availableCount,
+        inStore: masterCatalogData.inStoreCount,
+      };
+    }
     let availableCount = 0;
     let inStoreCount = 0;
     for (const p of allProducts) {
@@ -130,14 +147,13 @@ export function AdminStoreCatalogModal({
       available: availableCount,
       inStore: inStoreCount,
     };
-  }, [allProducts, existingProductIds, existingNames, existingCleanSkus, targetStoreId]);
+  }, [masterCatalogData, allProducts]);
 
-  // Filter catalog products
+  // Filter catalog products by presence and client search for instant responsiveness
   const filteredProducts = useMemo(() => {
     return allProducts.filter((product) => {
       const alreadyInStore = isProductAlreadyInStore(product);
 
-      // Presence filter
       if (presenceFilter === "available" && alreadyInStore) {
         return false;
       }
@@ -145,16 +161,14 @@ export function AdminStoreCatalogModal({
         return false;
       }
 
-      // Filter by search query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
-        const matchesName = product.name.toLowerCase().includes(q);
+        const matchesName = (product.name ?? "").toLowerCase().includes(q);
         const matchesBrand = (product.brand ?? "").toLowerCase().includes(q);
         const matchesSku = (product.sku ?? "").toLowerCase().includes(q);
         if (!matchesName && !matchesBrand && !matchesSku) return false;
       }
 
-      // Filter by category
       if (selectedCategory !== "all") {
         const matchesCatId = product.categoryId === selectedCategory;
         const matchesCatName = product.category === selectedCategory;
@@ -163,20 +177,11 @@ export function AdminStoreCatalogModal({
 
       return true;
     });
-  }, [
-    allProducts,
-    targetStoreId,
-    searchQuery,
-    selectedCategory,
-    presenceFilter,
-    existingProductIds,
-    existingNames,
-    existingCleanSkus,
-  ]);
+  }, [allProducts, presenceFilter, searchQuery, selectedCategory]);
 
   const selectableFilteredProducts = useMemo(() => {
     return filteredProducts.filter((p) => !isProductAlreadyInStore(p));
-  }, [filteredProducts, existingProductIds, existingNames, existingCleanSkus, targetStoreId]);
+  }, [filteredProducts]);
 
   const allFilteredSelected =
     selectableFilteredProducts.length > 0 &&

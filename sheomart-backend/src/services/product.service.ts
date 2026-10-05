@@ -1096,6 +1096,177 @@ export class ProductService {
     };
   }
 
+  /**
+   * Universal Master Catalog aggregation for Admin.
+   * Deduplicates products across all stores by sourceProductId or (normalized name + brand + category)
+   * so that identical items (e.g. "Mangoes" across 3 stores) appear only once as a single universal option.
+   */
+  static async getMasterCatalog(params: {
+    targetStoreId?: string;
+    search?: string;
+    categoryId?: string;
+  }) {
+    const matchFilter: Record<string, unknown> = {
+      isDeleted: { $ne: true },
+    };
+
+    if (params.categoryId && params.categoryId !== "all") {
+      matchFilter.categoryId = params.categoryId;
+    }
+
+    if (params.search && params.search.trim()) {
+      const q = params.search.trim();
+      const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      matchFilter.$or = [
+        { name: { $regex: escaped, $options: "i" } },
+        { brand: { $regex: escaped, $options: "i" } },
+        { sku: { $regex: escaped, $options: "i" } },
+        { description: { $regex: escaped, $options: "i" } },
+      ];
+    }
+
+    const [rawProducts, categories] = await Promise.all([
+      Product.find(matchFilter).sort({ createdAt: 1 }).lean(),
+      Category.find({ isDeleted: { $ne: true } }).select("categoryId name").lean(),
+    ]);
+
+    const categoryMap = new Map(categories.map((c) => [c.categoryId, c.name]));
+
+    // Grouping by canonical product identity
+    const groups: Array<{
+      master: any;
+      allProductIds: Set<string>;
+      allStoreIds: Set<string>;
+    }> = [];
+
+    const keyToGroupIndex = new Map<string, number>();
+    const idToGroupIndex = new Map<string, number>();
+
+    for (const p of rawProducts) {
+      const normName = (p.name || "").trim().toLowerCase();
+      const normBrand = (p.brand || "").trim().toLowerCase();
+      const normCat = String(p.categoryId || "").trim();
+      const nameKey = `${normName}__${normBrand}__${normCat}`;
+
+      const cleanSku = p.sku ? p.sku.replace(/-STR\w+(-[0-9]+)?$/i, "").trim().toUpperCase() : "";
+
+      let groupIdx: number | undefined;
+
+      if (p.sourceProductId && idToGroupIndex.has(p.sourceProductId)) {
+        groupIdx = idToGroupIndex.get(p.sourceProductId);
+      } else if (p.productId && idToGroupIndex.has(p.productId)) {
+        groupIdx = idToGroupIndex.get(p.productId);
+      } else if (nameKey && keyToGroupIndex.has(nameKey)) {
+        groupIdx = keyToGroupIndex.get(nameKey);
+      } else if (cleanSku && keyToGroupIndex.has(`sku_${cleanSku}`)) {
+        groupIdx = keyToGroupIndex.get(`sku_${cleanSku}`);
+      }
+
+      if (groupIdx !== undefined) {
+        const g = groups[groupIdx];
+        g.allProductIds.add(p.productId);
+        if (p.sourceProductId) g.allProductIds.add(p.sourceProductId);
+        if (p.storeId) g.allStoreIds.add(p.storeId);
+
+        const masterHasImage = Boolean(g.master.thumbnail || g.master.images?.[0] || g.master.image?.url);
+        const pHasImage = Boolean(p.thumbnail || p.images?.[0] || p.image?.url);
+
+        if (!masterHasImage && pHasImage) {
+          g.master = { ...p, category: categoryMap.get(p.categoryId) || g.master.category };
+        } else if (!p.sourceProductId && g.master.sourceProductId) {
+          g.master = { ...p, category: categoryMap.get(p.categoryId) || g.master.category };
+        }
+      } else {
+        const newIdx = groups.length;
+        const newGroup = {
+          master: {
+            ...p,
+            category: categoryMap.get(p.categoryId) || "",
+          },
+          allProductIds: new Set<string>([p.productId, ...(p.sourceProductId ? [p.sourceProductId] : [])]),
+          allStoreIds: new Set<string>(p.storeId ? [p.storeId] : []),
+        };
+        groups.push(newGroup);
+
+        if (nameKey) keyToGroupIndex.set(nameKey, newIdx);
+        if (cleanSku) keyToGroupIndex.set(`sku_${cleanSku}`, newIdx);
+        if (p.productId) idToGroupIndex.set(p.productId, newIdx);
+        if (p.sourceProductId) idToGroupIndex.set(p.sourceProductId, newIdx);
+      }
+    }
+
+    // Existing products in target store
+    const existingSourceProductIds = new Set<string>();
+    const existingNames = new Set<string>();
+    const existingCleanSkus = new Set<string>();
+
+    if (params.targetStoreId) {
+      const storeProducts = await Product.find({
+        storeId: params.targetStoreId,
+        isDeleted: { $ne: true },
+      })
+        .select("productId name sku sourceProductId")
+        .lean();
+
+      for (const p of storeProducts) {
+        if (p.productId) existingSourceProductIds.add(p.productId);
+        if (p.sourceProductId) existingSourceProductIds.add(p.sourceProductId);
+        if (p.name) existingNames.add(p.name.trim().toLowerCase());
+        if (p.sku) {
+          const clean = p.sku.replace(/-STR\w+(-[0-9]+)?$/i, "").trim().toUpperCase();
+          if (clean) existingCleanSkus.add(clean);
+        }
+      }
+    }
+
+    let availableCount = 0;
+    let inStoreCount = 0;
+
+    const enrichedProducts = groups.map((g) => {
+      const item = g.master;
+      let isAlreadyInStore = false;
+
+      if (params.targetStoreId) {
+        const itemCleanSku = item.sku ? item.sku.replace(/-STR\w+(-[0-9]+)?$/i, "").trim().toUpperCase() : "";
+        const itemNormName = item.name ? item.name.trim().toLowerCase() : "";
+
+        const hasMatchingId =
+          Array.from(g.allProductIds).some((id) => existingSourceProductIds.has(id)) ||
+          existingSourceProductIds.has(item.productId) ||
+          (item.sourceProductId && existingSourceProductIds.has(item.sourceProductId));
+
+        const hasMatchingName = Boolean(itemNormName && existingNames.has(itemNormName));
+        const hasMatchingSku = Boolean(itemCleanSku && existingCleanSkus.has(itemCleanSku));
+        const hasDirectStore = g.allStoreIds.has(params.targetStoreId);
+
+        isAlreadyInStore = Boolean(hasMatchingId || hasMatchingName || hasMatchingSku || hasDirectStore);
+      }
+
+      if (isAlreadyInStore) {
+        inStoreCount++;
+      } else {
+        availableCount++;
+      }
+
+      return {
+        ...item,
+        allProductIdsInGroup: Array.from(g.allProductIds),
+        allStoreIdsInGroup: Array.from(g.allStoreIds),
+        totalStoreCopies: g.allStoreIds.size,
+        isAlreadyInStore,
+      };
+    });
+
+    enrichedProducts.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
+    return {
+      products: enrichedProducts,
+      totalCount: enrichedProducts.length,
+      availableCount,
+      inStoreCount,
+    };
+  }
+
   static async cloneProductsToStore(data: CloneProductsToStoreInput, userId: string) {
     const targetStore = await Store.findOne({ storeId: data.targetStoreId });
     if (!targetStore) {

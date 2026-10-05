@@ -269,20 +269,20 @@ export default function Home() {
             )}
           </section>
 
-          {/* 8. HOW SHEOMART WORKS (3-Step Animated Timeline) */}
+          {/* 8. CUSTOMER REVIEWS & RATINGS (Hyperlocal & PIN-Filtered) */}
+          <TestimonialsSection pincode={activePincode} city={activeAddress?.city} />
+
+          {/* 9. HOW SHEOMART WORKS (3-Step Animated Timeline) */}
           <HowItWorksSection />
 
-          {/* 9. TRUST PILLARS & LIVE MARKETPLACE METRICS */}
+          {/* 10. TRUST PILLARS & LIVE MARKETPLACE METRICS */}
           <TrustAndStatsSection />
 
-          {/* 10. LOCAL STORYTELLING ("The Heart of Sheopur") */}
+          {/* 11. SCALED LOCAL STORYTELLING ("The SheoMart Story") */}
           <LocalStorySection />
 
-          {/* 11. ANDROID APP DOWNLOAD EXPERIENCE */}
+          {/* 12. ANDROID APP DOWNLOAD EXPERIENCE */}
           <AppDownloadSection />
-
-          {/* 12. CUSTOMER TESTIMONIALS (Real Sheopur Reviews) */}
-          <TestimonialsSection />
 
           {/* 13. FREQUENTLY ASKED QUESTIONS */}
           <FaqSection />

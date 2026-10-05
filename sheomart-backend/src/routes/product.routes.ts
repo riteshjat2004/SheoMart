@@ -19,6 +19,7 @@ import {
   updateProductFeaturedPriority,
   cloneProductsToStore,
   getStoreExistingProducts,
+  getMasterCatalog,
 } from "../controllers/product.controller";
 import { authenticate } from "../middleware/auth.middleware";
 import { authorize } from "../middleware/role.middleware";
@@ -33,6 +34,12 @@ router.get(
   authenticate,
   authorize(USER_ROLES.PLATFORM_ADMIN),
   asyncHandler(getAdminProducts)
+);
+router.get(
+  "/admin/master-catalog",
+  authenticate,
+  authorize(USER_ROLES.PLATFORM_ADMIN),
+  asyncHandler(getMasterCatalog)
 );
 router.get(
   "/admin/store/:storeId/existing-products",

@@ -339,3 +339,23 @@ export const cloneProductsToStore = async (
     )
   );
 };
+
+export const getMasterCatalog = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  const targetStoreId = typeof req.query.targetStoreId === "string" ? req.query.targetStoreId : undefined;
+  const search = typeof req.query.search === "string" ? req.query.search : undefined;
+  const categoryId = typeof req.query.categoryId === "string" ? req.query.categoryId : undefined;
+
+  const result = await ProductService.getMasterCatalog({
+    targetStoreId,
+    search,
+    categoryId,
+  });
+
+  res.status(200).json(
+    new ApiResponse(true, "Master catalog fetched successfully", result)
+  );
+};
+

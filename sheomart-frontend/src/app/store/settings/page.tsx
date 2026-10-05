@@ -20,6 +20,7 @@ import {
   Crown,
   CheckCircle2,
   Calendar,
+  Upload,
 } from "lucide-react";
 import { z } from "zod";
 import { Breadcrumb } from "@/components/dashboard/layout/Breadcrumb";
@@ -29,7 +30,7 @@ import { DashboardCard } from "@/components/dashboard/DashboardCard";
 import { LoadingSkeleton } from "@/components/dashboard/LoadingSkeleton";
 import { ErrorState } from "@/components/common/error-state";
 import { Button } from "@/components/ui/button";
-import { fetchMyStore, updateMyStore, type DeliverySlot, type UpdateMyStorePayload } from "@/services/store";
+import { fetchMyStore, updateMyStore, uploadStoreAsset, type DeliverySlot, type UpdateMyStorePayload } from "@/services/store";
 import { useAuthStore } from "@/store/auth-store";
 import type { StoreItem } from "@/types/marketplace";
 import { SellerSecurityRequestCard } from "@/components/security/SellerSecurityRequestCard";
@@ -159,6 +160,52 @@ function StoreSettingsForm({
   const [slotToast, setSlotToast] = useState<string | null>(null);
   const [slotToDelete, setSlotToDelete] = useState<string | null>(null);
   const [highlightedSlotId, setHighlightedSlotId] = useState<string | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, assetType: "logo" | "banner") => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    event.target.value = "";
+
+    if (file.size > 5 * 1024 * 1024) {
+      setFeedback({ type: "error", message: "File size exceeds 5MB limit. Please choose a smaller image." });
+      return;
+    }
+
+    try {
+      if (assetType === "logo") {
+        setUploadingLogo(true);
+      } else {
+        setUploadingBanner(true);
+      }
+      setFeedback(null);
+
+      const res = await uploadStoreAsset(file, assetType);
+      if (res?.url) {
+        setValue(assetType, res.url);
+        await queryClient.invalidateQueries({ queryKey: ["my-store"] });
+        setFeedback({
+          type: "success",
+          message: `${assetType === "logo" ? "Store Logo" : "Store Banner"} uploaded successfully to Cloudinary!`,
+        });
+      }
+    } catch (err: any) {
+      setFeedback({
+        type: "error",
+        message: err?.response?.data?.message || err?.message || `Failed to upload ${assetType}.`,
+      });
+    } finally {
+      if (assetType === "logo") {
+        setUploadingLogo(false);
+      } else {
+        setUploadingBanner(false);
+      }
+    }
+  };
 
   const updateMutation = useMutation({
     mutationFn: (payload: UpdateMyStorePayload) => updateMyStore(payload),
@@ -301,23 +348,158 @@ function StoreSettingsForm({
                 </div>
               </div>
 
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <Field
-                  label="Store Logo Image URL"
-                  value={formValues.logo}
-                  onChange={(value) => setValue("logo", value)}
-                  error={errors.logo}
-                  type="url"
-                  placeholder="https://..."
-                />
-                <Field
-                  label="Store Banner Cover URL"
-                  value={formValues.banner}
-                  onChange={(value) => setValue("banner", value)}
-                  error={errors.banner}
-                  type="url"
-                  placeholder="https://..."
-                />
+              <div className="mt-4 grid gap-5 md:grid-cols-2">
+                {/* Store Logo Section */}
+                <div className="space-y-3 rounded-2xl border border-stone-200/80 bg-stone-50/50 p-4 dark:border-stone-800 dark:bg-stone-900/40">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-semibold text-stone-900 dark:text-stone-100">Store Logo</h4>
+                      <p className="text-[11px] text-stone-500 dark:text-stone-400">Direct Cloudinary upload or paste URL</p>
+                    </div>
+                    {formValues.logo ? (
+                      <button
+                        type="button"
+                        onClick={() => setValue("logo", "")}
+                        className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
+                      >
+                        <Trash2 className="h-3 w-3" /> Clear
+                      </button>
+                    ) : null}
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-950 flex items-center justify-center">
+                      {formValues.logo ? (
+                        <img
+                          src={formValues.logo}
+                          alt="Store Logo"
+                          className="h-full w-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = "none";
+                          }}
+                        />
+                      ) : (
+                        <StoreIcon className="h-7 w-7 text-stone-400" />
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-1.5">
+                      <input
+                        type="file"
+                        ref={logoInputRef}
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => handleFileUpload(e, "logo")}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={uploadingLogo}
+                        onClick={() => logoInputRef.current?.click()}
+                        className="w-full text-xs font-medium border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800/70 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
+                      >
+                        {uploadingLogo ? (
+                          <>
+                            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                            Uploading to Cloudinary...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="mr-1.5 h-3.5 w-3.5" />
+                            Upload Logo (Cloudinary)
+                          </>
+                        )}
+                      </Button>
+                      <p className="text-[10px] text-stone-400 dark:text-stone-500">Max size: 5MB (PNG, JPG, WebP)</p>
+                    </div>
+                  </div>
+
+                  <Field
+                    label="Store Logo Image URL"
+                    value={formValues.logo}
+                    onChange={(value) => setValue("logo", value)}
+                    error={errors.logo}
+                    type="url"
+                    placeholder="https://..."
+                  />
+                </div>
+
+                {/* Store Banner Section */}
+                <div className="space-y-3 rounded-2xl border border-stone-200/80 bg-stone-50/50 p-4 dark:border-stone-800 dark:bg-stone-900/40">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-semibold text-stone-900 dark:text-stone-100">Store Banner Cover</h4>
+                      <p className="text-[11px] text-stone-500 dark:text-stone-400">Direct Cloudinary upload or paste URL</p>
+                    </div>
+                    {formValues.banner ? (
+                      <button
+                        type="button"
+                        onClick={() => setValue("banner", "")}
+                        className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
+                      >
+                        <Trash2 className="h-3 w-3" /> Clear
+                      </button>
+                    ) : null}
+                  </div>
+
+                  <div className="relative h-20 w-full overflow-hidden rounded-xl border border-stone-200 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-950 flex items-center justify-center">
+                    {formValues.banner ? (
+                      <img
+                        src={formValues.banner}
+                        alt="Store Banner"
+                        className="h-full w-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <div className="flex items-center gap-2 text-stone-400 text-xs">
+                        <ImageIcon className="h-5 w-5" />
+                        <span>No banner set</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <input
+                      type="file"
+                      ref={bannerInputRef}
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleFileUpload(e, "banner")}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={uploadingBanner}
+                      onClick={() => bannerInputRef.current?.click()}
+                      className="w-full text-xs font-medium border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800/70 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
+                    >
+                      {uploadingBanner ? (
+                        <>
+                          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                          Uploading to Cloudinary...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="mr-1.5 h-3.5 w-3.5" />
+                          Upload Banner (Cloudinary)
+                        </>
+                      )}
+                    </Button>
+                    <p className="text-[10px] text-stone-400 dark:text-stone-500">Max size: 5MB (PNG, JPG, WebP)</p>
+                  </div>
+
+                  <Field
+                    label="Store Banner Cover URL"
+                    value={formValues.banner}
+                    onChange={(value) => setValue("banner", value)}
+                    error={errors.banner}
+                    type="url"
+                    placeholder="https://..."
+                  />
+                </div>
                 <label className="space-y-1.5 text-xs font-semibold text-stone-700 dark:text-stone-300 md:col-span-2">
                   <span>Store Description & Specialties</span>
                   <textarea

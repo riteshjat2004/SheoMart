@@ -1,18 +1,21 @@
 "use client";
 
 import { ShieldCheck, Leaf, Clock3, CreditCard, Award, Users, ShoppingBag, Store } from "lucide-react";
+import { useMarketplaceStats } from "@/hooks/use-home";
 
 export function TrustAndStatsSection() {
+  const { data: statsData, isLoading } = useMarketplaceStats();
+
   const trustPillars = [
     {
       icon: Clock3,
       title: "15–30 Min Express Delivery",
-      description: "Fast doorstep fulfillment powered by local riders who know every Sheopur street.",
+      description: "Fast doorstep fulfillment powered by local riders who know every neighborhood street.",
     },
     {
       icon: ShieldCheck,
       title: "100% Verified Stores",
-      description: "Only approved, quality-inspected local merchants and supermarkets.",
+      description: "Only approved, quality-inspected local merchants and neighborhood supermarkets.",
     },
     {
       icon: Leaf,
@@ -26,11 +29,35 @@ export function TrustAndStatsSection() {
     },
   ];
 
+  const formatCount = (val?: number, suffix = "+") => {
+    if (val === undefined || val === null) return "--";
+    if (val >= 1000) {
+      return `${(val / 1000).toFixed(1).replace(/\.0$/, "")}k${suffix}`;
+    }
+    return `${val.toLocaleString()}${val > 5 ? suffix : ""}`;
+  };
+
   const stats = [
-    { label: "Approved Local Stores", value: "50+", icon: Store },
-    { label: "Daily Fresh Products", value: "10,000+", icon: ShoppingBag },
-    { label: "Happy Sheopur Families", value: "8,500+", icon: Users },
-    { label: "On-Time Deliveries", value: "99.4%", icon: Award },
+    {
+      label: "Approved Local Stores",
+      value: isLoading ? "--" : formatCount(statsData?.approvedStores),
+      icon: Store,
+    },
+    {
+      label: "Daily Fresh Products",
+      value: isLoading ? "--" : formatCount(statsData?.totalProducts),
+      icon: ShoppingBag,
+    },
+    {
+      label: "Happy Customers",
+      value: isLoading ? "--" : formatCount(statsData?.happyCustomers),
+      icon: Users,
+    },
+    {
+      label: "On-Time Deliveries",
+      value: isLoading ? "--" : `${statsData?.deliverySuccessRate ?? 99.4}%`,
+      icon: Award,
+    },
   ];
 
   return (
@@ -66,7 +93,9 @@ export function TrustAndStatsSection() {
                 <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400">
                   <Icon className="h-5 w-5" />
                 </div>
-                <p className="text-2xl sm:text-3xl font-black tracking-tight text-stone-900 dark:text-white">{stat.value}</p>
+                <p className="text-2xl sm:text-3xl font-black tracking-tight text-stone-900 dark:text-white">
+                  {stat.value}
+                </p>
                 <p className="text-xs font-medium text-stone-600 dark:text-stone-300">{stat.label}</p>
               </div>
             );
@@ -76,3 +105,4 @@ export function TrustAndStatsSection() {
     </section>
   );
 }
+

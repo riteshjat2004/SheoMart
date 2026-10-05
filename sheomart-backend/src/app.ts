@@ -150,6 +150,7 @@ app.use("/api/v1/admin", adminPasswordResetRoutes);
 app.use("/api/v1/support", supportRoutes);
 app.use("/api/v1/notifications", notificationRoutes);
 app.use("/api/home", homeRoutes);
+app.use("/api/v1/home", homeRoutes);
 
 // Global Error Handler (Always Last)
 app.use(errorHandler);

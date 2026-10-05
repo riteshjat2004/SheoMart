@@ -4,6 +4,10 @@ import { AuthRequest } from "../middleware/auth.middleware";
 import { ApiResponse } from "../utils/apiResponse";
 import { StoreService } from "../services/store.service";
 import { addPlusMember, listPlusMembers, removePlusMember } from "../services/billing.service";
+import { Store } from "../models/store.model";
+import { uploadBufferToCloudinary } from "../utils/cloudinary";
+import { CLOUDINARY_FOLDERS } from "../constants/cloudinary";
+import { USER_ROLES } from "../constants/roles";
 import {
   createStoreSchema,
   protectedStoreUpdateFields,
@@ -199,3 +203,48 @@ export const deletePlusMember = async (req: AuthRequest, res: Response): Promise
   const member = await removePlusMember(req.user!.userId, memberId);
   res.status(200).json(new ApiResponse(true, "Plus membership removed", { member }));
 };
+
+export const uploadStoreAsset = async (
+  req: AuthRequest,
+  res: Response
+): Promise<void> => {
+  if (!req.file?.buffer) {
+    throw new AppError("No image file provided", 400);
+  }
+
+  const assetType = req.body?.assetType === "banner" ? "banner" : "logo";
+  const uploadResult = await uploadBufferToCloudinary(
+    req.file.buffer,
+    CLOUDINARY_FOLDERS.STORES
+  );
+
+  let store;
+  if (req.user?.role === USER_ROLES.PLATFORM_ADMIN && req.body?.storeId) {
+    store = await Store.findOne({ storeId: req.body.storeId });
+  } else {
+    store = await Store.findOne({ ownerId: req.user?.userId });
+  }
+
+  if (store) {
+    if (assetType === "banner") {
+      store.banner = uploadResult.secure_url;
+    } else {
+      store.logo = uploadResult.secure_url;
+    }
+    await store.save();
+  }
+
+  res.status(200).json(
+    new ApiResponse(
+      true,
+      `${assetType === "banner" ? "Banner" : "Logo"} uploaded successfully to Cloudinary`,
+      {
+        url: uploadResult.secure_url,
+        publicId: uploadResult.public_id,
+        assetType,
+        store,
+      }
+    )
+  );
+};
+

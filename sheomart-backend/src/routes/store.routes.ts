@@ -13,11 +13,13 @@ import {
   getPlusMembers,
   createPlusMember,
   deletePlusMember,
+  uploadStoreAsset,
 } from "../controllers/store.controller";
 import { authenticate } from "../middleware/auth.middleware";
 import { authorize } from "../middleware/role.middleware";
 import { asyncHandler } from "../utils/asyncHandler";
 import { USER_ROLES } from "../constants/roles";
+import { uploadProductImage } from "../middleware/upload.middleware";
 
 const router = Router();
 
@@ -38,6 +40,13 @@ router.patch(
   authenticate,
   authorize(USER_ROLES.CUSTOMER, USER_ROLES.STORE_OWNER),
   asyncHandler(updateMyStore)
+);
+router.post(
+  "/me/upload-asset",
+  authenticate,
+  authorize(USER_ROLES.CUSTOMER, USER_ROLES.STORE_OWNER, USER_ROLES.PLATFORM_ADMIN),
+  uploadProductImage,
+  asyncHandler(uploadStoreAsset)
 );
 router.get(
   "/admin",

@@ -180,3 +180,25 @@ export async function bulkUpdateStoreStatus(storeIds: string[], status: string) 
 
   return response.data.data ?? { modifiedCount: 0 };
 }
+
+export async function uploadStoreAsset(file: File, assetType: "logo" | "banner", storeId?: string) {
+  const formData = new FormData();
+  formData.append("image", file);
+  formData.append("assetType", assetType);
+  if (storeId) {
+    formData.append("storeId", storeId);
+  }
+
+  const response = await api.post<ApiResponse<{ url: string; publicId: string; assetType: string; store?: StoreItem }>>(
+    "/api/v1/stores/me/upload-asset",
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
+  );
+
+  return response.data.data;
+}
+
