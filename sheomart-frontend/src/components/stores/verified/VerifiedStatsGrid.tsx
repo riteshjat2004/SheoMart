@@ -1,14 +1,31 @@
-import { CheckCircle2, MessageCircle, PackageCheck, ShoppingBag, Star } from "lucide-react";
+"use client";
+
+import { CheckCircle2, MessageCircle, PackageCheck, ShoppingBag, Star, Layers } from "lucide-react";
 import { verifiedTheme } from "@/themes/verifiedTheme";
+import type { StoreItem } from "@/types/marketplace";
 
-const stats = [
-  { icon: PackageCheck, value: "98%", label: "Customer Satisfaction" },
-  { icon: ShoppingBag, value: "1,000+", label: "Orders Fulfilled" },
-  { icon: Star, value: "4.9★", label: "Average Rating" },
-  { icon: MessageCircle, value: "Prompt", label: "Support Response" },
-];
+interface VerifiedStatsGridProps {
+  store?: StoreItem;
+  productCount?: number;
+}
 
-export function VerifiedStatsGrid() {
+export function VerifiedStatsGrid({ store, productCount = 0 }: VerifiedStatsGridProps) {
+  const ratingValue = store?.rating && store.rating > 0 ? `${store.rating.toFixed(1)}★` : "4.8★";
+  const satisfactionRate = store?.rating && store.rating > 0
+    ? `${Math.min(99, Math.round(store.rating * 20))}%`
+    : "98%";
+  const catalogValue = productCount > 0 ? `${productCount}+ Items` : "Active Catalog";
+  const fulfillmentValue = store?.totalReviews && store.totalReviews > 0
+    ? `${store.totalReviews}+ Reviews`
+    : "Reliable Dispatch";
+
+  const stats = [
+    { icon: PackageCheck, value: satisfactionRate, label: "Customer Satisfaction" },
+    { icon: Layers, value: catalogValue, label: "Fresh Store Catalog" },
+    { icon: Star, value: ratingValue, label: "Store Average Rating" },
+    { icon: MessageCircle, value: fulfillmentValue, label: "Verified Performance" },
+  ];
+
   return (
     <section className="grid grid-cols-2 gap-3" aria-label="Verified store statistics">
       {stats.map(({ icon: Icon, value, label }) => (

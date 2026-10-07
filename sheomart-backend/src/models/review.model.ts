@@ -60,7 +60,6 @@ const reviewSchema = new Schema<IReview>(
     orderId: {
       type: String,
       default: "",
-      index: true,
     },
 
     storeId: {

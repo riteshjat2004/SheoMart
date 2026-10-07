@@ -108,6 +108,7 @@ export type StoreBadge = "normal" | "verified" | "royal";
 export interface StoreItem {
   _id?: string;
   storeId?: string;
+  slug?: string;
   ownerId?: string;
   name?: string;
   storeName?: string;

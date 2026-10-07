@@ -4,10 +4,7 @@ import type { StoreItem } from "@/types/marketplace";
 import { StoreBadge } from "@/components/store/StoreBadge";
 import { DeliveryBadge } from "@/components/store/DeliveryBadge";
 import { DeliveryRibbon } from "@/components/store/DeliveryRibbon";
-
-function getStoreHref(store: StoreItem) {
-  return `/stores/${encodeURIComponent(store.storeId ?? store._id ?? store.storeName ?? store.name ?? "store")}`;
-}
+import { getStoreHref } from "@/components/store/storeCard.utils";
 
 function isStoreOpen(store: StoreItem) {
   const currentMinutes = new Date().getHours() * 60 + new Date().getMinutes();

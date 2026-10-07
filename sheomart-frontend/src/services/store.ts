@@ -202,3 +202,21 @@ export async function uploadStoreAsset(file: File, assetType: "logo" | "banner",
   return response.data.data;
 }
 
+export async function fetchStorePublicReviews(storeId: string) {
+  const response = await api.get<ApiResponse<{
+    reviews: Array<{
+      reviewId: string;
+      rating: number;
+      title?: string;
+      comment: string;
+      createdAt: string;
+      user?: { name?: string };
+      product?: { name?: string };
+      sellerReply?: { comment?: string };
+    }>;
+    total: number;
+    averageRating: number;
+  }>>(`/api/v1/stores/${storeId}/reviews`);
+  return response.data.data ?? { reviews: [], total: 0, averageRating: 0 };
+}
+

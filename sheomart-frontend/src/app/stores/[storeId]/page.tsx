@@ -48,20 +48,12 @@ import { RoyalConciergeCard } from "@/components/store/royal/RoyalConciergeCard"
 import { RoyalAuthenticityBanner } from "@/components/store/royal/RoyalAuthenticityBanner";
 import { RoyalCollections } from "@/components/store/royal/RoyalCollections";
 import { RoyalLimitedEdition } from "@/components/store/royal/RoyalLimitedEdition";
-import { RoyalPrivileges } from "@/components/store/royal/RoyalPrivileges";
 import { RoyalMembershipBanner } from "@/components/store/royal/RoyalMembershipBanner";
 import { RoyalTestimonials } from "@/components/store/royal/RoyalTestimonials";
-import { RoyalGiftExperience } from "@/components/store/royal/RoyalGiftExperience";
 import { RoyalDivider } from "@/components/store/royal/RoyalDivider";
-import { RoyalSectionHeader } from "@/components/store/royal/RoyalSectionHeader";
 import { RoyalLaunches } from "@/components/store/royal/RoyalLaunches";
-import { RoyalEarlyAccess } from "@/components/store/royal/RoyalEarlyAccess";
-import { RoyalShoppingConcierge } from "@/components/store/royal/RoyalShoppingConcierge";
 import { RoyalRecommendations } from "@/components/store/royal/RoyalRecommendations";
-import { RoyalGiftBoxShowcase } from "@/components/store/royal/RoyalGiftBoxShowcase";
-import { RoyalVIPBenefits } from "@/components/store/royal/RoyalVIPBenefits";
-import { RoyalPackagingShowcase } from "@/components/store/royal/RoyalPackagingShowcase";
-import { RoyalShoppingTimeline } from "@/components/store/royal/RoyalShoppingTimeline";
+import { RoyalSignatureExperience } from "@/components/store/royal/RoyalSignatureExperience";
 import { RoyalCouponWallet } from "@/components/store/royal/RoyalCouponWallet";
 import { RoyalMotion } from "@/components/store/royal/RoyalMotion";
 import { useStoreSearch } from "@/components/store/shared/useStoreSearch";
@@ -164,7 +156,7 @@ export default function StoreDetailPage() {
   const params = useParams<{ storeId: string }>();
   const storeId = params?.storeId;
   const storeQuery = useStore(storeId);
-  const productsQuery = useProductsByStore(storeId);
+  const productsQuery = useProductsByStore(storeQuery.data?.storeId ?? storeId);
   const categoriesQuery = useCategories();
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>(DEFAULT_SORT);
@@ -458,64 +450,77 @@ export default function StoreDetailPage() {
                 <RoyalMotion>
                   <div className="space-y-6">
                     <div className="grid gap-5 lg:grid-cols-2">
-                      <RoyalConciergeCard />
+                      <RoyalConciergeCard store={store} />
                       <RoyalAuthenticityBanner />
                     </div>
                     <RoyalDivider />
-                    <RoyalCouponWallet />
-                    <RoyalCollections products={products} />
+                    <RoyalCouponWallet store={store} />
+                    <RoyalCollections
+                      products={products}
+                      onSelectCategory={focusCategory}
+                      activeCategory={activeCategory}
+                    />
+                    <RoyalLaunches products={products} />
                     <RoyalLimitedEdition products={products} />
                     <RoyalDivider />
-                    <RoyalPrivileges />
-                    <RoyalMembershipBanner />
-                    <RoyalTestimonials />
-                    <RoyalGiftExperience />
-                    <RoyalDivider />
-                    <RoyalSectionHeader title="VIP Shopping Experience" subtitle="A flagship journey from discovery to delivery." />
-                    <RoyalLaunches products={products} />
-                    <RoyalEarlyAccess />
-                    <RoyalShoppingConcierge />
                     <RoyalRecommendations products={products} />
-                    <RoyalGiftBoxShowcase />
-                    <RoyalVIPBenefits />
-                    <RoyalPackagingShowcase />
-                    <RoyalShoppingTimeline />
+                    <RoyalSignatureExperience />
                     <RoyalDivider />
+                    <RoyalMembershipBanner />
+                    <RoyalTestimonials store={store} />
                   </div>
                 </RoyalMotion>
               ) : storeVariant === "verified" ? (
                 <div className="space-y-5">
-                  <VerifiedTrustScore />
+                  <VerifiedTrustScore store={store} />
                   <VerifiedInfoGrid store={store} productCount={products.length} />
                   <VerifiedAchievements />
                   <VerifiedHighlights />
                   <VerifiedAboutStore store={store} />
                   <div className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr]">
-                    <VerifiedStatsGrid />
+                    <VerifiedStatsGrid store={store} productCount={products.length} />
                     <VerifiedBusinessInfo store={store} />
                   </div>
                   <VerifiedTrustBanner />
-                  <VerifiedCollections products={products} />
+                  <VerifiedCollections
+                    products={products}
+                    onSelectCategory={focusCategory}
+                    activeCategory={activeCategory}
+                  />
                   <VerifiedDealsCarousel products={products} />
-                  <VerifiedCouponWallet />
+                  <VerifiedCouponWallet store={store} />
                   <VerifiedProductStrip title="Best Seller Products" subtitle="Popular picks from this verified seller." products={products} mode="best" />
                   <VerifiedProductStrip title="New Arrivals" subtitle="The latest additions to this store." products={products} mode="new" />
                   <VerifiedProductStrip title="Trending This Week" subtitle="A quick look at what shoppers are exploring." products={products} mode="trending" />
-                  <VerifiedOfferBanner />
+                  <VerifiedOfferBanner onBrowseDeals={() => focusCategory("deals")} />
                   <VerifiedSearchSuggestions onSelect={setSearchQuery} />
-                  <VerifiedSpotlight product={products[0]} />
+                  {products[0] ? <VerifiedSpotlight product={products[0]} /> : null}
+                  <NormalStoreReviews
+                    storeName={store.storeName ?? store.name}
+                    totalReviews={store.totalReviews ?? 0}
+                    averageRating={typeof store.rating === "number" ? store.rating : 4.8}
+                    storeId={store.storeId}
+                  />
                 </div>
               ) : (
                 <div className="space-y-6">
                   <NormalInfoGrid store={store} productCount={products.length} />
                   <NormalHighlights />
-                  <NormalCollections products={products} onSelectCategory={focusCategory} />
-                  <NormalCouponWallet />
-                  <NormalOfferBanner onBrowseDeals={() => focusCategory("featured")} />
+                  <NormalCollections
+                    products={products}
+                    onSelectCategory={focusCategory}
+                    activeCategory={activeCategory}
+                  />
+                  <NormalCouponWallet store={store} />
+                  <NormalOfferBanner
+                    store={store}
+                    onBrowseDeals={() => focusCategory("featured")}
+                  />
                   <NormalStoreReviews
                     storeName={store.storeName ?? store.name}
                     totalReviews={store.totalReviews ?? 0}
                     averageRating={typeof store.rating === "number" ? store.rating : 4.8}
+                    storeId={store.storeId}
                   />
                 </div>
               )}

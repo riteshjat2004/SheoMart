@@ -1,7 +1,9 @@
 "use client";
 
-import { CheckCircle2, MessageSquare, Star, ThumbsUp, User } from "lucide-react";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { CheckCircle2, MessageSquare, Star, ThumbsUp } from "lucide-react";
+import { fetchStorePublicReviews } from "@/services/store";
 
 interface ReviewItem {
   id: string;
@@ -50,12 +52,27 @@ export function NormalStoreReviews({
   storeName = "Local Store",
   totalReviews = 0,
   averageRating = 4.8,
+  storeId,
 }: {
   storeName?: string;
   totalReviews?: number;
   averageRating?: number;
+  storeId?: string;
 }) {
   const [likes, setLikes] = useState<Record<string, number>>({});
+
+  const reviewsQuery = useQuery({
+    queryKey: ["store-public-reviews", storeId],
+    queryFn: () => (storeId ? fetchStorePublicReviews(storeId) : null),
+    enabled: Boolean(storeId),
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const realReviews = reviewsQuery.data?.reviews || [];
+  const effectiveAverage =
+    averageRating > 0 ? averageRating : reviewsQuery.data?.averageRating || 4.8;
+  const effectiveTotal =
+    totalReviews > 0 ? totalReviews : reviewsQuery.data?.total || realReviews.length;
 
   const handleLike = (id: string, initial: number) => {
     setLikes((prev) => ({
@@ -63,6 +80,28 @@ export function NormalStoreReviews({
       [id]: (prev[id] ?? initial) + 1,
     }));
   };
+
+  const displayedReviews =
+    realReviews.length > 0
+      ? realReviews.map((r, index) => ({
+          id: r.reviewId,
+          name: r.user?.name || "Verified Customer",
+          avatarBg:
+            index % 3 === 0
+              ? "bg-emerald-100 text-emerald-800"
+              : index % 3 === 1
+              ? "bg-orange-100 text-orange-800"
+              : "bg-blue-100 text-blue-800",
+          rating: r.rating,
+          date: new Date(r.createdAt).toLocaleDateString("en-IN", {
+            month: "short",
+            day: "numeric",
+          }),
+          comment: r.comment,
+          sellerReply: r.sellerReply?.comment,
+          helpfulCount: 2 + index,
+        }))
+      : communityReviews;
 
   return (
     <section aria-labelledby="normal-reviews-heading" className="space-y-4">
@@ -76,25 +115,25 @@ export function NormalStoreReviews({
               Customer Reviews &amp; Community Feedback
             </h2>
             <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-              {totalReviews > 0 ? `${totalReviews} reviews` : "Community Mart"}
+              {effectiveTotal > 0 ? `${effectiveTotal} reviews` : "Verified Store"}
             </span>
           </div>
           <p className="mt-0.5 text-xs text-stone-500 dark:text-stone-400">
-            Real shopping experiences from neighborhood customers
+            Real shopping experiences from neighborhood customers at {storeName}
           </p>
         </div>
 
         <div className="flex items-center gap-2 self-start rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-medium dark:border-stone-800 dark:bg-stone-900">
           <Star className="h-3.5 w-3.5 fill-current text-amber-500" />
           <span className="font-bold text-stone-900 dark:text-stone-100">
-            {averageRating.toFixed(1)} / 5.0
+            {effectiveAverage.toFixed(1)} / 5.0
           </span>
           <span className="text-stone-400">Rating</span>
         </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {communityReviews.map((review) => {
+        {displayedReviews.map((review) => {
           const count = likes[review.id] ?? review.helpfulCount;
 
           return (
@@ -142,25 +181,25 @@ export function NormalStoreReviews({
 
                 {/* Seller Reply */}
                 {review.sellerReply ? (
-                  <div className="mt-3 rounded-xl border border-stone-100 bg-stone-50 p-2.5 text-[11px] text-stone-600 dark:border-stone-800 dark:bg-stone-950/60 dark:text-stone-400">
-                    <div className="flex items-center gap-1 font-semibold text-emerald-700 dark:text-emerald-400">
-                      <MessageSquare className="h-3 w-3" />
-                      <span>{storeName} Response:</span>
-                    </div>
-                    <p className="mt-1">{review.sellerReply}</p>
+                  <div className="mt-3 rounded-xl bg-stone-50 p-2.5 text-[11px] text-stone-600 dark:bg-stone-950 dark:text-stone-400">
+                    <p className="font-semibold text-stone-800 dark:text-stone-200 flex items-center gap-1">
+                      <MessageSquare className="h-3 w-3 text-emerald-600" /> Store Owner Reply:
+                    </p>
+                    <p className="mt-0.5 italic">{review.sellerReply}</p>
                   </div>
                 ) : null}
               </div>
 
-              {/* Helpful button */}
-              <div className="mt-4 flex items-center justify-end border-t border-stone-100 pt-2 text-[11px] text-stone-400 dark:border-stone-800">
+              {/* Helpful count button */}
+              <div className="mt-3 flex items-center justify-between border-t border-stone-100 pt-2.5 dark:border-stone-800">
+                <span className="text-[10px] text-stone-400">Was this helpful?</span>
                 <button
                   type="button"
                   onClick={() => handleLike(review.id, review.helpfulCount)}
-                  className="inline-flex items-center gap-1 rounded-md px-2 py-1 transition hover:bg-stone-100 hover:text-stone-700 dark:hover:bg-stone-800 dark:hover:text-stone-200"
+                  className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium text-stone-500 transition hover:bg-stone-100 hover:text-emerald-600 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-emerald-400"
                 >
-                  <ThumbsUp className="h-3 w-3" />
-                  <span>Helpful ({count})</span>
+                  <ThumbsUp className="h-2.5 w-2.5" />
+                  <span>{count}</span>
                 </button>
               </div>
             </article>

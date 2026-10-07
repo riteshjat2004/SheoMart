@@ -1,3 +1,4 @@
+import { Types } from "mongoose";
 import { AppError } from "../errors/AppError";
 import { STORE_STATUS, StoreStatus } from "../constants/store";
 import { USER_ROLES } from "../constants/roles";
@@ -165,22 +166,29 @@ export class StoreService {
   }
 
   static async getStoreById(storeId: string) {
-    const store = await Store.findOne({ storeId, isDeleted: { $ne: true } });
+    const identifiers: Record<string, unknown>[] = [{ storeId }, { slug: storeId }];
+    if (Types.ObjectId.isValid(storeId)) identifiers.push({ _id: storeId });
+
+    const store = await Store.findOne({
+      $or: identifiers,
+      isDeleted: { $ne: true },
+    });
 
     if (!store) {
       throw new AppError("Store not found", 404);
     }
 
+    const canonicalStoreId = store.storeId;
     const fulfillment = StoreService.toFulfillmentResponse(store.toObject(), true);
     const owner = await User.findOne({ userId: store.ownerId })
       .select("userId name email mobile createdAt")
       .lean();
 
     const [totalProducts, activeProducts, outOfStockProducts, categories] = await Promise.all([
-      Product.countDocuments({ storeId }),
-      Product.countDocuments({ storeId, isActive: true, isPublished: true }),
-      Product.countDocuments({ storeId, quantity: 0 }),
-      Product.distinct("categoryId", { storeId }),
+      Product.countDocuments({ storeId: canonicalStoreId }),
+      Product.countDocuments({ storeId: canonicalStoreId, isActive: true, isPublished: true }),
+      Product.countDocuments({ storeId: canonicalStoreId, quantity: 0 }),
+      Product.distinct("categoryId", { storeId: canonicalStoreId }),
     ]);
 
     return {
@@ -425,4 +433,3 @@ export class StoreService {
     return { modifiedCount: result.modifiedCount };
   }
 }
-

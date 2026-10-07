@@ -1,8 +1,14 @@
+"use client";
+
 import { ArrowRight, BadgePercent, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { verifiedTheme } from "@/themes/verifiedTheme";
 
-export function VerifiedOfferBanner() {
+interface VerifiedOfferBannerProps {
+  onBrowseDeals?: () => void;
+}
+
+export function VerifiedOfferBanner({ onBrowseDeals }: VerifiedOfferBannerProps) {
   return (
     <section
       className={`relative isolate overflow-hidden rounded-[2rem] border p-6 sm:p-8 ${verifiedTheme.hero}`}
@@ -18,12 +24,13 @@ export function VerifiedOfferBanner() {
             Fresh Value Deals &amp; Steals
           </h2>
           <p className="mt-2 text-sm text-stone-600 dark:text-emerald-100 max-w-xl">
-            Save up to 40% on fresh everyday grocery essentials, daily vegetables, and household staples from this verified seller.
+            Save on fresh everyday grocery essentials, daily vegetables, and household staples from this verified seller.
           </p>
         </div>
         <Button
           type="button"
-          className="h-11 shrink-0 rounded-full bg-emerald-600 text-white font-semibold shadow-md transition hover:bg-emerald-500 dark:bg-white dark:text-emerald-900 dark:hover:bg-emerald-50 px-6"
+          onClick={onBrowseDeals}
+          className="h-11 shrink-0 rounded-full bg-emerald-600 text-white font-semibold shadow-md transition hover:bg-emerald-500 dark:bg-white dark:text-emerald-900 dark:hover:bg-emerald-50 px-6 cursor-pointer"
         >
           <BadgePercent className="mr-2 h-4 w-4" />
           Shop Offers

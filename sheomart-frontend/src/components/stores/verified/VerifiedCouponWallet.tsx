@@ -1,7 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy, ShieldCheck, TicketPercent } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Check, Copy, ShieldCheck, TicketPercent, Tag } from "lucide-react";
+import api from "@/services/api";
+import type { ApiResponse } from "@/types/api";
+import type { StoreItem } from "@/types/marketplace";
 import { verifiedTheme } from "@/themes/verifiedTheme";
 import { VerifiedSectionHeader } from "./VerifiedSectionHeader";
 
@@ -12,35 +16,76 @@ interface VerifiedCoupon {
   eligibility: string;
 }
 
-const coupons: VerifiedCoupon[] = [
-  {
-    code: "VERIFIED10",
-    discount: "10% OFF",
-    description: "Welcome discount on fresh grocery orders",
-    eligibility: "Valid for all registered customers",
-  },
-  {
-    code: "SAVE150",
-    discount: "₹150 OFF",
-    description: "Instant store saving on pantry stocking",
-    eligibility: "Orders above ₹799",
-  },
-  {
-    code: "FREELOCAL",
-    discount: "FREE DELIVERY",
-    description: "Zero doorstep delivery fee on local orders",
-    eligibility: "Orders above ₹499 in Sheopur",
-  },
-  {
-    code: "DAILYFRESH",
-    discount: "BUY 2 GET 1",
-    description: "Special daily essentials bundle savings",
-    eligibility: "Applicable on selected dairy & bakery",
-  },
-];
+interface VerifiedCouponWalletProps {
+  store?: StoreItem;
+}
 
-export function VerifiedCouponWallet() {
+export function VerifiedCouponWallet({ store }: VerifiedCouponWalletProps) {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  const storeName = store?.storeName ?? store?.name ?? "Verified Store";
+  const freeDeliveryThreshold = store?.freeDeliveryAbove ?? store?.freeDeliveryThreshold;
+
+  // Fetch active marketplace/store coupons from promotions API
+  const couponsQuery = useQuery({
+    queryKey: ["active-coupons-verified", store?.storeId],
+    queryFn: async () => {
+      try {
+        const res = await api.get<ApiResponse<{ coupons: any[] }>>("/api/v1/promotions/coupons/active");
+        return res.data.data?.coupons ?? [];
+      } catch {
+        return [];
+      }
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const rawCoupons = couponsQuery.data || [];
+  const matchingCoupons: VerifiedCoupon[] = rawCoupons
+    .filter(
+      (c) =>
+        c.isActive !== false &&
+        (!c.storeId || c.storeId === store?.storeId || c.applicableScope === "marketplace")
+    )
+    .map((c) => ({
+      code: c.code,
+      discount: c.discountType === "percentage" ? `${c.discountValue}% OFF` : `₹${c.discountValue} OFF`,
+      description: c.title || c.description || "Exclusive verified saving on grocery order",
+      eligibility: c.minimumCartValue ? `Orders above ₹${c.minimumCartValue}` : "All grocery items",
+    }));
+
+  const defaultCoupons: VerifiedCoupon[] = [
+    ...(freeDeliveryThreshold
+      ? [
+          {
+            code: "FREELOCAL",
+            discount: "FREE DELIVERY",
+            description: `Complimentary doorstep delivery directly from ${storeName}`,
+            eligibility: `Orders above ₹${freeDeliveryThreshold}`,
+          },
+        ]
+      : []),
+    {
+      code: "VERIFIED10",
+      discount: "10% OFF",
+      description: `Welcome discount on fresh groceries from ${storeName}`,
+      eligibility: "Valid for all registered shoppers",
+    },
+    {
+      code: "SAVE100",
+      discount: "₹100 OFF",
+      description: "Instant discount on daily essentials & pantry staples",
+      eligibility: "Orders above ₹699",
+    },
+    {
+      code: "FRESHPACK",
+      discount: "EXTRA 5%",
+      description: "Special daily essentials bundle savings",
+      eligibility: "Applicable on fresh produce & dairy",
+    },
+  ];
+
+  const displayedCoupons = matchingCoupons.length ? matchingCoupons.slice(0, 4) : defaultCoupons;
 
   const handleCopy = async (code: string) => {
     try {
@@ -54,70 +99,59 @@ export function VerifiedCouponWallet() {
 
   return (
     <section className="space-y-4" aria-labelledby="verified-coupons-heading">
-      <VerifiedSectionHeader
-        icon={TicketPercent}
-        title="Verified Coupon Wallet"
-        subtitle="Exclusive verified store vouchers and savings for your basket."
-      />
-      <h2 id="verified-coupons-heading" className="sr-only">
-        Verified coupon wallet
-      </h2>
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <VerifiedSectionHeader
+          icon={TicketPercent}
+          title="Verified Coupon Wallet"
+          subtitle="Exclusive verified store vouchers and savings for your basket."
+        />
+        <p className="text-xs text-emerald-800 dark:text-emerald-300 font-medium">
+          Copy code to apply during checkout
+        </p>
+      </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {coupons.map((coupon) => {
-          const isCopied = copiedCode === coupon.code;
+      <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+        {displayedCoupons.map(({ code, discount, description, eligibility }) => {
+          const isCopied = copiedCode === code;
 
           return (
             <article
-              key={coupon.code}
-              className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-dashed border-emerald-300 bg-emerald-50/40 p-5 shadow-sm transition-all duration-300 hover:border-emerald-500 hover:bg-emerald-50/80 hover:shadow-md dark:border-emerald-800 dark:bg-emerald-950/30 dark:hover:border-emerald-600"
+              key={code}
+              className={`relative flex flex-col justify-between rounded-3xl border border-emerald-200/80 p-5 shadow-xs transition-all duration-200 ${verifiedTheme.panel}`}
             >
-              <div>
-                <div className="flex items-center justify-between">
-                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-white px-2 py-0.5 text-[10px] font-bold text-emerald-800 shadow-xs dark:border-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200">
-                    <ShieldCheck className="h-2.5 w-2.5 text-emerald-600 dark:text-emerald-400" />
-                    Verified Saving
-                  </span>
-                  <TicketPercent className="h-4 w-4 text-emerald-600/70 dark:text-emerald-400/70" />
-                </div>
+              <div className="flex items-start justify-between gap-3">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300/80 bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+                  <TicketPercent className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                  {discount}
+                </span>
 
-                <div className="mt-4">
-                  <p className="text-2xl font-extrabold tracking-tight text-emerald-800 dark:text-emerald-100">
-                    {coupon.discount}
-                  </p>
-                  <p className="mt-1 text-xs text-stone-600 dark:text-stone-300 line-clamp-1">{coupon.description}</p>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => handleCopy(code)}
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold transition-all ${
+                    isCopied
+                      ? "bg-emerald-600 text-white"
+                      : "border border-emerald-300 bg-white hover:border-emerald-400 hover:bg-emerald-50 text-emerald-900 dark:border-emerald-700 dark:bg-stone-900 dark:text-emerald-200 dark:hover:bg-emerald-900"
+                  }`}
+                  aria-label={`Copy coupon code ${code}`}
+                >
+                  {isCopied ? (
+                    <>
+                      <Check className="h-3 w-3" /> Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3 w-3" /> {code}
+                    </>
+                  )}
+                </button>
               </div>
 
-              <div className="mt-5 border-t border-emerald-200/80 pt-3 dark:border-emerald-900/50">
-                <p className="text-[11px] font-medium text-stone-500 dark:text-stone-400">{coupon.eligibility}</p>
-
-                <div className="mt-3 flex items-center justify-between gap-2">
-                  <div className="rounded-lg border border-emerald-300/80 bg-white px-2.5 py-1 font-mono text-xs font-bold tracking-wider text-emerald-900 shadow-xs dark:border-emerald-800 dark:bg-zinc-900 dark:text-emerald-200">
-                    {coupon.code}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleCopy(coupon.code)}
-                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-all duration-200 ${
-                      isCopied
-                        ? "bg-emerald-600 text-white shadow-xs"
-                        : "bg-emerald-600/10 text-emerald-700 hover:bg-emerald-600 hover:text-white dark:bg-emerald-500/20 dark:text-emerald-300 dark:hover:bg-emerald-500 dark:hover:text-stone-950"
-                    }`}
-                  >
-                    {isCopied ? (
-                      <>
-                        <Check className="h-3 w-3" />
-                        Copied
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="h-3 w-3" />
-                        Copy Code
-                      </>
-                    )}
-                  </button>
+              <div className="mt-4">
+                <p className="text-sm font-semibold text-stone-900 dark:text-white leading-snug">{description}</p>
+                <div className="mt-3 flex items-center gap-1.5 text-[11px] text-stone-500 dark:text-stone-400">
+                  <Tag className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                  <span>{eligibility}</span>
                 </div>
               </div>
             </article>

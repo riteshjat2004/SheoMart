@@ -1,8 +1,9 @@
-import { Response } from "express";
+import { Request, Response } from "express";
 import { AppError } from "../errors/AppError";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { ApiResponse } from "../utils/apiResponse";
 import { StoreService } from "../services/store.service";
+import { ReviewService } from "../services/review.service";
 import { addPlusMember, listPlusMembers, removePlusMember } from "../services/billing.service";
 import { Store } from "../models/store.model";
 import { uploadBufferToCloudinary } from "../utils/cloudinary";
@@ -245,6 +246,29 @@ export const uploadStoreAsset = async (
         store,
       }
     )
+  );
+};
+
+export const getPublicStoreReviews = async (
+  req: Request | AuthRequest,
+  res: Response
+): Promise<void> => {
+  const storeId = Array.isArray(req.params.storeId) ? req.params.storeId[0] : req.params.storeId;
+  const store = await Store.findOne({ storeId });
+  if (!store) {
+    throw new AppError("Store not found", 404);
+  }
+
+  const query = {
+    page: req.query.page ? Number(req.query.page) : 1,
+    limit: req.query.limit ? Number(req.query.limit) : 10,
+    rating: req.query.rating ? Number(req.query.rating) : undefined,
+    sortBy: (req.query.sortBy as string) || "highest",
+  };
+
+  const result = await ReviewService.getStoreReviews(store.ownerId, query);
+  res.status(200).json(
+    new ApiResponse(true, "Store reviews fetched successfully", result)
   );
 };
 

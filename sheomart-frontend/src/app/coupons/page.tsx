@@ -16,13 +16,21 @@ import { Button } from "@/components/ui/button";
 export default function CouponsPage() {
   const [search, setSearch] = useState("");
   const [copiedCoupon, setCopiedCoupon] = useState<string | null>(null);
-  const [filterType, setFilterType] = useState<"all" | "first_order" | "percentage" | "flat">("all");
+  const [filterType, setFilterType] = useState<"all" | "sitewide" | "store_exclusive" | "first_order" | "percentage" | "flat">("all");
 
   const couponsQuery = useCoupons();
   const allCoupons = couponsQuery.data ?? [];
 
   const filteredCoupons = useMemo(() => {
     return allCoupons.filter((c) => {
+      const isStoreCoupon = Boolean(c.storeId || c.applicableScope === "store");
+
+      if (filterType === "sitewide" && isStoreCoupon) {
+        return false;
+      }
+      if (filterType === "store_exclusive" && !isStoreCoupon) {
+        return false;
+      }
       if (filterType === "first_order" && !c.newUsersOnly && !c.code.includes("FIRST")) {
         return false;
       }
@@ -38,7 +46,8 @@ export default function CouponsPage() {
         const matchesCode = c.code.toLowerCase().includes(query);
         const matchesTitle = c.title?.toLowerCase().includes(query);
         const matchesDesc = c.description?.toLowerCase().includes(query);
-        if (!matchesCode && !matchesTitle && !matchesDesc) return false;
+        const matchesStore = c.storeName?.toLowerCase().includes(query);
+        if (!matchesCode && !matchesTitle && !matchesDesc && !matchesStore) return false;
       }
 
       return true;
@@ -86,6 +95,8 @@ export default function CouponsPage() {
             <div className="flex flex-wrap items-center gap-1.5 text-xs">
               {[
                 { id: "all", label: "All Coupons" },
+                { id: "sitewide", label: "🌐 Sitewide Deals" },
+                { id: "store_exclusive", label: "🏪 Store Exclusive" },
                 { id: "first_order", label: "First Order Deals" },
                 { id: "percentage", label: "Percentage % Off" },
                 { id: "flat", label: "Flat ₹ Off" },

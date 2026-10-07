@@ -79,8 +79,12 @@ async function enrichOffers(offers: IOffer[]) {
 }
 
 export class PromotionService {
-  static async listActiveCoupons() {
-    const coupons = await Coupon.find(getActiveWindow()).sort({ isFeatured: -1, endsAt: 1, createdAt: -1 });
+  static async listActiveCoupons(storeId?: string) {
+    const filter: Record<string, any> = getActiveWindow();
+    if (storeId) {
+      filter.storeId = storeId;
+    }
+    const coupons = await Coupon.find(filter).sort({ isFeatured: -1, endsAt: 1, createdAt: -1 });
     return enrichCoupons(coupons);
   }
 

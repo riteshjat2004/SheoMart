@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Flame, Clock, Ticket, Copy, Check, ArrowRight, Sparkles, Tag } from "lucide-react";
+import { Flame, Clock, Ticket, Copy, Check, ArrowRight, Sparkles, Tag, Store, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SectionHeading } from "@/components/marketplace/SectionHeading";
 import { PromotionOfferCard } from "@/components/marketplace/PromotionOfferCard";
@@ -79,6 +79,7 @@ export function TodayDealsSection({ offers, coupons, categoryLookup }: TodayDeal
         <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
           {visibleCoupons.map((coupon) => {
             const isCopied = copiedCode === coupon.code;
+            const isStoreCoupon = Boolean(coupon.storeId || coupon.applicableScope === "store");
             return (
               <div
                 key={coupon.couponId}
@@ -93,6 +94,21 @@ export function TodayDealsSection({ offers, coupons, categoryLookup }: TodayDeal
                     <span className="text-[11px] text-stone-500 dark:text-stone-400">
                       Min: ₹{coupon.minimumCartValue || 0}
                     </span>
+                  </div>
+
+                  {/* Store vs Sitewide distinction pill */}
+                  <div className="mt-2.5">
+                    {isStoreCoupon ? (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-300/70 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:border-amber-500/30 dark:bg-amber-950/40 dark:text-amber-300">
+                        <Store className="h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" />
+                        <span className="truncate">Store Exclusive • {coupon.storeName || "Store"}</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-sky-300/70 bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-800 dark:border-sky-500/30 dark:bg-sky-950/40 dark:text-sky-300">
+                        <Globe className="h-3 w-3 shrink-0 text-sky-600 dark:text-sky-400" />
+                        <span>Sitewide (All Stores)</span>
+                      </span>
+                    )}
                   </div>
 
                   <h3 className="mt-2.5 text-sm font-semibold text-stone-900 line-clamp-1 dark:text-white">

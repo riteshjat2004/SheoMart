@@ -212,6 +212,41 @@ export function LocationPickerModal({ isOpen, open, onClose }: LocationPickerMod
             </Button>
           </form>
           {error ? <p className="text-xs text-rose-500">{error}</p> : null}
+
+          {/* Quick Active City Chips */}
+          <div className="pt-2">
+            <span className="text-[11px] font-semibold text-stone-500 dark:text-stone-400">Popular Active Hubs:</span>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setPincode("476337");
+                  onClose();
+                }}
+                className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${
+                  activePincode === "476337"
+                    ? "border-emerald-500 bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                    : "border-stone-200 bg-stone-50 text-stone-700 hover:border-emerald-300 dark:border-stone-700 dark:bg-stone-850 dark:text-stone-300"
+                }`}
+              >
+                📍 Sheopur (476337)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPincode("560001");
+                  onClose();
+                }}
+                className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${
+                  activePincode === "560001"
+                    ? "border-emerald-500 bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                    : "border-stone-200 bg-stone-50 text-stone-700 hover:border-emerald-300 dark:border-stone-700 dark:bg-stone-850 dark:text-stone-300"
+                }`}
+              >
+                📍 Bangalore (560001)
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Clear Location Button */}

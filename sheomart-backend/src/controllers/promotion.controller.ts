@@ -21,8 +21,9 @@ const parsePayload = <T>(
   return result.data;
 };
 
-export const getActiveCoupons = async (_req: AuthRequest, res: Response) => {
-  const coupons = await PromotionService.listActiveCoupons();
+export const getActiveCoupons = async (req: AuthRequest, res: Response) => {
+  const storeId = typeof req.query.storeId === "string" ? req.query.storeId : undefined;
+  const coupons = await PromotionService.listActiveCoupons(storeId);
   res.status(200).json(new ApiResponse(true, "Active coupons fetched successfully", { coupons }));
 };
 

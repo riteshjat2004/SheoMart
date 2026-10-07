@@ -1,8 +1,13 @@
-import { ArrowRight, Crown, Sparkles, Star } from "lucide-react";
+"use client";
+
+import { useState } from "react";
+import { ArrowRight, Check, Clock, Crown, Sparkles, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { royalTheme } from "./royalTheme";
 
 export function RoyalMembershipBanner() {
+  const [requested, setRequested] = useState(false);
+
   return (
     <section
       className={`relative overflow-hidden rounded-[2rem] border border-amber-300/80 p-7 sm:p-9 shadow-xl shadow-amber-500/10 dark:border-amber-400/60 dark:shadow-black/50 ${royalTheme.hero}`}
@@ -18,6 +23,9 @@ export function RoyalMembershipBanner() {
               <Crown className="h-3.5 w-3.5 fill-amber-500 text-amber-500 dark:fill-amber-400 dark:text-amber-400" />
               SheoMart Royal Circle
             </span>
+            <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/50 bg-amber-500/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-900 dark:text-amber-300">
+              <Clock className="h-3 w-3" /> Coming Soon
+            </span>
           </div>
 
           <h2 id="royal-membership-heading" className="mt-3 text-2xl font-extrabold tracking-tight text-stone-900 dark:text-white sm:text-3xl">
@@ -25,7 +33,7 @@ export function RoyalMembershipBanner() {
           </h2>
 
           <p className="mt-2 text-sm leading-6 text-stone-600 dark:text-stone-300">
-            Enjoy priority order fulfillment, zero delivery surcharges on flagship stores, bespoke gift wrap, and invitations to private seasonal launches.
+            Enjoy priority order fulfillment, zero delivery surcharges on flagship stores, bespoke gift wrap, and invitations to private seasonal drops. Separate from standard Plus benefits.
           </p>
 
           <div className="mt-4 flex flex-wrap gap-2 text-xs text-amber-900/80 dark:text-amber-200/80 font-medium">
@@ -36,14 +44,31 @@ export function RoyalMembershipBanner() {
             <span className="flex items-center gap-1">
               <Star className="h-3 w-3 fill-amber-500 text-amber-500 dark:fill-amber-400 dark:text-amber-400" /> VIP Concierge Access
             </span>
+            <span>•</span>
+            <span className="flex items-center gap-1">
+              <Crown className="h-3 w-3 text-amber-600 dark:text-amber-400" /> Flagship Tasting Invitations
+            </span>
           </div>
         </div>
 
         <Button
           type="button"
-          className="shrink-0 bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 px-6 py-6 font-bold text-stone-950 shadow-lg shadow-amber-500/30 transition-transform hover:scale-105 hover:from-amber-300 hover:to-yellow-300"
+          onClick={() => setRequested(true)}
+          className={`shrink-0 px-6 py-6 font-bold shadow-lg transition-transform hover:scale-105 ${
+            requested
+              ? "bg-emerald-600 text-white shadow-emerald-600/30"
+              : "bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-stone-950 shadow-amber-500/30 hover:from-amber-300 hover:to-yellow-300"
+          }`}
         >
-          Join Royal Circle <ArrowRight className="ml-2 h-4 w-4" />
+          {requested ? (
+            <>
+              <Check className="mr-2 h-4 w-4" /> Priority Waitlist Joined
+            </>
+          ) : (
+            <>
+              Request Royal Invitation <ArrowRight className="ml-2 h-4 w-4" />
+            </>
+          )}
         </Button>
       </div>
     </section>

@@ -1,11 +1,17 @@
-import { ArrowRight, BadgePercent, Sparkles, Store } from "lucide-react";
+import { ArrowRight, BadgePercent } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { StoreItem } from "@/types/marketplace";
 
 export function NormalOfferBanner({
+  store,
   onBrowseDeals,
 }: {
+  store?: StoreItem;
   onBrowseDeals?: () => void;
 }) {
+  const storeName = store?.storeName ?? store?.name ?? "Your Local Shop";
+  const freeThreshold = store?.freeDeliveryAbove ?? store?.freeDeliveryThreshold;
+
   return (
     <section
       aria-labelledby="normal-offer-banner-heading"
@@ -22,11 +28,13 @@ export function NormalOfferBanner({
             id="normal-offer-banner-heading"
             className="text-xl font-bold text-stone-900 sm:text-2xl dark:text-stone-50"
           >
-            Direct Grocery Prices from Your Local Shop
+            Direct Grocery Prices from {storeName}
           </h3>
 
           <p className="max-w-xl text-xs sm:text-sm text-stone-600 dark:text-stone-300">
-            Enjoy fair neighborhood rates, daily grocery staples, and direct storefront service with reliable home delivery.
+            {freeThreshold
+              ? `Enjoy free delivery on orders above ₹${freeThreshold}, fair neighborhood rates, daily grocery staples, and direct storefront service.`
+              : "Enjoy fair neighborhood rates, daily grocery staples, and direct storefront service with reliable home delivery."}
           </p>
         </div>
 

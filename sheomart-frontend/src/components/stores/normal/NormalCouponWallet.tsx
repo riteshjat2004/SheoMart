@@ -1,7 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy, Tag, TicketPercent } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Check, Copy, Sparkles, Tag, TicketPercent } from "lucide-react";
+import api from "@/services/api";
+import type { ApiResponse } from "@/types/api";
+import type { StoreItem } from "@/types/marketplace";
 
 interface NormalCoupon {
   code: string;
@@ -11,39 +15,81 @@ interface NormalCoupon {
   badge: string;
 }
 
-const normalCoupons: NormalCoupon[] = [
-  {
-    code: "LOCAL10",
-    discount: "10% OFF",
-    description: "Everyday neighborhood saving on fresh groceries",
-    eligibility: "Valid on orders above ₹249",
-    badge: "Local Savings",
-  },
-  {
-    code: "FREEDEL",
-    discount: "FREE DELIVERY",
-    description: "Zero delivery fee directly from your neighborhood mart",
-    eligibility: "Valid on orders above ₹199",
-    badge: "Neighborhood Offer",
-  },
-  {
-    code: "NEIGHBOR50",
-    discount: "₹50 OFF",
-    description: "Instant discount on daily essentials & pantry staples",
-    eligibility: "Valid on orders above ₹499",
-    badge: "Special Deal",
-  },
-  {
-    code: "DAILYPACK",
-    discount: "EXTRA 5%",
-    description: "Extra combo discount on packaged snacks & dairy",
-    eligibility: "Add any 3 household items",
-    badge: "Pantry Saver",
-  },
-];
+interface NormalCouponWalletProps {
+  store?: StoreItem;
+}
 
-export function NormalCouponWallet() {
+export function NormalCouponWallet({ store }: NormalCouponWalletProps) {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  const storeName = store?.storeName ?? store?.name ?? "Neighborhood Store";
+  const freeDeliveryThreshold = store?.freeDeliveryAbove ?? store?.freeDeliveryThreshold;
+
+  // Fetch active marketplace/store coupons from promotions API
+  const couponsQuery = useQuery({
+    queryKey: ["active-coupons-normal", store?.storeId],
+    queryFn: async () => {
+      try {
+        const res = await api.get<ApiResponse<{ coupons: any[] }>>("/api/v1/promotions/coupons/active");
+        return res.data.data?.coupons ?? [];
+      } catch {
+        return [];
+      }
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const rawCoupons = couponsQuery.data || [];
+  const matchingCoupons: NormalCoupon[] = rawCoupons
+    .filter(
+      (c) =>
+        c.isActive !== false &&
+        (!c.storeId || c.storeId === store?.storeId || c.applicableScope === "marketplace")
+    )
+    .map((c) => ({
+      code: c.code,
+      discount: c.discountType === "percentage" ? `${c.discountValue}% OFF` : `₹${c.discountValue} OFF`,
+      description: c.title || c.description || `Special neighborhood saving on ${storeName}`,
+      eligibility: c.minimumCartValue ? `Valid on orders above ₹${c.minimumCartValue}` : "Valid on all store items",
+      badge: c.applicableScope === "store" ? "Store Exclusive" : "Active Saver",
+    }));
+
+  const defaultCoupons: NormalCoupon[] = [
+    ...(freeDeliveryThreshold
+      ? [
+          {
+            code: "FREEDEL",
+            discount: "FREE DELIVERY",
+            description: `Zero delivery fee directly from ${storeName}`,
+            eligibility: `Valid on orders above ₹${freeDeliveryThreshold}`,
+            badge: "Neighborhood Offer",
+          },
+        ]
+      : []),
+    {
+      code: "LOCAL10",
+      discount: "10% OFF",
+      description: `Everyday neighborhood saving on groceries from ${storeName}`,
+      eligibility: "Valid on orders above ₹249",
+      badge: "Local Savings",
+    },
+    {
+      code: "NEIGHBOR50",
+      discount: "₹50 OFF",
+      description: "Instant discount on daily essentials & pantry staples",
+      eligibility: "Valid on orders above ₹499",
+      badge: "Special Deal",
+    },
+    {
+      code: "DAILYPACK",
+      discount: "EXTRA 5%",
+      description: "Extra combo discount on packaged snacks & daily groceries",
+      eligibility: "Add any 3 household items",
+      badge: "Pantry Saver",
+    },
+  ];
+
+  const displayedCoupons = matchingCoupons.length ? matchingCoupons.slice(0, 4) : defaultCoupons;
 
   const handleCopy = async (code: string) => {
     try {
@@ -57,10 +103,10 @@ export function NormalCouponWallet() {
 
   return (
     <section aria-labelledby="normal-coupons-heading" className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-100 text-orange-600 dark:bg-orange-950/60 dark:text-orange-400">
-            <TicketPercent className="h-4 w-4" />
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-orange-100 text-orange-600 dark:bg-orange-950/60 dark:text-orange-400">
+            <TicketPercent className="h-5 w-5" />
           </div>
           <div>
             <h2 id="normal-coupons-heading" className="text-lg font-bold text-stone-900 dark:text-stone-50">
@@ -71,10 +117,13 @@ export function NormalCouponWallet() {
             </p>
           </div>
         </div>
+        <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+          Tap coupon to copy code
+        </span>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {normalCoupons.map((coupon) => {
+        {displayedCoupons.map((coupon) => {
           const isCopied = copiedCode === coupon.code;
 
           return (

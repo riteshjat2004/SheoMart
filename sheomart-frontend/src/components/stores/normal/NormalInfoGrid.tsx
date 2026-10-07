@@ -2,8 +2,6 @@ import {
   Boxes,
   Clock3,
   MapPin,
-  Phone,
-  Shield,
   Star,
   Store,
   Truck,
@@ -19,34 +17,45 @@ export function NormalInfoGrid({
   productCount: number;
 }) {
   const ratingText =
-    typeof store.rating === "number"
+    typeof store.rating === "number" && store.rating > 0
       ? `${store.rating.toFixed(1)} ★ (${store.totalReviews ?? 0} reviews)`
       : "Newly Joined Store";
 
   const addressText =
     [store.address, store.city, store.pincode].filter(Boolean).join(", ") ||
-    "Sheopur, Madhya Pradesh";
+    "Local Area, Sheopur";
+
+  const totalProducts = store.stats?.totalProducts ?? productCount;
+  const storeCategory =
+    (store as any).category ||
+    (store as any).businessType ||
+    (store as any).categoryName ||
+    "Kirana & Groceries";
+
+  const deliveryHelper = store.freeDeliveryAbove
+    ? `Free delivery above ₹${store.freeDeliveryAbove}`
+    : store.deliveryRadiusKm
+    ? `${store.deliveryRadiusKm} km local radius`
+    : "Local neighborhood coverage";
 
   const cards = [
     {
       icon: Boxes,
       label: "Products Listed",
-      value: `${productCount} In Stock`,
+      value: `${totalProducts} In Stock`,
       helper: "Fresh everyday items",
     },
     {
       icon: Clock3,
       label: "Store Hours",
-      value: `${store.pickupOpeningTime ?? "10:00"} - ${store.pickupClosingTime ?? "20:00"}`,
+      value: `${store.pickupOpeningTime ?? "09:00"} - ${store.pickupClosingTime ?? "21:00"}`,
       helper: "Daily regular service",
     },
     {
       icon: Truck,
       label: "Delivery & Pickup",
       value: store.deliveryEnabled ? "Delivery & Pickup" : "Storefront Pickup",
-      helper: store.deliveryRadiusKm
-        ? `${store.deliveryRadiusKm} km local radius`
-        : "Local neighborhood coverage",
+      helper: deliveryHelper,
     },
     {
       icon: Star,
@@ -57,7 +66,7 @@ export function NormalInfoGrid({
     {
       icon: Store,
       label: "Store Category",
-      value: "Kirana & Groceries",
+      value: storeCategory,
       helper: "Everyday staples",
     },
     {

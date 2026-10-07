@@ -14,6 +14,7 @@ import {
   createPlusMember,
   deletePlusMember,
   uploadStoreAsset,
+  getPublicStoreReviews,
 } from "../controllers/store.controller";
 import { authenticate } from "../middleware/auth.middleware";
 import { authorize } from "../middleware/role.middleware";
@@ -74,6 +75,7 @@ router.delete(
   asyncHandler(deleteStore)
 );
 router.get("/:storeId", asyncHandler(getStoreById));
+router.get("/:storeId/reviews", asyncHandler(getPublicStoreReviews));
 router.get("/:storeId/plus-members", authenticate, authorize(USER_ROLES.STORE_OWNER), asyncHandler(getPlusMembers));
 router.post("/:storeId/plus-members", authenticate, authorize(USER_ROLES.STORE_OWNER), asyncHandler(createPlusMember));
 router.delete("/:storeId/plus-members/:memberId", authenticate, authorize(USER_ROLES.STORE_OWNER), asyncHandler(deletePlusMember));
