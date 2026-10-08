@@ -26,6 +26,7 @@ export interface IProduct extends Document {
   sourceProductId?: string | null;
   storeId: string;
   storeName?: string;
+  storePincode?: string;
   categoryId: string;
   name: string;
   slug: string;
@@ -92,6 +93,13 @@ const productSchema = new Schema<IProduct>(
       type: String,
       default: "",
       trim: true,
+    },
+
+    storePincode: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
     },
 
     categoryId: {

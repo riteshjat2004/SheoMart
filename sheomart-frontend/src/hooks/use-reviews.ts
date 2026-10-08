@@ -52,6 +52,7 @@ export function useUpdateProductReview() {
         queryClient.invalidateQueries({ queryKey: ["product-reviews", variables.productId] });
       }
       queryClient.invalidateQueries({ queryKey: ["my-reviews"] });
+      queryClient.invalidateQueries({ queryKey: ["customer-orders"] });
     },
   });
 }
@@ -66,6 +67,7 @@ export function useDeleteProductReview() {
         queryClient.invalidateQueries({ queryKey: ["product-reviews", variables.productId] });
       }
       queryClient.invalidateQueries({ queryKey: ["my-reviews"] });
+      queryClient.invalidateQueries({ queryKey: ["customer-orders"] });
     },
   });
 }

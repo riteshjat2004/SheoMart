@@ -7,6 +7,7 @@ import { Footer } from "@/components/layout/footer";
 import { Navbar } from "@/components/layout/navbar";
 import { FloatingCartButton } from "@/components/cart/FloatingCartButton";
 import { CartStoreConflictModal } from "@/components/cart/CartStoreConflictModal";
+import { CartPincodeMismatchModal } from "@/components/cart/CartPincodeMismatchModal";
 
 import { useMaintenanceMode } from "@/hooks/use-maintenance-mode";
 import { MaintenanceScreen } from "@/components/maintenance/MaintenanceScreen";
@@ -72,6 +73,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {pathname === "/" ? <Footer /> : null}
       {!isAuthRoute ? <FloatingCartButton /> : null}
       <CartStoreConflictModal />
+      <CartPincodeMismatchModal />
     </div>
   );
 }

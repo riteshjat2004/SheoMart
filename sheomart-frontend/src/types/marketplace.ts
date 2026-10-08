@@ -92,6 +92,7 @@ export interface CartItem {
   unitPrice?: number;
   unitDiscountPrice?: number;
   storeId?: string;
+  storeName?: string;
   product: ProductItem;
   isAvailable?: boolean;
   availabilityMessage?: string;

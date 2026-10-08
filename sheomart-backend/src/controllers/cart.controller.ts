@@ -28,6 +28,11 @@ export const addCartItem = async (
     throw new AppError(message, 400);
   }
 
+  const headerPin = req.headers["x-customer-pincode"];
+  if (!result.data.customerPincode && typeof headerPin === "string" && headerPin.trim()) {
+    result.data.customerPincode = headerPin.trim();
+  }
+
   const resultData = await CartService.addCartItem(req.user?.userId as string, result.data);
 
   res.status(201).json(

@@ -5,6 +5,7 @@ export interface StoreReviewItem {
   _id: string;
   reviewId: string;
   productId: string;
+  orderId?: string;
   storeId: string;
   userId: string;
   rating: number;

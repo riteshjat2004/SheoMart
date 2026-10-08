@@ -12,6 +12,7 @@ import {
   Flag,
   Filter,
   Package,
+  Store,
 } from "lucide-react";
 import { Breadcrumb } from "@/components/dashboard/layout/Breadcrumb";
 import { DashboardContent } from "@/components/dashboard/layout/DashboardContent";
@@ -249,14 +250,23 @@ export default function StoreReviewsPage() {
                 </div>
               </div>
 
-              {/* Product Referenced */}
-              {r.product && (
+              {/* Product or Order Referenced */}
+              {r.product ? (
                 <div className="mt-3 flex items-center gap-2.5 rounded-xl bg-stone-50 p-2 text-xs dark:bg-stone-800/40 border border-stone-100 dark:border-stone-800">
                   <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-stone-200/80 dark:bg-stone-700">
                     <Package className="h-4 w-4 text-stone-600 dark:text-stone-300" />
                   </div>
                   <span className="font-semibold text-stone-800 dark:text-stone-200">
                     {r.product.name}
+                  </span>
+                </div>
+              ) : (
+                <div className="mt-3 flex items-center gap-2.5 rounded-xl bg-amber-50/60 p-2 text-xs dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-900/40">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/60">
+                    <Store className="h-4 w-4 text-amber-700 dark:text-amber-300" />
+                  </div>
+                  <span className="font-semibold text-amber-900 dark:text-amber-200">
+                    Store Order Experience {r.orderId ? `(Order #${r.orderId.slice(-8)})` : ""}
                   </span>
                 </div>
               )}

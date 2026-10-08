@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Star, Edit3, Trash2, CheckCircle2, MessageSquare } from "lucide-react";
+import { Star, Edit3, Trash2, CheckCircle2, MessageSquare, Store } from "lucide-react";
 import { useMyReviews, useUpdateProductReview, useDeleteProductReview } from "@/hooks/use-reviews";
 import { Button } from "@/components/ui/button";
 import type { CustomerReview } from "@/services/reviews";
@@ -80,7 +80,7 @@ export function MyReviewsTab() {
           className="space-y-4 rounded-2xl border border-emerald-200 bg-emerald-50/50 p-5 dark:border-emerald-950 dark:bg-emerald-950/20"
         >
           <h3 className="text-sm font-bold text-stone-900 dark:text-stone-50">
-            Edit Your Review for {editingReview.product?.name ?? "Product"}
+            Edit Your Review for {editingReview.product?.name ?? editingReview.store?.storeName ?? "Store Experience"}
           </h3>
 
           <div className="space-y-1">
@@ -153,21 +153,47 @@ export function MyReviewsTab() {
               className="flex flex-col gap-4 rounded-2xl border border-stone-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-stone-800 dark:bg-zinc-900"
             >
               <div className="flex items-center gap-4">
-                <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-stone-100 bg-stone-50 dark:border-stone-800">
-                  <img
-                    src={r.product?.thumbnail || "/placeholder.png"}
-                    alt={r.product?.name ?? "Product"}
-                    className="h-full w-full object-cover"
-                  />
+                <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-stone-100 bg-stone-50 dark:border-stone-800 flex items-center justify-center">
+                  {r.product?.thumbnail ? (
+                    <img
+                      src={r.product.thumbnail}
+                      alt={r.product?.name ?? "Product"}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : r.store?.logo ? (
+                    <img
+                      src={r.store.logo}
+                      alt={r.store?.storeName ?? "Store"}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <Store className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+                  )}
                 </div>
 
                 <div className="space-y-1">
-                  <Link
-                    href={`/products/${r.productId}`}
-                    className="text-sm font-bold text-stone-900 hover:underline dark:text-stone-50"
-                  >
-                    {r.product?.name ?? "Reviewed Product"}
-                  </Link>
+                  {r.product ? (
+                    <Link
+                      href={`/products/${r.productId}`}
+                      className="text-sm font-bold text-stone-900 hover:underline dark:text-stone-50"
+                    >
+                      {r.product.name}
+                    </Link>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-bold text-stone-900 dark:text-stone-50">
+                        {r.store?.storeName ?? "Store Experience"}
+                      </span>
+                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+                        Store Rating
+                      </span>
+                      {r.orderId ? (
+                        <span className="text-[11px] font-mono text-stone-400">
+                          #{r.orderId.slice(-8).toUpperCase()}
+                        </span>
+                      ) : null}
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <div className="flex text-amber-500">
                       {[1, 2, 3, 4, 5].map((s) => (

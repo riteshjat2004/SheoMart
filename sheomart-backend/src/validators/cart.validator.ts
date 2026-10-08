@@ -3,6 +3,7 @@ import { z } from "zod";
 export const addCartItemSchema = z.object({
   productId: z.string().trim().min(1, "Product ID is required"),
   storeId: z.string().trim().nullable().optional(),
+  customerPincode: z.string().trim().nullable().optional(),
   quantity: z.number().int().min(1, "Quantity must be at least 1").optional().default(1),
   variantId: z.string().trim().nullable().optional(),
   variantLabel: z.string().trim().nullable().optional(),

@@ -32,6 +32,7 @@ export function useRateOrder() {
       rateOrder(orderId, rating, comment),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["customer-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["my-reviews"] });
     },
   });
 }

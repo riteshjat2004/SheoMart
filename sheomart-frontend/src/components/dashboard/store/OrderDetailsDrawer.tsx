@@ -649,24 +649,24 @@ export function OrderDetailsDrawer({
             ) : null}
           </div>
         </div>
-
-        {isPaymentModalOpen ? (
-          <ConfirmPaymentModal
-            isOpen={isPaymentModalOpen}
-            onClose={() => setIsPaymentModalOpen(false)}
-            onConfirm={async (method: PaymentReceivedMethod) => {
-              await confirmPaymentMutation.mutateAsync({
-                orderId: order.orderId,
-                paymentMethod: method,
-              });
-            }}
-            orderId={order.orderId}
-            customerName={order.customerName || order.customer?.name}
-            grandTotal={order.grandTotal ?? 0}
-            isPending={confirmPaymentMutation.isPending}
-          />
-        ) : null}
       </aside>
+
+      {isPaymentModalOpen ? (
+        <ConfirmPaymentModal
+          isOpen={isPaymentModalOpen}
+          onClose={() => setIsPaymentModalOpen(false)}
+          onConfirm={async (method: PaymentReceivedMethod) => {
+            await confirmPaymentMutation.mutateAsync({
+              orderId: order.orderId,
+              paymentMethod: method,
+            });
+          }}
+          orderId={order.orderId}
+          customerName={order.customerName || order.customer?.name}
+          grandTotal={order.grandTotal ?? 0}
+          isPending={confirmPaymentMutation.isPending}
+        />
+      ) : null}
     </>
   );
 }

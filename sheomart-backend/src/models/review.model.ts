@@ -175,11 +175,11 @@ const reviewSchema = new Schema<IReview>(
 
 reviewSchema.index(
   { productId: 1, userId: 1 },
-  { unique: true, partialFilterExpression: { productId: { $gt: "" } } }
+  { unique: true, partialFilterExpression: { productId: { $type: "string", $gt: "" } } }
 );
 reviewSchema.index(
   { orderId: 1 },
-  { unique: true, partialFilterExpression: { orderId: { $gt: "" } } }
+  { unique: true, partialFilterExpression: { orderId: { $type: "string", $gt: "" } } }
 );
 reviewSchema.index({ productId: 1, rating: 1 });
 reviewSchema.index({ userId: 1, rating: 1 });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Star, MessageSquare, ShieldCheck, Trash2, Edit3, Image as ImageIcon, CheckCircle2 } from "lucide-react";
+import { Star, MessageSquare, ShieldCheck, Trash2, Edit3, Image as ImageIcon, CheckCircle2, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/auth-store";
 import {
@@ -37,6 +37,7 @@ export function ProductReviewsSection({ productId, productName }: ProductReviews
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const reviews = reviewsQuery.data ?? [];
+  const myExistingReview = reviews.find((r) => r.userId === user?.userId);
 
   // Ratings calculation
   const totalReviews = reviews.length;
@@ -154,14 +155,18 @@ export function ProductReviewsSection({ productId, productName }: ProductReviews
           <Button
             type="button"
             onClick={() => {
-              setEditingReviewId(null);
-              setIsWriting(true);
-              setFeedback(null);
+              if (myExistingReview) {
+                handleOpenEdit(myExistingReview);
+              } else {
+                setEditingReviewId(null);
+                setIsWriting(true);
+                setFeedback(null);
+              }
             }}
             className="rounded-full bg-emerald-600 text-white hover:bg-emerald-700"
           >
             <Edit3 className="mr-2 h-4 w-4" />
-            Write a Review
+            {myExistingReview ? "Edit Your Review" : "Write a Review"}
           </Button>
         )}
       </div>
@@ -388,7 +393,9 @@ export function ProductReviewsSection({ productId, productName }: ProductReviews
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 text-xs text-stone-500">
-                      <span>Customer</span>
+                      <span className="font-semibold text-stone-800 dark:text-stone-200">
+                        {r.user?.name || "Verified Customer"}
+                      </span>
                       <span>•</span>
                       <span>
                         {r.createdAt
@@ -442,6 +449,21 @@ export function ProductReviewsSection({ productId, productName }: ProductReviews
                         <img src={img} alt="review pic" className="h-full w-full object-cover" />
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {r.sellerReply?.comment && (
+                  <div className="mt-2.5 rounded-xl border border-stone-200/80 bg-stone-50/80 p-3 text-xs dark:border-stone-800 dark:bg-stone-900/60">
+                    <p className="font-semibold text-stone-900 dark:text-stone-100 flex items-center gap-1.5">
+                      <Store className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                      Store Partner Response
+                      {r.sellerReply.repliedAt && (
+                        <span className="text-[11px] font-normal text-stone-400">
+                          • {new Date(r.sellerReply.repliedAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                        </span>
+                      )}
+                    </p>
+                    <p className="mt-1 text-stone-600 dark:text-stone-300">{r.sellerReply.comment}</p>
                   </div>
                 )}
               </div>

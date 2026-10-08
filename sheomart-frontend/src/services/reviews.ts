@@ -4,6 +4,7 @@ import type { ApiResponse } from "@/types/api";
 export interface CustomerReview {
   reviewId: string;
   productId: string;
+  orderId?: string;
   storeId?: string;
   userId: string;
   rating: number;
@@ -13,6 +14,17 @@ export interface CustomerReview {
   isVerifiedPurchase: boolean;
   createdAt: string;
   updatedAt: string;
+  user?: {
+    userId?: string;
+    name?: string;
+    avatar?: string;
+    isVerifiedCustomer?: boolean;
+  } | null;
+  sellerReply?: {
+    comment: string;
+    repliedAt?: string;
+    repliedBy?: string;
+  };
   product?: {
     productId: string;
     name: string;
@@ -21,6 +33,14 @@ export interface CustomerReview {
     brand?: string;
     price?: number;
     discountPrice?: number;
+  } | null;
+  store?: {
+    storeId?: string;
+    storeName?: string;
+    logo?: string;
+    phone?: string;
+    address?: string;
+    city?: string;
   } | null;
 }
 

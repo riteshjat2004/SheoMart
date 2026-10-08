@@ -264,11 +264,16 @@ export const getPublicStoreReviews = async (
     limit: req.query.limit ? Number(req.query.limit) : 10,
     rating: req.query.rating ? Number(req.query.rating) : undefined,
     sortBy: (req.query.sortBy as string) || "highest",
+    isPublic: true,
   };
 
   const result = await ReviewService.getStoreReviews(store.ownerId, query);
   res.status(200).json(
-    new ApiResponse(true, "Store reviews fetched successfully", result)
+    new ApiResponse(true, "Store reviews fetched successfully", {
+      ...result,
+      total: result.stats.totalReviews ?? result.pagination.total,
+      averageRating: result.stats.averageRating,
+    })
   );
 };
 

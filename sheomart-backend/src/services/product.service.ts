@@ -297,7 +297,7 @@ export class ProductService {
   }
 
   private static async enrichProductsWithInventory<
-    T extends { productId?: string; quantity?: number; storeId?: string; storeName?: string }
+    T extends { productId?: string; quantity?: number; storeId?: string; storeName?: string; storePincode?: string }
   >(products: T[]) {
     const productIds = products
       .map((product) => product.productId)
@@ -321,16 +321,18 @@ export class ProductService {
       }
     }
 
-    const missingStoreProducts = products.filter(
-      (p): p is T & { storeId: string } => !p.storeName && Boolean(p.storeId)
+    const productsWithStore = products.filter(
+      (p): p is T & { storeId: string; storeName?: string; storePincode?: string } => Boolean(p.storeId)
     );
-    if (missingStoreProducts.length > 0) {
-      const storeIds: string[] = Array.from(new Set(missingStoreProducts.map((p) => p.storeId)));
-      const stores = await Store.find({ storeId: { $in: storeIds } }).select("storeId storeName").lean();
-      const storeMap = new Map(stores.map((s) => [s.storeId, s.storeName]));
-      for (const p of missingStoreProducts) {
-        if (storeMap.has(p.storeId)) {
-          p.storeName = storeMap.get(p.storeId);
+    if (productsWithStore.length > 0) {
+      const storeIds: string[] = Array.from(new Set(productsWithStore.map((p) => p.storeId)));
+      const stores = await Store.find({ storeId: { $in: storeIds } }).select("storeId storeName pincode").lean();
+      const storeMap = new Map(stores.map((s) => [s.storeId, s]));
+      for (const p of productsWithStore) {
+        const s = storeMap.get(p.storeId);
+        if (s) {
+          if (!p.storeName) p.storeName = s.storeName;
+          p.storePincode = (p as { storePincode?: string }).storePincode || s.pincode || "";
         }
       }
     }

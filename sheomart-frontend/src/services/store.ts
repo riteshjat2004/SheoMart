@@ -214,9 +214,40 @@ export async function fetchStorePublicReviews(storeId: string) {
       product?: { name?: string };
       sellerReply?: { comment?: string };
     }>;
-    total: number;
-    averageRating: number;
+    total?: number;
+    averageRating?: number;
+    stats?: {
+      averageRating?: number;
+      totalReviews?: number;
+    };
+    pagination?: {
+      total?: number;
+    };
   }>>(`/api/v1/stores/${storeId}/reviews`);
-  return response.data.data ?? { reviews: [], total: 0, averageRating: 0 };
+
+  const data = response.data.data;
+  if (!data) return { reviews: [], total: 0, averageRating: 0 };
+
+  const total =
+    typeof data.total === "number"
+      ? data.total
+      : typeof data.stats?.totalReviews === "number"
+      ? data.stats.totalReviews
+      : typeof data.pagination?.total === "number"
+      ? data.pagination.total
+      : (data.reviews?.length || 0);
+
+  const averageRating =
+    typeof data.averageRating === "number"
+      ? data.averageRating
+      : typeof data.stats?.averageRating === "number"
+      ? data.stats.averageRating
+      : 0;
+
+  return {
+    reviews: data.reviews || [],
+    total,
+    averageRating,
+  };
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { X, Plus, Minus, Check, ShoppingBag, Store, Sparkles, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ interface ProductVariantModalProps {
 }
 
 export function ProductVariantModal({ product, open, onClose }: ProductVariantModalProps) {
+  const [mounted, setMounted] = useState(false);
   const cartQuery = useCart();
   const updateCartItemMutation = useUpdateCartItem();
   const removeCartItemMutation = useRemoveCartItem();
@@ -22,7 +24,25 @@ export function ProductVariantModal({ product, open, onClose }: ProductVariantMo
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  if (!open || !product) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open, onClose]);
+
+  if (!open || !product || !mounted) return null;
 
   const cartItems = cartQuery.data?.cartItems || [];
   const variants = product.variants || [];
@@ -82,9 +102,9 @@ export function ProductVariantModal({ product, open, onClose }: ProductVariantMo
     }
   };
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-200"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -256,6 +276,7 @@ export function ProductVariantModal({ product, open, onClose }: ProductVariantMo
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

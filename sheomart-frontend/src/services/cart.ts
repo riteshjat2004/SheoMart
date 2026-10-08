@@ -18,6 +18,7 @@ export interface CartResponse {
 export interface AddCartItemPayload {
   productId: string;
   storeId?: string;
+  customerPincode?: string;
   quantity?: number;
   variantId?: string;
   variantLabel?: string;

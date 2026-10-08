@@ -117,7 +117,8 @@ export function ProductCard({ product, storeBadge }: ProductCardProps) {
   };
 
   return (
-    <article
+    <>
+      <article
       role="link"
       tabIndex={product.productId ? 0 : -1}
       onClick={openProduct}
@@ -388,13 +389,14 @@ export function ProductCard({ product, storeBadge }: ProductCardProps) {
             </p>
           ) : null}
         </div>
-
-        <ProductVariantModal
-          product={product}
-          open={isVariantModalOpen}
-          onClose={() => setIsVariantModalOpen(false)}
-        />
       </div>
     </article>
+
+      <ProductVariantModal
+        product={product}
+        open={isVariantModalOpen}
+        onClose={() => setIsVariantModalOpen(false)}
+      />
+    </>
   );
 }

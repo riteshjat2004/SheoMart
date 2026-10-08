@@ -268,10 +268,11 @@ export function StoreOrdersTable({
     Boolean(filters.to);
 
   return (
-    <DashboardCard
-      title="Store Orders"
-      description="Process incoming customer orders, manage packing, track fulfillment, and view details."
-    >
+    <>
+      <DashboardCard
+        title="Store Orders"
+        description="Process incoming customer orders, manage packing, track fulfillment, and view details."
+      >
       {toast ? (
         <div
           className={`mb-4 flex items-center justify-between rounded-2xl border p-3.5 text-xs font-semibold ${
@@ -717,23 +718,24 @@ export function StoreOrdersTable({
           </div>
         </>
       ) : null}
-
-      {paymentModalOrder ? (
-        <ConfirmPaymentModal
-          isOpen={Boolean(paymentModalOrder)}
-          onClose={() => setPaymentModalOrder(null)}
-          onConfirm={async (method: PaymentReceivedMethod) => {
-            await confirmPaymentMutation.mutateAsync({
-              orderId: paymentModalOrder.orderId,
-              paymentMethod: method,
-            });
-          }}
-          orderId={paymentModalOrder.orderId}
-          customerName={paymentModalOrder.customerName || paymentModalOrder.customer?.name}
-          grandTotal={paymentModalOrder.grandTotal ?? 0}
-          isPending={confirmPaymentMutation.isPending}
-        />
-      ) : null}
     </DashboardCard>
+
+    {paymentModalOrder ? (
+      <ConfirmPaymentModal
+        isOpen={Boolean(paymentModalOrder)}
+        onClose={() => setPaymentModalOrder(null)}
+        onConfirm={async (method: PaymentReceivedMethod) => {
+          await confirmPaymentMutation.mutateAsync({
+            orderId: paymentModalOrder.orderId,
+            paymentMethod: method,
+          });
+        }}
+        orderId={paymentModalOrder.orderId}
+        customerName={paymentModalOrder.customerName || paymentModalOrder.customer?.name}
+        grandTotal={paymentModalOrder.grandTotal ?? 0}
+        isPending={confirmPaymentMutation.isPending}
+      />
+    ) : null}
+  </>
   );
 }

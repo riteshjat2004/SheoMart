@@ -32,6 +32,7 @@ import { useStore } from "@/hooks/use-store";
 import { useQuery } from "@tanstack/react-query";
 import { fetchPlatformFeeConfig } from "@/services/platform-fee";
 import { fetchActiveOffers, validateCoupon } from "@/services/promotions";
+import { ClearCartConfirmModal } from "@/components/cart/ClearCartConfirmModal";
 
 export default function CartPage() {
   const router = useRouter();
@@ -50,6 +51,7 @@ export default function CartPage() {
   const [validatingCoupon, setValidatingCoupon] = useState(false);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [isClearModalOpen, setIsClearModalOpen] = useState(false);
 
   const cartData = cartQuery.data ?? {
     cartItems: [],
@@ -231,15 +233,21 @@ export default function CartPage() {
   };
 
   const handleClearCart = () => {
-    if (!window.confirm("Are you sure you want to empty your cart?")) return;
+    setIsClearModalOpen(true);
+  };
+
+  const confirmClearCart = () => {
     setMessage(null);
     clearCartMutate(undefined, {
       onSuccess: () => {
         setAppliedCoupon(null);
+        setIsClearModalOpen(false);
         setMessage("Cart cleared.");
       },
-      onError: (error) =>
-        setMessage(error instanceof Error ? error.message : "Unable to clear cart."),
+      onError: (error) => {
+        setIsClearModalOpen(false);
+        setMessage(error instanceof Error ? error.message : "Unable to clear cart.");
+      },
     });
   };
 
@@ -394,9 +402,7 @@ export default function CartPage() {
                                 type="button"
                                 onClick={() => {
                                   if (item.quantity === 1) {
-                                    if (window.confirm("Remove item from cart?")) {
-                                      handleRemoveItem(item.cartItemId);
-                                    }
+                                    handleRemoveItem(item.cartItemId);
                                     return;
                                   }
                                   handleQuantityChange(item.cartItemId, item.quantity - 1);
@@ -619,6 +625,15 @@ export default function CartPage() {
           )}
         </Container>
       </Section>
+
+      <ClearCartConfirmModal
+        isOpen={isClearModalOpen}
+        onClose={() => setIsClearModalOpen(false)}
+        onConfirm={confirmClearCart}
+        isClearing={isClearingCart}
+        itemCount={totals.totalItems}
+        storeName={store?.storeName}
+      />
     </PageWrapper>
   );
 }

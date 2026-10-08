@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AlertTriangle, Store, ArrowRight, X, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCartConflictStore } from "@/store/cart-conflict-store";
@@ -11,6 +11,17 @@ export function CartStoreConflictModal() {
   const addCartItemMutation = useAddCartItem();
   const [isReplacing, setIsReplacing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!conflict) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !isReplacing) {
+        closeConflict();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [conflict, isReplacing, closeConflict]);
 
   if (!conflict) return null;
 

@@ -3,6 +3,7 @@ import { CartItem } from "../models/cart.model";
 import { Inventory } from "../models/inventory.model";
 import { Product } from "../models/product.model";
 import { Store } from "../models/store.model";
+import { User } from "../models/user.model";
 import { AddCartItemInput, UpdateCartItemInput } from "../validators/cart.validator";
 
 export class CartService {
@@ -100,6 +101,12 @@ export class CartService {
     const inventories = await Inventory.find({ productId: { $in: productIds } });
     const inventoryMap = new Map(inventories.map((inventory) => [inventory.productId, inventory]));
 
+    const storeIds = Array.from(new Set(products.map((p) => p.storeId).filter(Boolean)));
+    const stores = storeIds.length > 0
+      ? await Store.find({ storeId: { $in: storeIds } }).select("storeId storeName pincode").lean()
+      : [];
+    const storeMap = new Map(stores.map((s) => [s.storeId, s]));
+
     const enrichedCartItems = cartItems
       .map((item) => {
         const product = productMap.get(item.productId);
@@ -109,6 +116,10 @@ export class CartService {
         if (!product) {
           return null;
         }
+
+        const store = storeMap.get(product.storeId);
+        const resolvedStoreName = store?.storeName || product.storeName || "";
+        const resolvedStorePincode = store?.pincode || product.storePincode || "";
 
         let unitPrice = product.price;
         let unitDiscountPrice = product.discountPrice ?? product.price;
@@ -123,6 +134,8 @@ export class CartService {
           }
         }
 
+        const productData = (product as any).toObject ? (product as any).toObject() : { ...product };
+
         return {
           cartItemId: item.cartItemId,
           quantity: item.quantity,
@@ -130,7 +143,13 @@ export class CartService {
           variantLabel,
           unitPrice,
           unitDiscountPrice,
-          product,
+          storeId: product.storeId,
+          storeName: resolvedStoreName,
+          product: {
+            ...productData,
+            storeName: resolvedStoreName,
+            storePincode: resolvedStorePincode,
+          },
           isAvailable: availability.isAvailable,
           availabilityMessage: availability.availabilityMessage,
           maxAvailableQuantity: availability.maxAvailableQuantity,
@@ -152,6 +171,27 @@ export class CartService {
     }
     if (data.storeId && data.storeId !== product.storeId) {
       throw new AppError("Product is not available from the selected store", 409);
+    }
+
+    // Step 2 Verification: PIN code validation guard
+    const store = await Store.findOne({ storeId: product.storeId }).select("storeId storeName pincode").lean();
+    if (store && store.pincode && store.pincode.trim()) {
+      const storePin = store.pincode.trim();
+      let customerPin = data.customerPincode?.trim() || "";
+
+      if (!customerPin && userId) {
+        const user = await User.findOne({ userId }).select("pincode").lean();
+        if (user?.pincode?.trim()) {
+          customerPin = user.pincode.trim();
+        }
+      }
+
+      if (customerPin && customerPin !== storePin) {
+        throw new AppError(
+          `This store (${store.storeName || "Store"}) only serves PIN ${storePin}. Your current location is set to PIN ${customerPin}. Please switch your delivery location to order from this store.`,
+          400
+        );
+      }
     }
 
     const existingCartItems = await CartItem.find({ userId }).select("productId").lean();

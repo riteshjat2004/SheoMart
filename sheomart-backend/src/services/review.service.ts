@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import { AppError } from "../errors/AppError";
 import { Product } from "../models/product.model";
 import { Review, REVIEW_STATUS, ReviewStatus, IReview } from "../models/review.model";
@@ -81,7 +82,7 @@ export class ReviewService {
 
     // 1. Recalculate Product Rating (only if productId provided and non-empty)
     if (productId && productId.trim() !== "") {
-      const product = await Product.findOne({ productId });
+      const product = await Product.findOne({ productId }).select("productId storeId").lean();
       if (product) {
         effectiveStoreId = effectiveStoreId || product.storeId;
 
@@ -98,36 +99,35 @@ export class ReviewService {
             ? Number((productReviews.reduce((sum, r) => sum + r.rating, 0) / totalProductReviews).toFixed(1))
             : 0;
 
-        product.rating = avgProductRating;
-        product.totalReviews = totalProductReviews;
-        await product.save();
+        await Product.updateOne(
+          { productId },
+          { $set: { rating: avgProductRating, totalReviews: totalProductReviews } }
+        );
       }
     }
 
     // 2. Recalculate Store Rating
     if (effectiveStoreId) {
-      const store = await Store.findOne({ storeId: effectiveStoreId });
-      if (store) {
-        const storeProducts = await Product.find({ storeId: effectiveStoreId }).select("productId").lean();
-        const pIds = storeProducts.map((p) => p.productId);
+      const storeProducts = await Product.find({ storeId: effectiveStoreId }).select("productId").lean();
+      const pIds = storeProducts.map((p) => p.productId);
 
-        const storeReviews = await Review.find({
-          $or: [{ storeId: effectiveStoreId }, { productId: { $in: pIds } }],
-          status: REVIEW_STATUS.APPROVED,
-          isDeleted: false,
-          isVisible: true,
-        });
+      const storeReviews = await Review.find({
+        $or: [{ storeId: effectiveStoreId }, { productId: { $in: pIds } }],
+        status: REVIEW_STATUS.APPROVED,
+        isDeleted: false,
+        isVisible: true,
+      });
 
-        const totalStoreReviews = storeReviews.length;
-        const avgStoreRating =
-          totalStoreReviews > 0
-            ? Number((storeReviews.reduce((sum, r) => sum + r.rating, 0) / totalStoreReviews).toFixed(1))
-            : 0;
+      const totalStoreReviews = storeReviews.length;
+      const avgStoreRating =
+        totalStoreReviews > 0
+          ? Number((storeReviews.reduce((sum, r) => sum + r.rating, 0) / totalStoreReviews).toFixed(1))
+          : 0;
 
-        store.rating = avgStoreRating;
-        store.totalReviews = totalStoreReviews;
-        await store.save();
-      }
+      await Store.updateOne(
+        { storeId: effectiveStoreId },
+        { $set: { rating: avgStoreRating, totalReviews: totalStoreReviews } }
+      );
     }
   }
 
@@ -152,40 +152,55 @@ export class ReviewService {
       throw new AppError("You can only rate an order after it has been delivered or picked up", 400);
     }
 
-    if (order.orderRating?.rating) {
-      throw new AppError("You have already rated this order", 409);
-    }
-
+    const isUpdate = Boolean(order.orderRating?.rating);
     const rating = Math.min(5, Math.max(1, Math.round(Number(data.rating))));
     const comment = (data.comment || "").trim();
+    const ratedAt = new Date();
 
-    order.orderRating = {
+    const orderRating = {
       rating,
       comment,
-      ratedAt: new Date(),
+      ratedAt,
     };
-    await order.save();
 
-    await Review.create({
-      storeId: order.storeId,
-      orderId: order.orderId,
-      productId: "",
-      userId,
-      rating,
-      comment,
-      title: "Store Experience",
-      isVerifiedPurchase: true,
-      isVisible: true,
-      isDeleted: false,
-      status: REVIEW_STATUS.APPROVED,
-    });
+    // Update order rating without risking unrelated validation errors
+    await Order.updateOne(
+      { orderId: order.orderId },
+      { $set: { orderRating } }
+    );
+
+    // Atomic upsert for review by orderId
+    await Review.findOneAndUpdate(
+      { orderId: order.orderId },
+      {
+        $set: {
+          storeId: order.storeId,
+          orderId: order.orderId,
+          productId: "",
+          userId,
+          rating,
+          comment,
+          title: "Store Experience",
+          isVerifiedPurchase: true,
+          isVisible: true,
+          isDeleted: false,
+          status: REVIEW_STATUS.APPROVED,
+        },
+        $setOnInsert: {
+          reviewId: uuidv4(),
+        },
+      },
+      { upsert: true, new: true }
+    );
 
     await this.recalculateRatings("", order.storeId);
 
     return {
       orderId: order.orderId,
-      orderRating: order.orderRating,
-      message: "Thank you for rating your store experience!",
+      orderRating,
+      message: isUpdate
+        ? "Your store rating has been updated successfully!"
+        : "Thank you for rating your store experience!",
     };
   }
 
@@ -279,7 +294,12 @@ export class ReviewService {
     ]);
 
     const categoryIds = [...new Set(products.map((p) => p.categoryId).filter(Boolean))];
-    const storeIds = [...new Set(products.map((p) => p.storeId).filter(Boolean))];
+    const storeIds = [
+      ...new Set([
+        ...products.map((p) => p.storeId),
+        ...reviews.map((r) => r.storeId),
+      ].filter(Boolean)),
+    ];
 
     const [categories, stores] = await Promise.all([
       Category.find({ categoryId: { $in: categoryIds } }).select("categoryId name").lean(),
@@ -294,7 +314,7 @@ export class ReviewService {
     const formattedReviews: AdminReviewListItem[] = reviews.map((r) => {
       const u = userMap.get(r.userId);
       const p = productMap.get(r.productId);
-      const st = p ? storeMap.get(p.storeId) : undefined;
+      const st = (p ? storeMap.get(p.storeId) : undefined) || (r.storeId ? storeMap.get(r.storeId) : undefined);
       const catName = p?.categoryId ? categoryMap.get(p.categoryId) : undefined;
 
       return {
@@ -435,17 +455,16 @@ export class ReviewService {
     let store = null;
     let category = null;
 
-    if (product) {
-      if (product.storeId) {
-        store = await Store.findOne({ storeId: product.storeId })
-          .select("storeId storeName logo rating totalReviews status")
-          .lean();
-      }
-      if (product.categoryId) {
-        category = await Category.findOne({ categoryId: product.categoryId })
-          .select("categoryId name")
-          .lean();
-      }
+    const effectiveStoreId = product?.storeId || review.storeId;
+    if (effectiveStoreId) {
+      store = await Store.findOne({ storeId: effectiveStoreId })
+        .select("storeId storeName logo rating totalReviews status")
+        .lean();
+    }
+    if (product?.categoryId) {
+      category = await Category.findOne({ categoryId: product.categoryId })
+        .select("categoryId name")
+        .lean();
     }
 
     return {
@@ -674,7 +693,7 @@ export class ReviewService {
     const hasPurchased = await Order.exists({
       userId,
       "orderItems.productId": productId,
-      status: { $nin: [ORDER_STATUS.CANCELLED, ORDER_STATUS.FAILED] },
+      status: { $nin: [ORDER_STATUS.CANCELLED, ORDER_STATUS.FAILED, ORDER_STATUS.DRAFT] },
     });
 
     if (!hasPurchased) {
@@ -701,15 +720,25 @@ export class ReviewService {
 
   static async getMyReviews(userId: string) {
     const reviews = await Review.find({ userId, isDeleted: false }).sort({ createdAt: -1 }).lean();
-    const productIds = reviews.map((r) => r.productId);
-    const products = await Product.find({ productId: { $in: productIds } })
-      .select("productId name thumbnail sku brand price discountPrice")
-      .lean();
+    const productIds = reviews.map((r) => r.productId).filter(Boolean);
+    const storeIds = [...new Set(reviews.map((r) => r.storeId).filter(Boolean))];
+
+    const [products, stores] = await Promise.all([
+      Product.find({ productId: { $in: productIds } })
+        .select("productId name thumbnail sku brand price discountPrice")
+        .lean(),
+      Store.find({ storeId: { $in: storeIds } })
+        .select("storeId storeName logo phone address city")
+        .lean(),
+    ]);
+
     const productMap = new Map(products.map((p) => [p.productId, p]));
+    const storeMap = new Map(stores.map((s) => [s.storeId, s]));
 
     return reviews.map((r) => ({
       ...r,
-      product: productMap.get(r.productId) || null,
+      product: r.productId ? productMap.get(r.productId) || null : null,
+      store: r.storeId ? storeMap.get(r.storeId) || null : null,
     }));
   }
 
@@ -720,9 +749,35 @@ export class ReviewService {
       isDeleted: false,
       isVisible: true,
       status: REVIEW_STATUS.APPROVED,
-    }).sort({ createdAt: -1 });
+    }).sort({ createdAt: -1 }).lean();
 
-    return { product, reviews };
+    const userIds = [...new Set(reviews.map((r) => r.userId))];
+    const users = await User.find({ userId: { $in: userIds } })
+      .select("userId name avatar isVerifiedCustomer")
+      .lean();
+    const userMap = new Map(users.map((u) => [u.userId, u]));
+
+    const populatedReviews = reviews.map((r) => {
+      const u = userMap.get(r.userId);
+      return {
+        ...r,
+        user: u
+          ? {
+              userId: u.userId,
+              name: u.name || "Verified Customer",
+              avatar: u.avatar || "",
+              isVerifiedCustomer: Boolean(u.isVerifiedCustomer),
+            }
+          : {
+              userId: r.userId,
+              name: "Verified Customer",
+              avatar: "",
+              isVerifiedCustomer: false,
+            },
+      };
+    });
+
+    return { product, reviews: populatedReviews };
   }
 
   static async getReview(reviewId: string) {
@@ -750,6 +805,20 @@ export class ReviewService {
     if (data.isVerifiedPurchase !== undefined) review.isVerifiedPurchase = data.isVerifiedPurchase;
 
     await review.save();
+
+    if (review.orderId) {
+      await Order.updateOne(
+        { orderId: review.orderId },
+        {
+          $set: {
+            "orderRating.rating": review.rating,
+            "orderRating.comment": review.comment,
+            "orderRating.ratedAt": new Date(),
+          },
+        }
+      );
+    }
+
     await this.recalculateRatings(review.productId, review.storeId);
     return review;
   }
@@ -770,6 +839,11 @@ export class ReviewService {
     review.deletedAt = new Date();
 
     await review.save();
+
+    if (review.orderId) {
+      await Order.updateOne({ orderId: review.orderId }, { $unset: { orderRating: 1 } });
+    }
+
     await this.recalculateRatings(review.productId, review.storeId);
     return review;
   }
@@ -800,6 +874,7 @@ export class ReviewService {
       rating?: number;
       status?: string;
       sortBy?: string;
+      isPublic?: boolean;
     }
   ) {
     const store = await Store.findOne({ ownerId, isDeleted: false });
@@ -811,23 +886,37 @@ export class ReviewService {
       };
     }
 
-    const filter: Record<string, unknown> = {
-      storeId: store.storeId,
+    const storeProducts = await Product.find({ storeId: store.storeId }).select("productId").lean();
+    const pIds = storeProducts.map((p) => p.productId);
+
+    const storeScope = {
+      $or: [{ storeId: store.storeId }, { productId: { $in: pIds } }],
       isDeleted: false,
     };
+
+    const filter: Record<string, unknown> = {
+      ...storeScope,
+    };
+
+    if (query.isPublic) {
+      filter.status = REVIEW_STATUS.APPROVED;
+      filter.isVisible = true;
+    } else if (query.status && query.status !== "all") {
+      filter.status = query.status;
+    }
 
     if (query.rating && query.rating >= 1 && query.rating <= 5) {
       filter.rating = query.rating;
     }
 
-    if (query.status && query.status !== "all") {
-      filter.status = query.status;
-    }
-
     if (query.search && query.search.trim()) {
-      filter.$or = [
-        { comment: { $regex: query.search.trim(), $options: "i" } },
-        { title: { $regex: query.search.trim(), $options: "i" } },
+      filter.$and = [
+        {
+          $or: [
+            { comment: { $regex: query.search.trim(), $options: "i" } },
+            { title: { $regex: query.search.trim(), $options: "i" } },
+          ],
+        },
       ];
     }
 
@@ -840,10 +929,18 @@ export class ReviewService {
     if (query.sortBy === "highest") sort = { rating: -1, createdAt: -1 };
     if (query.sortBy === "lowest") sort = { rating: 1, createdAt: -1 };
 
+    const allStoreReviewsFilter: Record<string, unknown> = {
+      ...storeScope,
+    };
+    if (query.isPublic) {
+      allStoreReviewsFilter.status = REVIEW_STATUS.APPROVED;
+      allStoreReviewsFilter.isVisible = true;
+    }
+
     const [reviews, total, allStoreReviews] = await Promise.all([
       Review.find(filter).sort(sort).skip(skip).limit(limit).lean(),
       Review.countDocuments(filter),
-      Review.find({ storeId: store.storeId, isDeleted: false }).select("rating").lean(),
+      Review.find(allStoreReviewsFilter).select("rating").lean(),
     ]);
 
     const breakdown = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };

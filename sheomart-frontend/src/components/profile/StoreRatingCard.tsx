@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, MessageSquare, Star, Store, Sparkles } from "lucide-react";
+import { CheckCircle2, MessageSquare, Star, Store, Sparkles, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRateOrder } from "@/hooks/use-orders";
 import type { OrderRecord } from "@/services/orders";
@@ -24,13 +24,14 @@ export function StoreRatingCard({ order, className = "", onRated }: StoreRatingC
   const storeName = order.store?.storeName ?? order.storeName ?? "SheoMart Neighborhood Store";
   const rateOrderMutation = useRateOrder();
 
-  const [rating, setRating] = useState<number>(0);
+  const [isEditing, setIsEditing] = useState(false);
+  const [rating, setRating] = useState<number>(order.orderRating?.rating || 0);
   const [hoverRating, setHoverRating] = useState<number>(0);
-  const [comment, setComment] = useState("");
+  const [comment, setComment] = useState(order.orderRating?.comment || "");
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
-  // If already rated
-  if (order.orderRating?.rating) {
+  // If already rated and not actively editing
+  if (order.orderRating?.rating && !isEditing) {
     const existingRating = order.orderRating.rating;
     const existingComment = order.orderRating.comment;
     const ratedAt = order.orderRating.ratedAt
@@ -91,9 +92,25 @@ export function StoreRatingCard({ order, className = "", onRated }: StoreRatingC
           </p>
         ) : null}
 
-        <p className="mt-2 text-[11px] text-stone-400 dark:text-stone-500">
-          Your rating directly supports {storeName}&apos;s neighborhood reputation.
-        </p>
+        <div className="mt-3 flex items-center justify-between border-t border-emerald-100/60 pt-2.5 dark:border-emerald-900/40">
+          <p className="text-[11px] text-stone-400 dark:text-stone-500">
+            Your rating directly supports {storeName}&apos;s neighborhood reputation.
+          </p>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setRating(existingRating);
+              setComment(existingComment || "");
+              setIsEditing(true);
+            }}
+            className="h-7 gap-1 px-2.5 text-xs text-stone-600 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-200"
+          >
+            <Pencil className="h-3 w-3" />
+            Edit Rating
+          </Button>
+        </div>
       </div>
     );
   }
@@ -114,7 +131,11 @@ export function StoreRatingCard({ order, className = "", onRated }: StoreRatingC
         rating,
         comment: comment.trim() || undefined,
       });
-      setFeedback({ type: "success", message: "Thank you! Your store rating has been submitted." });
+      setFeedback({
+        type: "success",
+        message: isEditing ? "Your rating has been updated!" : "Thank you! Your store rating has been submitted.",
+      });
+      setIsEditing(false);
       if (onRated) {
         onRated();
       }
@@ -220,14 +241,33 @@ export function StoreRatingCard({ order, className = "", onRated }: StoreRatingC
           <p className="text-[11px] text-stone-400">
             Only 1 overall rating per order. No need to rate individual items.
           </p>
-          <Button
-            type="submit"
-            size="sm"
-            disabled={rateOrderMutation.isPending || rating === 0}
-            className="bg-emerald-600 text-white hover:bg-emerald-700"
-          >
-            {rateOrderMutation.isPending ? "Submitting..." : "Submit Store Rating"}
-          </Button>
+          <div className="flex items-center gap-2">
+            {isEditing && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setIsEditing(false);
+                  setFeedback(null);
+                }}
+              >
+                Cancel
+              </Button>
+            )}
+            <Button
+              type="submit"
+              size="sm"
+              disabled={rateOrderMutation.isPending || rating === 0}
+              className="bg-emerald-600 text-white hover:bg-emerald-700"
+            >
+              {rateOrderMutation.isPending
+                ? "Submitting..."
+                : isEditing
+                ? "Update Store Rating"
+                : "Submit Store Rating"}
+            </Button>
+          </div>
         </div>
       </form>
     </div>
