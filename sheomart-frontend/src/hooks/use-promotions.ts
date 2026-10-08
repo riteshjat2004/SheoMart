@@ -18,10 +18,10 @@ export function useOffers() {
   });
 }
 
-export function useCoupons() {
+export function useCoupons(storeId?: string) {
   return useQuery<CouponItem[], Error>({
-    queryKey: ["coupons"],
-    queryFn: fetchHomepageCoupons,
+    queryKey: ["coupons", storeId],
+    queryFn: () => fetchHomepageCoupons(storeId),
     select: (coupons) => coupons.filter(isActivePromotion).sort((first, second) => new Date(first.endsAt).getTime() - new Date(second.endsAt).getTime()),
     staleTime: 60_000,
     refetchOnWindowFocus: true,

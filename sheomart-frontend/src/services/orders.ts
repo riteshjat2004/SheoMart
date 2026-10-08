@@ -54,6 +54,10 @@ export interface OrderRecord {
   couponDiscountApplied?: number;
   festivalDiscountApplied?: number;
   productSavingsShown?: number;
+  couponCode?: string;
+  couponDiscount?: number;
+  festivalDiscount?: number;
+  invoiceNumber?: string;
   createdAt?: string;
   shippingAddress?: Record<string, unknown>;
   storeName?: string;

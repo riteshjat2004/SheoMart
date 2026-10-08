@@ -599,7 +599,21 @@ export function StoreOrdersTable({
 
                       {/* Amount */}
                       <td className="px-4 py-3.5 font-bold text-stone-900 dark:text-stone-50">
-                        ₹{(order.grandTotal ?? 0).toLocaleString("en-IN")}
+                        <div>₹{(order.grandTotal ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</div>
+                        {((order.festivalDiscount ?? 0) > 0 || (order.couponDiscount ?? 0) > 0) ? (
+                          <div className="flex flex-col gap-0.5 pt-0.5 text-[10px] font-normal">
+                            {(order.couponDiscount ?? 0) > 0 ? (
+                              <span className="text-emerald-600 dark:text-emerald-400">
+                                🏷️ {order.couponCode || "Coupon"}: -₹{Number(order.couponDiscount).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                              </span>
+                            ) : null}
+                            {(order.festivalDiscount ?? 0) > 0 ? (
+                              <span className="text-amber-600 dark:text-amber-400">
+                                ✨ Festival: -₹{Number(order.festivalDiscount).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                              </span>
+                            ) : null}
+                          </div>
+                        ) : null}
                       </td>
 
                       {/* Payment */}

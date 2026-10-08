@@ -110,6 +110,8 @@ export interface CouponValidation {
   discountType?: DiscountType;
   discountValue?: number;
   finalAmount?: number;
+  storeId?: string | null;
+  applicableScope?: string;
 }
 
 export interface WalletCoupon {
@@ -286,8 +288,9 @@ export async function fetchHomepageOffers(): Promise<OfferItem[]> {
   return response.data.data?.offers ?? [];
 }
 
-export async function fetchHomepageCoupons(): Promise<CouponItem[]> {
-  const response = await api.get<ApiResponse<{ coupons: CouponItem[] }>>("/api/v1/promotions/coupons");
+export async function fetchHomepageCoupons(storeId?: string): Promise<CouponItem[]> {
+  const url = storeId ? `/api/v1/promotions/coupons?storeId=${encodeURIComponent(storeId)}` : "/api/v1/promotions/coupons";
+  const response = await api.get<ApiResponse<{ coupons: CouponItem[] }>>(url);
   return response.data.data?.coupons ?? [];
 }
 

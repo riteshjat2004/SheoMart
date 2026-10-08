@@ -23,7 +23,7 @@ interface OrderSummaryCardProps {
   onPlaceOrder: () => void;
 }
 
-const money = (value: number) => `₹${value.toLocaleString("en-IN")}`;
+const money = (value: number) => `₹${Number(value.toFixed(2)).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 
 export function OrderSummaryCard({
   totalItems,

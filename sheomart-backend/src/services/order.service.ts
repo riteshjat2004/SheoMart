@@ -295,22 +295,26 @@ export class OrderService {
       couponValidation?.discount ?? 0
     );
     const productSavings = Math.max(0, originalTotal - discountedTotal);
-    const freeDeliveryThreshold = store.freeDeliveryThreshold ?? store.freeDeliveryAbove;
+    const freeDeliveryThreshold = store.freeDeliveryThreshold ?? store.freeDeliveryAbove ?? 0;
+    const supportsDelivery = store.supportsDelivery === true;
+    const effectiveDeliveryMethod = supportsDelivery ? deliveryMethod : "pickup";
     const freeDeliveryApplied =
-      deliveryMethod === "delivery" &&
+      effectiveDeliveryMethod === "delivery" &&
       freeDeliveryThreshold > 0 &&
       discountedTotal >= freeDeliveryThreshold;
 
     const deliveryFee =
-      deliveryMethod === "pickup" ? 0 : freeDeliveryApplied ? 0 : store.deliveryFee;
+      effectiveDeliveryMethod === "pickup" ? 0 : freeDeliveryApplied ? 0 : (store.deliveryFee ?? 0);
     const platformFee = PlatformFeeService.calculate(
       await PlatformFeeService.getConfig(),
       discountedTotal
     );
-    const finalAmount = Math.max(
-      0,
-      discountedTotal - festivalDiscount - couponDiscount + deliveryFee + platformFee
-    );
+    const finalAmount = Math.round(
+      Math.max(
+        0,
+        discountedTotal - festivalDiscount - couponDiscount + deliveryFee + platformFee
+      ) * 100
+    ) / 100;
 
     return {
       storeId,
@@ -323,7 +327,9 @@ export class OrderService {
       festivalDiscount,
       couponDiscount,
       couponCode: couponValidation?.code || (couponCode && couponDiscount > 0 ? couponCode : ""),
-      deliveryMethod,
+      deliveryMethod: effectiveDeliveryMethod,
+      supportsDelivery,
+      supportsPickup: store.supportsPickup === true,
       deliveryFee,
       freeDeliveryApplied,
       freeDeliveryThreshold,
@@ -338,8 +344,10 @@ export class OrderService {
     const store = await Store.findOne({ storeId: data.storeId }).lean();
     if (!store) throw new AppError("Store not found", 404);
     const fulfillmentType = data.fulfillmentType ?? data.deliveryMethod;
-    if (fulfillmentType === "pickup" && store.supportsPickup !== true) throw new AppError("Pickup is not available for this store", 400);
-    if (fulfillmentType === "delivery" && store.supportsDelivery !== true) throw new AppError("Delivery is not available for this store", 400);
+    const supportsPickup = store.supportsPickup === true || store.pickupEnabled === true || (store.supportsPickup !== false && store.pickupEnabled !== false);
+    const supportsDelivery = store.supportsDelivery === true || store.deliveryEnabled === true;
+    if (fulfillmentType === "pickup" && !supportsPickup) throw new AppError("Pickup is not available for this store", 400);
+    if (fulfillmentType === "delivery" && !supportsDelivery) throw new AppError("Delivery is not available for this store", 400);
 
     const address = fulfillmentType === "delivery" && data.addressId ? await Address.findOne({ addressId: data.addressId, userId }) : null;
     if (fulfillmentType === "delivery" && !address) throw new AppError("Delivery address not found", 404);
@@ -408,7 +416,7 @@ export class OrderService {
     const freeDeliveryApplied = fulfillmentType === "delivery" && freeDeliveryThreshold > 0 && discountedTotal >= freeDeliveryThreshold;
     const deliveryCharge = fulfillmentType === "pickup" ? 0 : freeDeliveryApplied ? 0 : store.deliveryFee;
     const platformFee = PlatformFeeService.calculate(await PlatformFeeService.getConfig(), discountedTotal);
-    return { amount: Math.max(0, discountedTotal - festivalDiscount - couponDiscount + deliveryCharge + platformFee) };
+    return { amount: Math.round(Math.max(0, discountedTotal - festivalDiscount - couponDiscount + deliveryCharge + platformFee) * 100) / 100 };
   }
 
   static async markPaymentReceived(
@@ -700,10 +708,12 @@ export class OrderService {
     }
 
     const fulfillmentType = data.fulfillmentType ?? data.deliveryMethod;
-    if (fulfillmentType === "pickup" && store.supportsPickup !== true) {
+    const supportsPickup = store.supportsPickup === true || store.pickupEnabled === true || (store.supportsPickup !== false && store.pickupEnabled !== false);
+    const supportsDelivery = store.supportsDelivery === true || store.deliveryEnabled === true;
+    if (fulfillmentType === "pickup" && !supportsPickup) {
       throw new AppError("Pickup is not available for this store", 400);
     }
-    if (fulfillmentType === "delivery" && store.supportsDelivery !== true) {
+    if (fulfillmentType === "delivery" && !supportsDelivery) {
       throw new AppError("Delivery is not available for this store", 400);
     }
 
@@ -857,7 +867,7 @@ export class OrderService {
       ? 0
       : freeDeliveryApplied ? 0 : store.deliveryFee;
     const platformFee = PlatformFeeService.calculate(await PlatformFeeService.getConfig(), discountedTotal);
-    const grandTotal = Math.max(0, discountedTotal - festivalDiscount - couponDiscount + deliveryCharge + platformFee);
+    const grandTotal = Math.round(Math.max(0, discountedTotal - festivalDiscount - couponDiscount + deliveryCharge + platformFee) * 100) / 100;
     const estimatedReadyTime = new Date(Date.now() + (store.preparationTimeMinutes ?? 30) * 60 * 1000);
     const estimatedDeliveryTime = fulfillmentType === "delivery"
       ? new Date(estimatedReadyTime.getTime() + 60 * 60 * 1000)
@@ -998,7 +1008,7 @@ export class OrderService {
 
     const [customer, store] = await Promise.all([
       User.findOne({ userId: order.userId }).select("userId name mobile email").lean(),
-      Store.findOne({ storeId: order.storeId }).select("storeId storeName address city state pincode preparationTimeMinutes").lean(),
+      Store.findOne({ storeId: order.storeId }).select("storeId storeName phone address city state pincode preparationTimeMinutes").lean(),
     ]);
 
     if (!order.invoiceNumber && order.status !== ORDER_STATUS.DRAFT) {
@@ -1013,9 +1023,11 @@ export class OrderService {
       customerPhone: customer?.mobile,
       customerEmail: customer?.email,
       storeName: store?.storeName,
+      storePhone: store?.phone,
       pickupAddress: [store?.address, store?.city, store?.state, store?.pincode].filter(Boolean).join(", "),
+      pickupHours: "10:00 AM - 8:00 PM",
       preparationTimeMinutes: store?.preparationTimeMinutes,
-      store: store ? { storeId: store.storeId, storeName: store.storeName, address: store.address, preparationTimeMinutes: store.preparationTimeMinutes } : null,
+      store: store ? { storeId: store.storeId, storeName: store.storeName, phone: store.phone, address: store.address, preparationTimeMinutes: store.preparationTimeMinutes } : null,
     };
   }
 

@@ -2,8 +2,8 @@
 
 import { createPaymentOrder, verifyPayment } from "@/services/payment";
 import { loadRazorpay } from "@/lib/loadRazorpay";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { FulfillmentSelector } from "@/components/checkout/FulfillmentSelector";
 import { FulfillmentInfoCard } from "@/components/checkout/FulfillmentInfoCard";
@@ -38,7 +38,7 @@ import { createDraftOrder } from "@/services/orders";
 import { fetchActiveOffers, validateCoupon, type CouponValidation } from "@/services/promotions";
 import { fetchPlatformFeeConfig } from "@/services/platform-fee";
 
-export default function CheckoutPage() {
+function CheckoutContent() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const pickupRef = useRef<HTMLDivElement>(null);
@@ -118,8 +118,8 @@ export default function CheckoutPage() {
   const paymentLabel = paymentMethod === "ONLINE" ? "Razorpay" : paymentMethod === "PAY_AT_PICKUP" ? "Pay During Pickup" : "Pay During Delivery";
   const paymentStatusPreview = paymentMethod === "ONLINE" ? "Pending Payment" : paymentMethod === "PAY_AT_PICKUP" ? "Pay on Pickup" : "Pay on Delivery";
   const paymentValid = isPlusCustomer || paymentMethod === "ONLINE";
-  const supportsPickup = store?.supportsPickup === true;
-  const supportsDelivery = store?.supportsDelivery === true;
+  const supportsPickup = store?.supportsPickup === true || store?.pickupEnabled === true || (Boolean(store) && store?.supportsPickup !== false && store?.pickupEnabled !== false);
+  const supportsDelivery = store?.supportsDelivery === true || store?.deliveryEnabled === true;
   useEffect(() => {
     if (supportsDelivery && !supportsPickup) setDeliveryMethod("delivery");
     if (supportsPickup && !supportsDelivery) setDeliveryMethod("pickup");
@@ -129,14 +129,23 @@ export default function CheckoutPage() {
     addressesQuery.isLoading ||
     Boolean(storeId && storeQuery.isLoading) ||
     Boolean(storeId && customerQuery.isLoading);
-  const festivalSavings = useMemo(() => cartItems.reduce((total, item) => {
-    const categoryId = item.product.categoryId ?? "";
-    const offer = activeOffersQuery.data?.find((candidate) => candidate.categoryIds.length === 0 || candidate.categoryIds.includes(categoryId));
-    if (!offer) return total;
-    const price = item.product.discountPrice ?? item.product.price ?? 0;
-    const raw = offer.discountType === "percentage" ? price * item.quantity * offer.discountValue / 100 : offer.discountValue * item.quantity;
-    return total + Math.min(price * item.quantity, raw);
-  }, 0), [activeOffersQuery.data, cartItems]);
+  const festivalSavings = useMemo(() => {
+    const rawTotal = cartItems.reduce((total, item) => {
+      const categoryId = item.product.categoryId ?? "";
+      const offer = activeOffersQuery.data?.find((candidate) => candidate.categoryIds.length === 0 || candidate.categoryIds.includes(categoryId));
+      if (!offer) return total;
+      const price = item.product.discountPrice ?? item.product.price ?? 0;
+      const raw = offer.discountType === "percentage" ? price * item.quantity * offer.discountValue / 100 : offer.discountValue * item.quantity;
+      return total + Math.min(price * item.quantity, raw);
+    }, 0);
+    return Math.round(rawTotal * 100) / 100;
+  }, [activeOffersQuery.data, cartItems]);
+  const originalSubtotal = useMemo(() => {
+    return cartItems.reduce((sum, item) => {
+      const regPrice = item.unitPrice ?? item.product?.price ?? 0;
+      return sum + regPrice * item.quantity;
+    }, 0) || (totals.subtotal + totals.estimatedSavings);
+  }, [cartItems, totals.subtotal, totals.estimatedSavings]);
   const configuredDeliveryFee = store?.deliveryFee ?? 0;
   const freeDeliveryAbove = store?.freeDeliveryThreshold ?? store?.freeDeliveryAbove ?? 0;
   const preparationTimeMinutes = store?.preparationTimeMinutes ?? 0;
@@ -160,19 +169,69 @@ export default function CheckoutPage() {
     ? Math.min(platformConfig.feeType === "PERCENTAGE" ? totals.subtotal * platformConfig.amount / 100 : platformConfig.amount, platformConfig.maximumPlatformFee ?? Number.POSITIVE_INFINITY)
     : 0;
   const deliverySavings = freeDeliveryApplied ? configuredDeliveryFee : 0;
-  const finalPayable = Math.max(0, totals.subtotal - festivalSavings - (appliedCoupon?.discount ?? 0) + deliveryFee + platformFee);
+  const finalPayable = Math.round(Math.max(0, totals.subtotal - festivalSavings - (appliedCoupon?.discount ?? 0) + deliveryFee + platformFee) * 100) / 100;
+  const searchParams = useSearchParams();
+  const couponFromQuery = searchParams.get("coupon");
+
+  // Auto-apply coupon passed from cart query parameter
+  useEffect(() => {
+    if (couponFromQuery && !appliedCoupon && totals.subtotal > 0 && storeId) {
+      const code = couponFromQuery.trim().toUpperCase();
+      setCouponCode(code);
+      validateCoupon(code, totals.subtotal, {
+        storeId,
+        categoryIds: [...new Set(cartItems.map((item) => item.product.categoryId).filter(Boolean) as string[])],
+        productIds: cartItems.map((item) => item.product.productId).filter(Boolean) as string[],
+      })
+        .then((validation) => {
+          setAppliedCoupon(validation ?? null);
+          setCouponMessage({ type: "success", text: `${validation?.code ?? code} applied successfully.` });
+        })
+        .catch((error) => {
+          setCouponMessage({ type: "error", text: error instanceof Error ? error.message : "Unable to apply coupon." });
+        });
+    }
+  }, [couponFromQuery, totals.subtotal, storeId]);
+
+  // Revalidate coupon if subtotal changes
+  useEffect(() => {
+    if (appliedCoupon && totals.subtotal > 0 && storeId) {
+      validateCoupon(appliedCoupon.code, totals.subtotal, {
+        storeId,
+        categoryIds: [...new Set(cartItems.map((item) => item.product.categoryId).filter(Boolean) as string[])],
+        productIds: cartItems.map((item) => item.product.productId).filter(Boolean) as string[],
+      })
+        .then((validation) => {
+          setAppliedCoupon(validation ?? null);
+        })
+        .catch(() => {
+          setAppliedCoupon(null);
+          setCouponMessage({ type: "error", text: "Coupon is no longer valid for this cart total." });
+        });
+    }
+  }, [totals.subtotal, storeId]);
 
   const applyCoupon = async () => {
     if (!couponCode.trim()) return;
     try {
       setCouponMessage(null);
-      const validation = await validateCoupon(couponCode, totals.subtotal);
+      const validation = await validateCoupon(couponCode, totals.subtotal, {
+        storeId,
+        categoryIds: [...new Set(cartItems.map((item) => item.product.categoryId).filter(Boolean) as string[])],
+        productIds: cartItems.map((item) => item.product.productId).filter(Boolean) as string[],
+      });
       setAppliedCoupon(validation ?? null);
       setCouponMessage({ type: "success", text: `${validation?.code ?? couponCode.toUpperCase()} applied successfully.` });
     } catch (error) {
       setAppliedCoupon(null);
       setCouponMessage({ type: "error", text: error instanceof Error ? error.message : "Unable to apply coupon." });
     }
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode("");
+    setCouponMessage(null);
   };
 
   const continueToPickup = () => {
@@ -366,10 +425,10 @@ export default function CheckoutPage() {
                       <h2 className="text-lg font-semibold">Apply coupon</h2>
                       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
                         <input value={couponCode} onChange={(event) => setCouponCode(event.target.value.toUpperCase())} placeholder="Enter coupon code" className="min-h-11 flex-1 rounded-lg border border-stone-200 bg-white px-3 text-sm uppercase outline-none focus:border-emerald-500 dark:border-stone-700 dark:bg-stone-950" disabled={Boolean(appliedCoupon)} />
-                        {appliedCoupon ? <Button type="button" variant="outline" onClick={() => { setAppliedCoupon(null); setCouponMessage(null); }}>Remove</Button> : <Button type="button" onClick={applyCoupon}>Apply Coupon</Button>}
+                        {appliedCoupon ? <Button type="button" variant="outline" onClick={removeCoupon}>Remove</Button> : <Button type="button" onClick={applyCoupon}>Apply Coupon</Button>}
                       </div>
                       {couponMessage ? <p role="status" className={`mt-3 rounded-lg border p-3 text-sm ${couponMessage.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-300" : "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/40 dark:text-rose-300"}`}>{couponMessage.text}</p> : null}
-                      {festivalSavings > 0 ? <p className="mt-3 text-sm text-emerald-700 dark:text-emerald-300">Festival offers applied: save ₹{festivalSavings.toLocaleString("en-IN")}</p> : null}
+                      {festivalSavings > 0 ? <p className="mt-3 text-sm text-emerald-700 dark:text-emerald-300">Festival offers applied: save ₹{festivalSavings.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</p> : null}
                     </section>
                     <OrderSummaryCard
                       totalItems={totals.totalItems}
@@ -389,7 +448,7 @@ export default function CheckoutPage() {
                         .filter(Boolean)
                         .join(", ")}
                       storeName={store?.storeName ?? store?.name ?? "Store"}
-                      subtotal={totals.subtotal}
+                      subtotal={originalSubtotal}
                       deliveryFee={deliveryFee}
                       discount={totals.estimatedSavings}
                       festivalSavings={festivalSavings}
@@ -422,5 +481,13 @@ export default function CheckoutPage() {
         </Container>
       </Section>
     </PageWrapper>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<LoadingSkeleton rows={6} />}>
+      <CheckoutContent />
+    </Suspense>
   );
 }

@@ -149,4 +149,48 @@ button {
   background: rgba(168, 162, 158, 0.55);
 }
 
+/* Print Invoice Stylesheet */
+@media print {
+  @page {
+    margin: 12mm;
+    size: auto;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  header,
+  footer,
+  nav,
+  button,
+  .no-print,
+  [data-no-print] {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .print-clean-container {
+    box-shadow: none !important;
+    border: 1px solid #e5e7eb !important;
+    padding: 16px !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Prevent page breaks inside important blocks */
+  article,
+  section,
+  tr,
+  .print-avoid-break {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+}
+
 

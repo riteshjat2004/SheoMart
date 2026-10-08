@@ -69,7 +69,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main className="flex-1">
         <RouteGuard>{children}</RouteGuard>
       </main>
-      {!isAuthRoute ? <Footer /> : null}
+      {pathname === "/" ? <Footer /> : null}
       {!isAuthRoute ? <FloatingCartButton /> : null}
       <CartStoreConflictModal />
     </div>

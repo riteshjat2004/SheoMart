@@ -254,6 +254,18 @@ export function OrderDetailsDrawer({
                 </span>
               )}
             </div>
+
+            {order.couponCode ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 border border-emerald-200/60 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-900/40">
+                🏷️ Coupon: {order.couponCode}
+              </span>
+            ) : null}
+
+            {((order.festivalDiscount ?? 0) > 0) ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800 border border-amber-200/60 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-900/40">
+                ✨ Festival Offer
+              </span>
+            ) : null}
           </div>
 
           {/* Customer & Address Grid */}
@@ -389,7 +401,7 @@ export function OrderDetailsDrawer({
               <div className="flex justify-between">
                 <span>Subtotal:</span>
                 <span className="font-semibold text-stone-800 dark:text-stone-200">
-                  {formatCurrency(order.subtotal)}
+                  {formatCurrency(((order.discount ?? 0) > 0 ? ((order.subtotal ?? 0) + (order.discount ?? 0)) : (order.subtotal ?? 0)))}
                 </span>
               </div>
 
@@ -397,6 +409,13 @@ export function OrderDetailsDrawer({
                 <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
                   <span>Product Savings:</span>
                   <span>-{formatCurrency(order.discount)}</span>
+                </div>
+              ) : null}
+
+              {(order.festivalDiscount ?? 0) > 0 ? (
+                <div className="flex justify-between text-amber-600 dark:text-amber-400">
+                  <span>Festival Savings:</span>
+                  <span>-{formatCurrency(order.festivalDiscount)}</span>
                 </div>
               ) : null}
 

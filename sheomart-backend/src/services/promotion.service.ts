@@ -6,7 +6,7 @@ import { CouponUsage } from "../models/couponUsage.model";
 import { Offer, IOffer } from "../models/offer.model";
 import { Order } from "../models/order.model";
 import { Product } from "../models/product.model";
-import { Store } from "../models/store.model";
+import { Store, STORE_BADGE } from "../models/store.model";
 import { deleteImageFromCloudinary, uploadBufferToCloudinary } from "../utils/cloudinary";
 import type {
   BulkPromotionActionInput,
@@ -82,7 +82,12 @@ export class PromotionService {
   static async listActiveCoupons(storeId?: string) {
     const filter: Record<string, any> = getActiveWindow();
     if (storeId) {
-      filter.storeId = storeId;
+      filter.$or = [
+        { storeId },
+        { storeId: null },
+        { storeId: { $exists: false } },
+        { applicableScope: "marketplace" },
+      ];
     }
     const coupons = await Coupon.find(filter).sort({ isFeatured: -1, endsAt: 1, createdAt: -1 });
     return enrichCoupons(coupons);
@@ -302,20 +307,39 @@ export class PromotionService {
       }
     }
 
-    if (coupon.applicableScope === "store" && coupon.storeId) {
-      if (context?.storeId && context.storeId !== coupon.storeId) {
+    // Store-scoping validation
+    if (coupon.storeId || coupon.applicableScope === "store") {
+      if (!context?.storeId) {
+        throw new AppError("Store context is required for this coupon", 400);
+      }
+      if (coupon.storeId && context.storeId !== coupon.storeId) {
         throw new AppError("This coupon is not valid for items from this store", 400);
       }
     }
 
-    if (coupon.applicableScope === "category" && coupon.categoryId) {
-      if (context?.categoryIds && context.categoryIds.length > 0 && !context.categoryIds.includes(coupon.categoryId)) {
+    if (coupon.verifiedOnly && context?.storeId) {
+      const store = await Store.findOne({ storeId: context.storeId }).select("isVerified badge").lean();
+      if (!store?.isVerified && store?.badge !== STORE_BADGE.VERIFIED && store?.badge !== STORE_BADGE.ROYAL) {
+        throw new AppError("This coupon is only valid for verified stores", 400);
+      }
+    }
+
+    const couponCategoryIds = [
+      ...(coupon.categoryId ? [coupon.categoryId] : []),
+      ...((coupon.categoryIds as string[] | undefined) || []),
+    ];
+    if (couponCategoryIds.length > 0 && context?.categoryIds && context.categoryIds.length > 0) {
+      if (!context.categoryIds.some((id) => couponCategoryIds.includes(id))) {
         throw new AppError("This coupon is only valid for products in specific categories", 400);
       }
     }
 
-    if (coupon.applicableScope === "product" && coupon.productId) {
-      if (context?.productIds && context.productIds.length > 0 && !context.productIds.includes(coupon.productId)) {
+    const couponProductIds = [
+      ...(coupon.productId ? [coupon.productId] : []),
+      ...((coupon.productIds as string[] | undefined) || []),
+    ];
+    if (couponProductIds.length > 0 && context?.productIds && context.productIds.length > 0) {
+      if (!context.productIds.some((id) => couponProductIds.includes(id))) {
         throw new AppError("This coupon is only valid for specific products", 400);
       }
     }
@@ -341,6 +365,8 @@ export class PromotionService {
       discountValue: coupon.discountValue,
       discount,
       finalAmount,
+      storeId: coupon.storeId ?? null,
+      applicableScope: coupon.applicableScope,
     };
   }
 
@@ -555,7 +581,15 @@ export class PromotionService {
       }
     }
 
-    const usage = await CouponUsage.create({ couponId, customerId, orderId: orderId ?? null });
+    let usage;
+    try {
+      usage = await CouponUsage.create({ couponId, customerId, orderId: orderId ?? null });
+    } catch (error: any) {
+      if (error?.code === 11000) {
+        throw new AppError("You have already used this coupon", 409);
+      }
+      throw error;
+    }
     coupon.usageCount += 1;
     await coupon.save();
     return usage;

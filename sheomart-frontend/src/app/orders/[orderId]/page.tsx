@@ -179,7 +179,7 @@ export default function OrderDetailsPage() {
       <Section className="space-y-6 py-6 sm:py-8 lg:py-10">
         <Container className="space-y-6">
           {/* Top Actions */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="no-print flex flex-wrap items-center justify-between gap-3">
             <Button asChild variant="outline" size="sm">
               <Link href="/orders">
                 <ArrowLeft className="mr-2 h-4 w-4" />
@@ -298,6 +298,16 @@ export default function OrderDetailsPage() {
                     ? "Pay on Delivery (Cash / UPI)"
                     : "Pay at Shop on Pickup"}
                 </span>
+                {order.couponCode ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                    🏷️ Coupon: {order.couponCode}
+                  </span>
+                ) : null}
+                {((order.festivalDiscount ?? order.festivalDiscountApplied ?? 0) > 0) ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                    ✨ Festival Savings
+                  </span>
+                ) : null}
               </div>
             </div>
           </section>
@@ -313,8 +323,8 @@ export default function OrderDetailsPage() {
             items={(order.orderItems ?? []).map((item) => ({
               name: item.name ?? "Product",
               quantity: item.quantity ?? 0,
-              price: `₹${item.discountPrice ?? item.price ?? 0}`,
-              total: `₹${item.totalPrice ?? (item.price ?? 0) * (item.quantity ?? 1)}`,
+              price: `₹${Number(item.discountPrice ?? item.price ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`,
+              total: `₹${Number(item.totalPrice ?? (item.price ?? 0) * (item.quantity ?? 1)).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`,
             }))}
           />
 
@@ -324,6 +334,9 @@ export default function OrderDetailsPage() {
               <PaymentSummaryCard
                 subtotal={order.subtotal}
                 discount={order.discount}
+                couponCode={order.couponCode}
+                couponDiscount={order.couponDiscount ?? order.couponDiscountApplied}
+                festivalDiscount={order.festivalDiscount ?? order.festivalDiscountApplied}
                 deliveryCharge={order.deliveryCharge}
                 platformFee={order.platformFee}
                 grandTotal={order.grandTotal}
@@ -340,7 +353,7 @@ export default function OrderDetailsPage() {
           </div>
 
           {/* Order Timeline */}
-          <div className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm dark:border-stone-800 dark:bg-stone-900">
+          <div className="no-print rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm dark:border-stone-800 dark:bg-stone-900">
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-600">
               Live Order Milestones
             </p>
@@ -363,7 +376,7 @@ export default function OrderDetailsPage() {
           </div>
 
           {/* Support helper */}
-          <section className="flex flex-col gap-4 rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-stone-800 dark:bg-stone-900">
+          <section className="no-print flex flex-col gap-4 rounded-[2rem] border border-stone-200 bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-stone-800 dark:bg-stone-900">
             <div className="flex items-start gap-3">
               <CircleHelp className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
               <div>

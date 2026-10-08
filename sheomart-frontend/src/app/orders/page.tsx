@@ -165,7 +165,11 @@ export default function OrdersPage() {
   };
 
   const handlePrintSlip = (orderId?: string) => {
-    window.print();
+    if (orderId) {
+      router.push(`/orders/${orderId}`);
+    } else {
+      window.print();
+    }
   };
 
   return (
@@ -325,23 +329,47 @@ export default function OrdersPage() {
                           Items Ordered
                         </p>
                         <div className="flex flex-wrap gap-2 text-xs text-stone-700 dark:text-stone-300">
-                          {(order.orderItems ?? []).map((item, idx) => (
-                            <span
-                              key={idx}
-                              className="rounded-lg bg-stone-50 px-2.5 py-1 border border-stone-100 dark:border-stone-800 dark:bg-stone-950"
-                            >
-                              {item.name} × {item.quantity} (₹{item.totalPrice ?? (item.price ?? 0) * (item.quantity ?? 1)})
-                            </span>
-                          ))}
+                          {(order.orderItems ?? []).map((item, idx) => {
+                            const itemPrice = item.totalPrice ?? (item.price ?? 0) * (item.quantity ?? 1);
+                            return (
+                              <span
+                                key={idx}
+                                className="rounded-lg bg-stone-50 px-2.5 py-1 border border-stone-100 dark:border-stone-800 dark:bg-stone-950"
+                              >
+                                {item.name} × {item.quantity} (₹{Number(itemPrice).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })})
+                              </span>
+                            );
+                          })}
                         </div>
+
+                        {/* Offers & Discounts applied */}
+                        {((order.festivalDiscount ?? order.festivalDiscountApplied ?? 0) > 0 || (order.couponDiscount ?? order.couponDiscountApplied ?? 0) > 0) && (
+                          <div className="flex flex-wrap items-center gap-1.5 pt-1.5">
+                            {(order.festivalDiscount ?? order.festivalDiscountApplied ?? 0) > 0 && (
+                              <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 border border-amber-200/60 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/40">
+                                ✨ Festival Savings: -₹{Number(order.festivalDiscount ?? order.festivalDiscountApplied).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                              </span>
+                            )}
+                            {(order.couponDiscount ?? order.couponDiscountApplied ?? 0) > 0 && (
+                              <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200/60 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/40">
+                                🏷️ Coupon {order.couponCode ? `(${order.couponCode})` : ""}: -₹{Number(order.couponDiscount ?? order.couponDiscountApplied).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {/* Total */}
                       <div className="text-right sm:border-l sm:border-stone-100 sm:pl-6 dark:border-stone-800">
                         <p className="text-xs text-stone-500">Grand Total</p>
                         <p className="text-xl font-extrabold text-stone-900 dark:text-stone-50">
-                          ₹{order.grandTotal ?? 0}
+                          ₹{Number(order.grandTotal ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                         </p>
+                        {((order.discount ?? 0) + (order.festivalDiscount ?? order.festivalDiscountApplied ?? 0) + (order.couponDiscount ?? order.couponDiscountApplied ?? 0)) > 0 && (
+                          <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                            Saved ₹{Number((order.discount ?? 0) + (order.festivalDiscount ?? order.festivalDiscountApplied ?? 0) + (order.couponDiscount ?? order.couponDiscountApplied ?? 0)).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                          </p>
+                        )}
                         <p
                           className={`text-[11px] font-medium ${
                             (order.paymentStatus ?? "").toUpperCase() === "PAID"

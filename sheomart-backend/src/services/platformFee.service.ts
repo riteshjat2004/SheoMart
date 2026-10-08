@@ -16,6 +16,7 @@ export class PlatformFeeService {
   static calculate(config: Awaited<ReturnType<typeof PlatformFeeService.getConfig>>, subtotal: number) {
     if (!config.enabled || subtotal < (config.minimumOrderAmount ?? 0)) return 0;
     const raw = config.feeType === "PERCENTAGE" ? subtotal * config.amount / 100 : config.amount;
-    return Math.max(0, Math.min(raw, config.maximumPlatformFee ?? Number.POSITIVE_INFINITY));
+    const fee = Math.max(0, Math.min(raw, config.maximumPlatformFee ?? Number.POSITIVE_INFINITY));
+    return Math.round(fee * 100) / 100;
   }
 }
